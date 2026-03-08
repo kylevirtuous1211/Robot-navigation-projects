@@ -34,11 +34,13 @@ class ActorCritic(nn.Module):
         return mean, std, value
 
 class PPOAgent:
-    def __init__(self, obs_dim, action_dim, lr=3e-4, gamma=0.99, eps_clip=0.2, c1=0.5, c2=0.01):
+    def __init__(self, obs_dim, action_dim, lr=3e-4, gamma=0.99, K_epochs=10, eps_clip=0.2, lam=0.95, c1=0.5, c2=0.01):
         self.gamma = gamma
         self.eps_clip = eps_clip
+        self.lam = lam
         self.c1 = c1
         self.c2 = c2
+        self.K_epochs = K_epochs
         
         self.policy = ActorCritic(obs_dim, action_dim)
         self.optimizer = optim.Adam(self.policy.parameters(), lr=lr)
@@ -65,24 +67,35 @@ class PPOAgent:
         rewards = buffer.rewards
         is_terminals = buffer.is_terminals
         
-        # Calculate Monte Carlo rewards (Returns)
+        # Calculate Rewards and Advantages using GAE
         returns = []
-        discounted_reward = 0
-        for reward, is_terminal in zip(reversed(rewards), reversed(is_terminals)):
-            if is_terminal:
-                discounted_reward = 0
-            discounted_reward = reward + (self.gamma * discounted_reward)
-            returns.insert(0, discounted_reward)
-            
-        returns = torch.FloatTensor(returns)
-        returns = (returns - returns.mean()) / (returns.std() + 1e-7)
+        advantages = []
+        gae = 0
         
-        # GAE (Simplified for this tutorial-grade implementation)
-        advantages = returns - old_values.detach()
+        values = old_values.detach().numpy()
+        next_value = 0 # bootstrapping
+        
+        for i in reversed(range(len(rewards))):
+            mask = 1.0 - is_terminals[i]
+            delta = rewards[i] + self.gamma * next_value * mask - values[i]
+            gae = delta + self.gamma * self.lam * mask * gae
+            advantages.insert(0, gae)
+            next_value = values[i]
+            
+        advantages = torch.FloatTensor(advantages)
+        returns = advantages + old_values
+        
+        # Standardize advantages
+        advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-7)
+        
+        
+        # Track losses for logging
+        total_actor_loss = 0
+        total_critic_loss = 0
         
         # Optimization loop
-        for _ in range(10): # Update policy for K epochs
-            mean, std, values = self.policy(old_states)
+        for _ in range(self.K_epochs):
+            mean, std, current_values = self.policy(old_states)
             dist = Normal(mean, std)
             logprobs = dist.log_prob(old_actions).sum(dim=-1)
             dist_entropy = dist.entropy().sum(dim=-1)
@@ -92,14 +105,21 @@ class PPOAgent:
             surr1 = ratios * advantages
             surr2 = torch.clamp(ratios, 1-self.eps_clip, 1+self.eps_clip) * advantages
             
+            actor_loss = -torch.min(surr1, surr2).mean()
+            critic_loss = self.c1 * self.mse_loss(current_values.squeeze(), returns)
+            
             # Loss Function
-            loss = -torch.min(surr1, surr2) + self.c1 * self.mse_loss(values.squeeze(), returns) - self.c2 * dist_entropy
+            loss = actor_loss + critic_loss - self.c2 * dist_entropy.mean()
             
             self.optimizer.zero_grad()
-            loss.mean().backward()
+            loss.backward()
             self.optimizer.step()
             
+            total_actor_loss += actor_loss.item()
+            total_critic_loss += critic_loss.item()
+            
         self.policy_old.load_state_dict(self.policy.state_dict())
+        return total_actor_loss / self.K_epochs, total_critic_loss / self.K_epochs
 
 class ReplayBuffer:
     def __init__(self):

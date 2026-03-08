@@ -87,7 +87,7 @@ class MapEnv(gym.Env):
         
         # Collision Check
         if not check_inside_map(self.occupancy_map, new_node) or not check_collision_free(self.occupancy_map, curr_node, new_node):
-            reward = -50.0 # Heavy collision penalty
+            reward = -1000.0 # Heavy collision penalty (significantly greater than single-step progress)
             terminated = True
         else:
             self.agent_pos = new_pos
@@ -101,6 +101,13 @@ class MapEnv(gym.Env):
             
             # 3. Time Penalty
             reward -= 0.1
+            
+            # 4. Wall Proximity Penalty (Encourage staying in middle)
+            lidar_obs = self._get_lidar()
+            min_lidar_dist = np.min(lidar_obs)
+            # Penalize heavily if the nearest wall is within 20% of the lidar range
+            if min_lidar_dist < 0.2:
+                reward -= (0.2 - min_lidar_dist) * 500.0  # Increased penalty scale to counter progress reward
             
             self.prev_dist = curr_dist
             
