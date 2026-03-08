@@ -1,3 +1,5 @@
+import heapq
+from itertools import count
 
 import cv2
 import numpy as np
@@ -7,36 +9,55 @@ from path_planning.a_star_planner import AStarPlanner
 
 
 class AStarImplementation(AStarPlanner):
-    # TODO: implement your own version of preloop, step and postloop
     def preloop(self):
-        # This is for illustrative purposes only, feel free to modify
-        self.queue:set[PathNode] = set()
-        self.g:dict[PathNode, float] = {}
-        self.h:dict[PathNode, float] = {}
+        self.counter = count() # To handle nodes with same f-score
         self.visited_nodes:set[PathNode] = set()
-        self.visited_nodes.add(self.start_node)
-        self.queue.add(self.start_node)
-        self.g[self.start_node] = 0
-        self.h[self.start_node] = calculate_node_distance(
-            self.start_node, 
-            self.goal_node
-        )
+        
+        # g[node] is the cost of the cheapest path from start to node
+        self.g:dict[PathNode, float] = {self.start_node: 0}
+        
+        # f[node] = g[node] + h(node)
+        start_h = calculate_node_distance(self.start_node, self.goal_node)
+        self.f:dict[PathNode, float] = {self.start_node: start_h}
+        
+        # The priority queue storing (priority, count, node)
+        self.heap = [(start_h, next(self.counter), self.start_node)]
 
     def step(self):
-        # ===== some given data/parameters =====
-        self.start_node
-        self.goal_node
-        self.world_map # bgr
-        self.occupancy_map # bool
-        self.goal_threshold
-        self.grid_size # for sampling neighbor nodes
-        # ==========
-        # to sample neighbor nodes, use 
-        # self.get_neighbor_nodes(current_node)
-        self.is_done.set() # only set this on termination
+        if not self.heap:
+            self.is_done.set()
+            return
+
+        # Pop the node with the lowest f_score
+        f_score, _, current_node = heapq.heappop(self.heap)
+
+        if current_node in self.visited_nodes:
+            return
+            
+        self.visited_nodes.add(current_node)
+
+        # Check if goal reached
+        if calculate_node_distance(current_node, self.goal_node) <= self.goal_threshold:
+            # Update goal_node's parent to reconstruct the path correctly
+            self.goal_node.parent = current_node
+            self.is_done.set()
+            return
+
+        for neighbor in self.get_neighbor_nodes(current_node):
+            if neighbor in self.visited_nodes:
+                continue
+                
+            tentative_g_score = self.g[current_node] + calculate_node_distance(current_node, neighbor)
+            
+            if tentative_g_score < self.g.get(neighbor, float('inf')):
+                neighbor.parent = current_node
+                self.g[neighbor] = tentative_g_score
+                f_score = tentative_g_score + calculate_node_distance(neighbor, self.goal_node)
+                self.f[neighbor] = f_score
+                heapq.heappush(self.heap, (f_score, next(self.counter), neighbor))
 
     def postloop(self):
-        return (
-            collect_path(self.goal_node), 
-            set() # replace with set of visited nodes
-        )
+        # If goal was not reached, goal_node.parent will be None, 
+        # and collect_path will return [goal_node].
+        path = collect_path(self.goal_node)
+        return path, self.visited_nodes

@@ -69,7 +69,7 @@ if __name__ == "__main__":
         raise RuntimeError()
     
     # plan
-    path, vidited_nodes = planner.plan(**planner_argument)
+    path, visited_nodes = planner.plan(**planner_argument)
 
     # visualization
     visualization = visualize_start_goal(
@@ -77,8 +77,8 @@ if __name__ == "__main__":
         PathNode(PixelCoordinates(*start_coordinates)), 
         PathNode(PixelCoordinates(*goal_coordinates))
     )
-    visualization = visualize_visited_nodes(visualization, vidited_nodes)
+    visualization = visualize_visited_nodes(visualization, visited_nodes)
     visualization = visualize_path(visualization, path)
-    cv2.imshow("", visualization)
+    cv2.imwrite(f"{map_name}_{args.planner}_output.png", visualization)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
