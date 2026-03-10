@@ -15,6 +15,7 @@ class AStarImplementation(AStarPlanner):
         
         # g[node] is the cost of the cheapest path from start to node
         self.g:dict[PathNode, float] = {self.start_node: 0}
+        self.start_node.cost = 0
         
         # f[node] = g[node] + h(node)
         start_h = calculate_node_distance(self.start_node, self.goal_node)
@@ -34,12 +35,15 @@ class AStarImplementation(AStarPlanner):
         if current_node in self.visited_nodes:
             return
             
+        current_node.cost = self.g.get(current_node, float('inf'))
         self.visited_nodes.add(current_node)
 
         # Check if goal reached
         if calculate_node_distance(current_node, self.goal_node) <= self.goal_threshold:
-            # Update goal_node's parent to reconstruct the path correctly
+            # Update goal_node's parent and cost to reconstruct the path correctly
             self.goal_node.parent = current_node
+            self.goal_node.cost = self.g[current_node] + calculate_node_distance(current_node, self.goal_node)
+            self.visited_nodes.add(self.goal_node)
             self.is_done.set()
             return
 

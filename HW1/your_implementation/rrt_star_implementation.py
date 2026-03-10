@@ -79,6 +79,7 @@ class RRTStarImplementation(RRTStarPlanner):
             if check_collision_free(self.occupancy_map, new_node, self.goal_node):
                 self.goal_node.parent = new_node
                 self.goal_node.cost = new_node.cost + calculate_node_distance(new_node, self.goal_node)
+                self.visited_nodes.add(self.goal_node)
                 self.is_done.set()
     
     def postloop(self):
