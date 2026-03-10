@@ -7,7 +7,7 @@ from map_env import MapEnv
 from ppo_implementation import PPOAgent
 
 def evaluate_fixed(model_path="checkpoint/ppo_map1.pth", num_episodes=5, output_video="visualization/trajectory_fixed.mp4"):
-    env = MapEnv(map_name="map1")
+    env = MapEnv(map_names=["map1"], random_spawn=False)
     obs_dim = env.observation_space.shape[0]
     action_dim = env.action_space.shape[0]
     
@@ -33,7 +33,7 @@ def evaluate_fixed(model_path="checkpoint/ppo_map1.pth", num_episodes=5, output_
         
         while not done:
             with torch.no_grad():
-                obs_tensor = torch.FloatTensor(state).unsqueeze(0)
+                obs_tensor = torch.FloatTensor(state).unsqueeze(0).to(agent.device)
                 mean, _, _ = agent.policy(obs_tensor)
                 action = mean.cpu().numpy().flatten()
             

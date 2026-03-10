@@ -41,17 +41,18 @@ class PPOAgent:
         self.c1 = c1
         self.c2 = c2
         self.K_epochs = K_epochs
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         
-        self.policy = ActorCritic(obs_dim, action_dim)
+        self.policy = ActorCritic(obs_dim, action_dim).to(self.device)
         self.optimizer = optim.Adam(self.policy.parameters(), lr=lr)
-        self.policy_old = ActorCritic(obs_dim, action_dim)
+        self.policy_old = ActorCritic(obs_dim, action_dim).to(self.device)
         self.policy_old.load_state_dict(self.policy.state_dict())
         
         self.mse_loss = nn.MSELoss()
 
     def select_action(self, obs):
         with torch.no_grad():
-            obs = torch.FloatTensor(obs).unsqueeze(0)
+            obs = torch.FloatTensor(obs).unsqueeze(0).to(self.device)
             mean, std, value = self.policy_old(obs)
             dist = Normal(mean, std)
             action = dist.sample()
@@ -59,11 +60,11 @@ class PPOAgent:
         return action.detach().cpu().numpy().flatten(), action_logprob.item(), value.item()
 
     def update(self, buffer):
-        # Convert list of experiences to tensors
-        old_states = torch.FloatTensor(np.array(buffer.states))
-        old_actions = torch.FloatTensor(np.array(buffer.actions))
-        old_logprobs = torch.FloatTensor(np.array(buffer.logprobs))
-        old_values = torch.FloatTensor(np.array(buffer.values))
+        # Convert list of experiences to tensors and send to device
+        old_states = torch.FloatTensor(np.array(buffer.states)).to(self.device)
+        old_actions = torch.FloatTensor(np.array(buffer.actions)).to(self.device)
+        old_logprobs = torch.FloatTensor(np.array(buffer.logprobs)).to(self.device)
+        old_values = torch.FloatTensor(np.array(buffer.values)).to(self.device)
         rewards = buffer.rewards
         is_terminals = buffer.is_terminals
         
@@ -72,7 +73,7 @@ class PPOAgent:
         advantages = []
         gae = 0
         
-        values = old_values.detach().numpy()
+        values = old_values.detach().cpu().numpy()
         next_value = 0 # bootstrapping
         
         for i in reversed(range(len(rewards))):
@@ -82,7 +83,7 @@ class PPOAgent:
             advantages.insert(0, gae)
             next_value = values[i]
             
-        advantages = torch.FloatTensor(advantages)
+        advantages = torch.FloatTensor(advantages).to(self.device)
         returns = advantages + old_values
         
         # Standardize advantages

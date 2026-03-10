@@ -30,8 +30,8 @@ def train():
         writer = csv.writer(file)
         writer.writerow(["Timestep", "Episode", "Avg_Reward", "Actor_Loss", "Critic_Loss", "Eval_Reward"])
     
-    # Init environment
-    env = MapEnv(map_name=map_name)
+    # Init environment (uses all 3 maps with random spawns by default)
+    env = MapEnv()
     obs_dim = env.observation_space.shape[0]
     action_dim = env.action_space.shape[0]
     
@@ -124,7 +124,8 @@ def train():
     print(f"Model saved to {save_path}")
 
 def evaluate(model_path="checkpoint/ppo_map1.pth", num_episodes=5, video_name="visualization/trajectory_eval.mp4"):
-    env = MapEnv(map_name="map1")
+    # Evaluation uses a fixed non-random setup to see consistent behavior
+    env = MapEnv(map_names=["map1"], random_spawn=False)
     obs_dim = env.observation_space.shape[0]
     action_dim = env.action_space.shape[0]
     
@@ -145,7 +146,12 @@ def evaluate(model_path="checkpoint/ppo_map1.pth", num_episodes=5, video_name="v
         frames = []
         
         while not done:
-            action, _, _ = agent.select_action(state)
+            # Deterministic action for evaluation (use mean instead of sampling)
+            with torch.no_grad():
+                obs_tensor = torch.FloatTensor(state).unsqueeze(0).to(agent.device)
+                mean, _, _ = agent.policy(obs_tensor)
+                action = mean.cpu().numpy().flatten()
+                
             state, reward, terminated, truncated, _ = env.step(action)
             total_reward += reward
             done = terminated or truncated
