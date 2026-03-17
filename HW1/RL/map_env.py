@@ -12,6 +12,7 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from path_planning.primitives import PathNode, PixelCoordinates
 from path_planning.planner_utils import world_map_to_occupancy_map, check_collision_free, check_inside_map
+from your_implementation.rrt_star_implementation import RRTStarImplementation
 
 class MapEnv(gym.Env):
     def __init__(self, map_names=None, goal_threshold=20.0, max_steps=1000, random_spawn=True, frame_stack=4):
@@ -72,14 +73,17 @@ class MapEnv(gym.Env):
         self.max_velocity = 10.0
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
         
-        # Environment buffers
+        # Environment state
         self.frames = deque(maxlen=self.frame_stack)
-        self.pos_history = deque(maxlen=50)
+        self.pos_history = deque(maxlen=10)
+        self.waypoints = []
+        self.current_waypoint_idx = 0
         
         # Track state
         self.current_vel = np.zeros(2, dtype=np.float32)
-        self.current_step = 0
+        # Start with map 0 as current; will be re-randomized on reset
         self._load_map(0)
+        
         self.agent_pos = self.start_coords.copy()
 
     def _load_map(self, idx):
@@ -126,13 +130,18 @@ class MapEnv(gym.Env):
         return np.array(lidar_values, dtype=np.float32)
 
     def _get_single_obs(self):
-        # 1. Goal Vector (Polar Coordinates)
-        rel_goal = self.goal_coords - self.agent_pos
-        dist_to_goal = np.linalg.norm(rel_goal)
-        angle_to_goal = np.arctan2(rel_goal[1], rel_goal[0])
+        # 1. Waypoint Vector (Polar Coordinates)
+        # Targets current waypoint or final goal if all waypoints collected
+        target_pos = self.goal_coords
+        if self.current_waypoint_idx < len(self.waypoints):
+            target_pos = self.waypoints[self.current_waypoint_idx]
+            
+        rel_target = target_pos - self.agent_pos
+        dist_to_target = np.linalg.norm(rel_target)
+        angle_to_target = np.arctan2(rel_target[1], rel_target[0])
         
-        norm_dist = min(dist_to_goal / self.max_dist, 1.0)
-        norm_angle = angle_to_goal / np.pi  # [-1.0, 1.0]
+        norm_dist = min(dist_to_target / self.max_dist, 1.0)
+        norm_angle = angle_to_target / np.pi  # [-1.0, 1.0]
         
         # 2. Kinematics (Normalized Velocity)
         norm_vel = self.current_vel / self.max_velocity
@@ -164,7 +173,6 @@ class MapEnv(gym.Env):
         self.agent_pos = self.start_coords.copy()
         self.current_vel = np.zeros(2, dtype=np.float32)
         self.current_step = 0
-        self.prev_dist = np.linalg.norm(self.goal_coords - self.agent_pos)
         
         # Initialize memory buffers
         self.pos_history.clear()
@@ -174,6 +182,32 @@ class MapEnv(gym.Env):
         initial_obs = self._get_single_obs()
         for _ in range(self.frame_stack):
             self.frames.append(initial_obs)
+            
+        # Initialize RRT* to get waypoints
+        planner = RRTStarImplementation()
+        start_px = PixelCoordinates(int(self.start_coords[0]), int(self.start_coords[1]))
+        goal_px = PixelCoordinates(int(self.goal_coords[0]), int(self.goal_coords[1]))
+        
+        # Plan path
+        path, _ = planner.plan(
+            start_px, 
+            goal_px, 
+            self.world_map, 
+            goal_threshold=30.0, 
+            iteration_limit=5000,
+            step_size=30.0,
+            search_radius=50.0
+        )
+        
+        if len(path) <= 1:
+            print(f"[!] RRT* failed to find path from {self.start_coords} to {self.goal_coords}")
+        
+        # Convert PathNodes to numpy coords
+        self.waypoints = [np.array([node.coordinates.x, node.coordinates.y], dtype=np.float32) for node in path]
+        # Remove first waypoint (it's the start position)
+        if len(self.waypoints) > 0:
+            self.waypoints.pop(0)
+        self.current_waypoint_idx = 0
             
         return self._get_stacked_obs(), {}
 
@@ -197,11 +231,8 @@ class MapEnv(gym.Env):
         else:
             self.agent_pos = new_pos
             self.pos_history.append(self.agent_pos.copy())
-            curr_dist = np.linalg.norm(self.goal_coords - self.agent_pos)
-            
-            # 1. Progress Reward (Potential-based)
-            alpha = 0.05
-            reward += alpha * (self.prev_dist - curr_dist)
+            # 1. Gentle Time Penalty
+            reward -= 0.005
             
             # 2. Safety Clearance Penalty
             lidar_obs = self._get_lidar()
@@ -211,16 +242,25 @@ class MapEnv(gym.Env):
                 reward -= 3.0 * (safe_dist - min_lidar_dist)
             
             # 3. Stagnation Penalty
-            # If we have 50 steps of history, check displacement
-            if len(self.pos_history) == 50:
+            # If we have 10 steps of history, check displacement
+            if len(self.pos_history) == 10:
                 displacement = np.linalg.norm(self.agent_pos - self.pos_history[0])
-                if displacement < 5.0: # If moved less than 5 pixels in 50 steps
+                if displacement < 10.0:
                     reward -= 0.5 # Apply stagnation penalty
             
-            self.prev_dist = curr_dist
+            # 4. Waypoint Following Reward
+            if self.current_waypoint_idx < len(self.waypoints):
+                target_wp = self.waypoints[self.current_waypoint_idx]
+                dist_to_wp = np.linalg.norm(self.agent_pos - target_wp)
+                
+                # If reached waypoint (within 20 pixels)
+                if dist_to_wp < 20.0:
+                    reward += 5.0 # Waypoint reward
+                    self.current_waypoint_idx += 1
             
-            # Goal Check
-            if curr_dist <= self.goal_threshold:
+            # 5. Final Goal Check
+            dist_to_goal = np.linalg.norm(self.agent_pos - self.goal_coords)
+            if dist_to_goal <= self.goal_threshold:
                 reward += 10.0
                 terminated = True
         
@@ -234,6 +274,19 @@ class MapEnv(gym.Env):
 
     def render(self):
         canvas = self.world_map.copy()
+        
+        # Draw RRT* path
+        if len(self.waypoints) > 1:
+            for i in range(len(self.waypoints) - 1):
+                pt1 = (int(self.waypoints[i][0]), int(self.waypoints[i][1]))
+                pt2 = (int(self.waypoints[i+1][0]), int(self.waypoints[i+1][1]))
+                cv2.line(canvas, pt1, pt2, (100, 100, 100), 1)
+        
+        # Draw current target waypoint
+        if self.current_waypoint_idx < len(self.waypoints):
+            target_wp = self.waypoints[self.current_waypoint_idx]
+            cv2.circle(canvas, (int(target_wp[0]), int(target_wp[1])), 8, (0, 165, 255), 2) # Orange circle
+            
         cv2.circle(canvas, (int(self.agent_pos[0]), int(self.agent_pos[1])), 6, (255, 50, 50), -1)
         cv2.circle(canvas, (int(self.goal_coords[0]), int(self.goal_coords[1])), int(self.goal_threshold), (50, 220, 50), 2)
         cv2.circle(canvas, (int(self.start_coords[0]), int(self.start_coords[1])), 6, (200, 50, 200), -1)

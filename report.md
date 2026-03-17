@@ -1,31 +1,58 @@
+# Path Planning & Navigation Report
 
-# Code structure
+## 1. Code Structure Overview
 
-preloop: Initializes the heap with the start node and its f-score.
+*   **`preloop`**: Initializes internal data structures before the main search loop begins (e.g., seeding the heap with the start node).
+*   **`step`**: The core iterative logic. Pops the most promising node, explores its neighbors, and updates path costs and parents if a better route is found.
+*   **`postloop`**: Concludes the search by reconstructing the final path and returning it alongside the set of visited nodes.
 
-step: Pops the node with the lowest f-score, expands neighbors, and updates their costs and parents if a better path is found.
+---
 
-postloop: Returns the reconstructed path and the set of visited nodes.
+## 2. A* (A-Star) Algorithm
 
+### 2.1 `preloop`
+Initializes essential data structures required for the search:
+*   **`visited_nodes`**: A closed set. Due to the greedy property of A* with a consistent heuristic (like L2 distance), once a node is visited, it guarantees the shortest path to that node has been found. It does not need to be visited again.
+*   **`g`**: A dictionary storing the current lowest cost from the start node to each known node.
+*   **`f`**: A dictionary storing the estimated total cost ($f(n) = g(n) + h(n)$) for each node, including the heuristic distance to the goal.
+*   **`heapq`**: A priority queue storing the nodes to be explored, strictly ordered by their $f$-score (with a counter to break ties).
 
-# A Star
-Pop the node with the lowest $f$ (The "Most Promising" node).
-Lookup its $g$ (The cached "Distance traveled").
-Update neighbors: If g[current] + distance < g[neighbor], you've found a better way! Update the cache and put the neighbor back in the heap.
+### 2.2 `step`
+Executes the following algorithm iteratively:
+1.  **Pop** the node with the lowest $f$-score from the heap.
+2.  **Mark** it as visited by adding it to `visited_nodes`.
+3.  **Goal Check**: Check if the current node is within the distance threshold of the goal node.
+4.  **Expand Neighbors**: Evaluate surrounding nodes. Update a neighbor's cost ($g$ and $f$) and set its parent to the current node if the new path is cheaper than any previously found path.
+5.  **Push** updated neighbors back into the priority queue (`heapq`).
 
-# RRT
-Classic RRT:
+### 2.3 `postloop`
+Recursively builds the path from the goal node. Because every `PathNode` records its parent during the search, the optimal path is reconstructed by simply backtracking from the goal back to the start node.
 
-Greedy and fast. Once a node is added to the tree, its parent never changes.
-The Problem: It often finds very jagged, "zig-zag" paths because it's just trying to fill space, not find the shortest route.
-Result: Sub-optimal path.
-RRT* (The "Optimizer"):
+---
 
-Choose Parent (Look Ahead): When adding a new node $z_{new}$, it doesn't just connect to the nearest neighbor. It looks at all nodes within search_radius and picks the one that results in the lowest total cost from the start.
-Rewire (The Magic): This is the "optimization" part. After adding $z_{new}$, RRT* looks at all other nodes in the search_radius. If passing through $z_{new}$ would give an already existing node a shorter path to the start, it changes that node's parent to $z_{new}$.
-Result: As you add more samples ($N \to \infty$), the path "straightens out" and converges to the optimal path.
+## 3. RRT* (Rapidly-exploring Random Tree Star)
 
-# Reinforcement Learning
-**Strategy: PPO (Proximal Policy Optimization)**
-- **Why?**: It offers the best balance between implementation complexity and training stability. Its "clipping" mechanism ensures the agent doesn't over-correct its mistakes, leading to smoother learning curves in navigation tasks.
-- **Environment**: A custom Gymnasium wrapper that provides the agent with its relative position to the goal and a local "Lidar" view of the occupancy map.
+### 3.1 `preloop`
+Initializes the tree:
+*   Sets the root `start_node`'s cost to 0.
+*   **`visited_nodes`**: Initializes the set forming the spanning tree. In RRT*, this set is continuously referenced for both *reparenting* and *rewiring* newly discovered nodes.
+
+### 3.2 `step`
+Executes the following incremental growth algorithm:
+1.  **Sample**: Randomly sample a target node in the configuration space.
+2.  **Nearest / Steer**: Find the `new_node` by first identifying the `nearest_node` in the tree.
+    *   If the random node is within the maximum step size, `new_node` becomes the random node itself.
+    *   Otherwise, use linear interpolation (steering) to project a new node from `nearest_node` towards the random node, strictly limited by the step size.
+3.  **Collision Check**: Ensure `new_node` is inside the map boundaries and the straight-line path to it is free of obstacles.
+4.  **Choose Parent (Optimization 1)**: Find the optimal parent for `new_node`. Iterate through all existing tree nodes within a specific search radius to find the connection that yields the absolute minimum cost from the start.
+5.  **Add to Tree**: Successfully link and insert `new_node` into `visited_nodes`.
+6.  **Rewire (Optimization 2)**: Check if `new_node` serves as a better parent for its neighboring nodes in the tree. Iteratively calculate if routing adjacent nodes through `new_node` lowers their total cost, and update their parents if it does.
+7.  **Goal Check**: Verify if `new_node` is sufficiently close to the goal.
+
+### 3.3 `postloop`
+Recursively traces the `.parent` pointers backward from the goal node to the start node to reconstruct the final path.
+
+## 4. Conclusion
+Thank you TA for such a nice code template! I really liked how utils has all the helper functions, and the A* and RRT* planner class also it's inherited from the base planner class, which makes the code clean and organized. 
+
+It's my first time implementing both algorithms, A* feels like Dijkstra, only difference is the heuristic function creating the f function. RRT*'s sampling strategy is more versatile as it's not restricted to a discrete grid, also, implementing rewiring and reparenting strategy is a fun algorithm exercise! Really enjoyed this project!

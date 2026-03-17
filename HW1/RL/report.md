@@ -92,14 +92,29 @@ Rather than using fixed start and goal coordinates from `info.json`, the environ
 
 This is implemented by pre-computing the list of all non-obstacle pixels from the occupancy map at load time (`free_pixels = np.argwhere(occupancy_map == 0)`), and drawing from that list during each `reset()`. Evaluation always uses `map1` with its fixed `info.json` coordinates (`random_spawn=False`) to allow reproducible comparison across training runs.
 
+### Fix 9: Waypoint-Following (Guided Rewards)
+To overcome the "local minima" problem and the "circular spinning" behavior of pure exploration, the environment was integrated with the **RRT* algorithm**:
+- **Dynamic Path Generation**: At the start of every episode, RRT* is run to generate a valid path from the random start to the target goal.
+- **Intermediate Waypoints**: The path is broken into nodes (waypoints). The agent receives a **+5.0 reward** for every waypoint it successfully reaches (within a 20-pixel radius).
+- **Targeted Perception**: The observation vector is modified to point the agent's polar coordinates `[norm_dist, norm_angle]` toward the **next nearest waypoint** instead of the distant final goal. This effectively transforms the complex navigation task into a simpler "trace the line" task.
+
+### Fix 10: Safety-Aware RRT* (Path Centering)
+To ensure the generated waypoints are as safe as possible, the RRT* planner was upgraded with a **Safety-Aware Cost Function**:
+- **Distance Transform**: During the pre-loop stage, a distance map is computed using `cv2.distanceTransform`, storing the distance to the nearest obstacle for every pixel in the occupancy map.
+- **Clearance Penalty**: The RRT* cost function was modified to include a safety penalty $p = \frac{100.0}{\text{dist\_to\_wall} + 1.0}$.
+- **Resulting Behavior**: Nodes near walls become significantly more expensive than nodes in open space. This forces RRT* to discover paths that naturally follow the midline of corridors and hallways, providing the agent with maximum clearance from hazards.
+
 ## Current Reward Function
 
-$$R_t = r_{\text{progress}} + r_{\text{clearance}} + r_{\text{collision}} + r_{\text{stagnation}} + r_{\text{goal}}$$
+The agent follows an RRT*-generated path by collecting intermediate waypoints. The reward function is now **guided**:
+
+$$R_t = r_{\text{step}} + r_{\text{clearance}} + r_{\text{collision}} + r_{\text{stagnation}} + r_{\text{waypoint}} + r_{\text{goal}}$$
 
 | Term | Expression | Notes |
 |---|---|---|
-| $r_{\text{progress}}$ | $\alpha \cdot (d_{t-1} - d_t),\; \alpha=0.05$ | Potential-based; positive when closing distance |
-| $r_{\text{clearance}}$ | $-3.0 \cdot (0.2 - l_{\min})\;$ if $l_{\min} < 0.2$ | Penalizes proximity to walls; 20% LiDAR threshold |
-| $r_{\text{collision}}$ | $-20.0$ (terminal) | Worst possible outcome; ends the episode |
-| $r_{\text{stagnation}}$ | $-0.5$ if displacement < 5px over 50 steps | Prevents station-keeping and spinning |
-| $r_{\text{goal}}$ | $+10.0$ (terminal) | Reward on reaching goal within threshold |
+| $r_{\text{step}}$ | $-0.005$ | Gentle ticking clock |
+| $r_{\text{clearance}}$ | $-3.0 \cdot (0.2 - l_{\min})\;$ if $l_{\min} < 0.2$ | Penalizes proximity to walls |
+| $r_{\text{collision}}$ | $-20.0$ (terminal) | Ends the episode |
+| $r_{\text{stagnation}}$ | $-0.5$ if displacement < 10px over 10 steps | Prevents local loops |
+| $r_{\text{waypoint}}$ | $+5.0$ | Bonus for reaching each RRT* waypoint |
+| $r_{\text{goal}}$ | $+10.0$ (terminal) | Reward on reaching the final goal |

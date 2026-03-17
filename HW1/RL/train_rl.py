@@ -22,7 +22,7 @@ def train():
     action_std_decay_freq = 25000
     
     # Create unique session ID
-    session_id = f"ppo_{map_name}_lr{lr}_gamma{gamma}_clip{eps_clip}_steps{max_training_steps}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    session_id = f"ppo_lr{lr}_gamma{gamma}_clip{eps_clip}_steps{max_training_steps}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     os.makedirs("logs", exist_ok=True)
     csv_filename = f"logs/{session_id}.csv"
     
@@ -37,6 +37,25 @@ def train():
     
     # Init agent
     agent = PPOAgent(obs_dim, action_dim, lr=lr, gamma=gamma, eps_clip=eps_clip)
+    
+    # Check for existing checkpoints to resume training
+    checkpoint_dir = "checkpoint"
+    if os.path.exists(checkpoint_dir):
+        checkpoints = [os.path.join(checkpoint_dir, f) for f in os.listdir(checkpoint_dir) if f.endswith(".pth")]
+        if checkpoints:
+            latest_ckpt = max(checkpoints, key=os.path.getmtime)
+            print(f"[*] Found existing checkpoint: {latest_ckpt}")
+            try:
+                agent.policy.load_state_dict(torch.load(latest_ckpt, map_location=agent.device))
+                agent.policy_old.load_state_dict(agent.policy.state_dict())
+                print(f"[*] Successfully loaded weights! Resuming training...")
+            except Exception as e:
+                print(f"[!] Failed to load checkpoint: {e}. Starting fresh.")
+        else:
+            print("[*] No existing checkpoints found. Starting fresh.")
+    else:
+        print("[*] No checkpoint directory found. Starting fresh.")
+
     buffer = ReplayBuffer()
     
     time_step = 0
@@ -83,7 +102,7 @@ def train():
             if time_step % save_video_freq == 0:
                 print(f"Saving evaluation video at timestep {time_step}...")
                 os.makedirs("checkpoint", exist_ok=True)
-                temp_path = f"checkpoint/ppo_{map_name}_step_{time_step}.pth"
+                temp_path = f"checkpoint/{session_id}_step_{time_step}.pth"
                 torch.save(agent.policy.state_dict(), temp_path)
                 eval_reward = evaluate(model_path=temp_path, num_episodes=5, video_name=f"visualization/trajectory_step_{time_step}.mp4")
             
@@ -119,7 +138,7 @@ def train():
 
     # Save model
     os.makedirs("checkpoint", exist_ok=True)
-    save_path = f"checkpoint/ppo_{map_name}.pth"
+    save_path = f"checkpoint/{session_id}_final.pth"
     torch.save(agent.policy.state_dict(), save_path)
     print(f"Model saved to {save_path}")
 
