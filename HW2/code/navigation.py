@@ -27,12 +27,12 @@ from navigation_utils import pos_int, render_path, render_dynamic_camera_and_min
 
 def navigation(args, simulator, controller, planner, start_pose=(100,200,0)):
     global pose, nav_pos, way_points, path, set_controller_path
-    window_name = "HW2 Navigation Demo"
-    cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
-    # Resize window to initial size so getWindowImageRect works reliably at start
-    cv2.resizeWindow(window_name, 800, 800)
-    # Disable mouse click for interactive path planning
-    # cv2.setMouseCallback(window_name, mouse_click)
+    
+    import imageio
+    output_filename = f"nav_output_{args.simulator}_{args.controller}_{args.track}.mp4"
+    print(f"Headless mode: Saving video to {output_filename}...")
+    writer = imageio.get_writer(output_filename, fps=30)
+    
     simulator.init_pose(start_pose)
     command = ControlState(args.simulator, None, None)
     pose = start_pose
@@ -128,19 +128,15 @@ def navigation(args, simulator, controller, planner, start_pose=(100,200,0)):
         plot_view = render_velocity_plot(v_history, v_ref_history, camera_w, 250)
         final_view = np.vstack((camera_view, plot_view))
         
-        # Show the final tracking view
-        cv2.imshow(window_name, final_view)
+        # Save to video
+        frame_rgb = cv2.cvtColor(final_view, cv2.COLOR_BGR2RGB)
+        writer.append_data(frame_rgb)
         
-        k = cv2.waitKey(1)
-        if k == ord('r'):
-            simulator.init_state(start_pose)
-            sim_ticks = 0
-            cte_history = []
-            nav_current_idx = 0
-            has_finished = False
-        if k == 27:
-            print()
+        if has_finished:
+            print(f"\nNavigation finished. Video saved to {output_filename}")
             break
+            
+    writer.close()
 
 def parse_arguments():
     parser = argparse.ArgumentParser()

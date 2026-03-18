@@ -58,8 +58,8 @@ class SimulatorDifferentialDrive(Simulator):
     def init_pose(self, pose):
         self.state.update(pose[0], pose[1], pose[2])
         self.cstate = ControlState(self.control_type, 0.0, 0.0)
-        self.p_lw = 0.0
-        self.p_rw = 0.0
+        self.p_lw = 0.0 # previous lw
+        self.p_rw = 0.0 # previous rw
         self.car_box = utils.compute_car_box(self.car_w, self.car_f, self.car_r, self.state.pose())
         self.record = []
         return self.state, {}
