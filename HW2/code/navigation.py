@@ -27,12 +27,23 @@ from navigation_utils import pos_int, render_path, render_dynamic_camera_and_min
 
 def navigation(args, simulator, controller, planner, start_pose=(100,200,0)):
     global pose, nav_pos, way_points, path, set_controller_path
-    
-    import imageio
-    output_filename = f"nav_output_{args.simulator}_{args.controller}_{args.track}.mp4"
-    print(f"Headless mode: Saving video to {output_filename}...")
-    writer = imageio.get_writer(output_filename, fps=30)
-    
+
+    # #NewFeature: Conditional headless mode. When --headless is passed,
+    # saves simulation to an MP4 instead of opening a display window.
+    # This is required for headless server environments.
+    window_name = "HW2 Navigation Demo"
+    if args.headless:
+        import imageio
+        output_filename = f"nav_output_{args.simulator}_{args.controller}_{args.track}.mp4"
+        print(f"Headless mode: Saving video to {output_filename}...")
+        writer = imageio.get_writer(output_filename, fps=30)
+    else:
+        cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+        # Resize window to initial size so getWindowImageRect works reliably at start
+        cv2.resizeWindow(window_name, 800, 800)
+        # Disable mouse click for interactive path planning
+        # cv2.setMouseCallback(window_name, mouse_click)
+
     simulator.init_pose(start_pose)
     command = ControlState(args.simulator, None, None)
     pose = start_pose
@@ -128,15 +139,29 @@ def navigation(args, simulator, controller, planner, start_pose=(100,200,0)):
         plot_view = render_velocity_plot(v_history, v_ref_history, camera_w, 250)
         final_view = np.vstack((camera_view, plot_view))
         
-        # Save to video
-        frame_rgb = cv2.cvtColor(final_view, cv2.COLOR_BGR2RGB)
-        writer.append_data(frame_rgb)
-        
-        if has_finished:
-            print(f"\nNavigation finished. Video saved to {output_filename}")
-            break
-            
-    writer.close()
+        # #NewFeature: Branch between headless video recording and live display.
+        if args.headless:
+            frame_rgb = cv2.cvtColor(final_view, cv2.COLOR_BGR2RGB)
+            writer.append_data(frame_rgb)
+            if has_finished:
+                print(f"\nNavigation finished. Video saved to {output_filename}")
+                break
+        else:
+            # Show the final tracking view
+            cv2.imshow(window_name, final_view)
+            k = cv2.waitKey(1)
+            if k == ord('r'):
+                simulator.init_state(start_pose)
+                sim_ticks = 0
+                cte_history = []
+                nav_current_idx = 0
+                has_finished = False
+            if k == 27:
+                print()
+                break
+
+    if args.headless:
+        writer.close()
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
@@ -145,6 +170,8 @@ def parse_arguments():
     parser.add_argument("-t", "--track", type=str, default="1000mStraight", choices=['400mRunningTrack', '1000mStraight', 'Silverstone', 'Suzuka', 'Monza'], help="Name of track to load")
     parser.add_argument("-lcs", "--lqr_control_state", type=str, default="steering_angle", choices=['steering_angle', 'steering_angular_velocity'], help="control state of LQR control of bicycle model")
     parser.add_argument("-is", "--init_shift", type=float, default=0.0, help="init location shift")
+    # #NewFeature: --headless flag to save output to MP4 instead of displaying a window
+    parser.add_argument("--headless", action="store_true", default=True, help="Save output to MP4 video instead of displaying a window")
     return parser.parse_args()
 
 def setup_simulator_and_controller(args):

@@ -61,11 +61,27 @@ def generate_speed_profile(path_x, path_y, max_v=20.0, max_lat_acc=2.0, max_long
     # TODO 3.1.b Speed limit from curvature
     # v_{max} = sqrt(a_{lat} / k)
     # cap at max_v
-    v_ref = np.sqrt(max_lat_acc / (curvature + 1e-8))
+    v_ref = np.sqrt(max_lat_acc / (curvature + 1e-6))
     v_ref = np.minimum(max_v, v_ref)
     # [end] TODO 3.1.b
     # TODO 3.1.c Longitudinal Smoothing
-    pass
+    # Compute path arc-length between consecutive points
+    dx = np.diff(path_x)
+    dy = np.diff(path_y)
+    ds = np.sqrt(dx**2 + dy**2)
+    ds = np.append(ds, ds[-1])  # same length as v_ref
+
+    v_ref[0] = 5.0 # Starting speed restriction
+    # Forward pass: acceleration constraint
+    # v[i+1] <= sqrt(v[i]^2 + 2 * max_long_acc * ds[i])
+    for i in range(len(v_ref) - 1):
+        v_ref[i + 1] = min(v_ref[i + 1], np.sqrt(v_ref[i] ** 2 + 2 * max_long_acc * ds[i]))
+
+    v_ref[-1] = 0.0 # Terminal speed restriction
+    # Backward pass: deceleration constraint
+    # v[i] <= sqrt(v[i+1]^2 + 2 * max_long_dec * ds[i])
+    for i in range(len(v_ref) - 2, -1, -1):
+        v_ref[i] = min(v_ref[i], np.sqrt(v_ref[i + 1] ** 2 + 2 * max_long_dec * ds[i]))
     # [end] TODO 3.1.c
 
     return v_ref, curvature
@@ -142,7 +158,7 @@ if __name__ == '__main__':
     path_y = data[:, 1]
     
     # Dynamic limitation
-    max_v = 80.0
+    max_v = 85.0
     max_lat_acc = 30.0
     max_long_acc = 12.0
     max_long_dec = 18.0
@@ -183,4 +199,7 @@ if __name__ == '__main__':
     plt.legend()
     plt.axis('equal')
     plt.grid(True)
+    #NewFeature
+    plt.savefig(f"tracks/{TRACK_NAME}_vref.png")
     plt.show()
+    

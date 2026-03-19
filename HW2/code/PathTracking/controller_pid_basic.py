@@ -8,9 +8,9 @@ class ControllerPIDBasic(Controller):
     def __init__(self, 
                  model, 
                  # TODO 4.1.2: Tune PID Gains
-                 kp=1.5, 
-                 ki=0.005, 
-                 kd=0.2):
+                 kp=2.0, 
+                 ki=0.01, 
+                 kd=0.3):
         self.path = None
         self.kp = kp
         self.ki = ki
@@ -37,7 +37,8 @@ class ControllerPIDBasic(Controller):
 
         # Check if reached end of track
         if self.current_idx >= len(self.path) - 3:
-            return 0, self.path[-1]
+            # NewFeature: Stop when reaching the end of the track
+            return 0.0
 
         # Search Nearest Target Locally
         min_idx, min_dist = utils.search_nearest_local(self.path, (x,y), self.current_idx, lookahead=50)

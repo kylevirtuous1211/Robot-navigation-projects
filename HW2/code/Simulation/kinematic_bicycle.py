@@ -16,7 +16,20 @@ class KinematicModelBicycle(KinematicModel):
 
     def step(self, state:State, cstate:ControlState) -> State:
         # TODO 2.3.1: Bicycle Kinematic Model
-        v, w, x, y, yaw = 0, 0, state.x, state.y, state.yaw
+        a = cstate.a           # linear acceleration (deg/s² based on simulator)
+        delta = cstate.delta   # front-wheel steering angle (degrees)
+        x, y, yaw = state.x, state.y, state.yaw
+
+        # Integrate velocity from acceleration
+        v = state.v + np.deg2rad(a) * self.dt
+
+        # Yaw from Ackermann steering geometry
+        w = v * np.tan(np.deg2rad(delta)) / self.l
+
+        # Kinematic update (rear-axle reference point)
+        x = x + v * np.cos(np.deg2rad(yaw)) * self.dt
+        y = y + v * np.sin(np.deg2rad(yaw)) * self.dt
+        yaw = yaw + np.rad2deg(w) * self.dt
         # [end] TODO 2.3.1
         state_next = State(x, y, yaw, v, w)
         return state_next

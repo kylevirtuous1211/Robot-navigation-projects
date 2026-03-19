@@ -290,7 +290,8 @@ def evaluate_and_draw_metrics(simulator, path, nav_current_idx, cte_history, has
             cte = np.linalg.norm(vec_car)
         cte_history.append(cte)
         
-        if nav_current_idx == len(path) - 1 and not has_finished:
+        #NewFeature: Print evaluation metrics when the simulation finishes
+        if nav_current_idx == len(path) - 1 and not has_finished and sim_ticks > 50:
             total_time = sim_ticks * simulator.model.dt
             print(f"\n\n{'='*40}")
             print(f"--- Simulation Finished ---")

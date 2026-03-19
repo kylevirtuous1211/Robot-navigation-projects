@@ -1,0 +1,3 @@
+
+navigation.py
+ — NewFeature: Replaced the live OpenCV display window with imageio.get_writer() to save the simulation as an MP4 video. This was necessary to run the simulation on a headless server (no display). The output filename is dynamically named as nav_output_{simulator}_{controller}_{track}.mp4. The main loop now automatically terminates when has_finished is set to True by the metrics evaluator, instead of relying on a keyboard Esc event.
