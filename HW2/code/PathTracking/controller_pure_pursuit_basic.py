@@ -7,7 +7,7 @@ from PathTracking.controller import Controller
 class ControllerPurePursuitBasic(Controller):
     def __init__(self, model, 
                  # Optional TODO: Tune Pure Pursuit Gain
-                 kp=1, Lfc=10):
+                 kp=0.1, Lfc=5.0):
         self.path = None
         self.kp = kp
         self.Lfc = Lfc
@@ -28,7 +28,7 @@ class ControllerPurePursuitBasic(Controller):
 
         # Check if reached end of track
         if self.current_idx >= len(self.path) - 3:
-            return 0.0, self.path[-1]
+            return 0.0
 
         min_idx, min_dist = utils.search_nearest_local(self.path, (x,y), self.current_idx, lookahead=50)
         self.current_idx = min_idx
@@ -36,7 +36,21 @@ class ControllerPurePursuitBasic(Controller):
         Ld = self.kp*v + self.Lfc
 
         # Optional TODO: Pure Pursuit Control for Basic Kinematic Model
-        # You can implement this if you want to use Pure Pursuit for basic kinematic model in F1 Challenge
-        next_w = 0
+        # Search for look-ahead point with wraparound support
+        for i in range(len(self.path)):
+            search_idx = (self.current_idx + i) % len(self.path)
+            dist = np.hypot(self.path[search_idx][0] - x, self.path[search_idx][1] - y)
+            if dist >= Ld:
+                self.current_idx = search_idx
+                break
+        else:
+            # Fallback for non-loop tracks or extremely large look-ahead
+            self.current_idx = len(self.path) - 1
+            
+        target = self.path[self.current_idx]
+        
+        alpha = np.arctan2(target[1] - y, target[0] - x) - np.deg2rad(yaw)
+        next_w = np.rad2deg(v * 2 * np.sin(alpha) / Ld)
+        # [end] Optional TODO: Pure Pursuit Control for Basic Kinematic Model
         
         return next_w

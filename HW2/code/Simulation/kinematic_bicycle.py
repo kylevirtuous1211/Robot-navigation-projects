@@ -21,7 +21,7 @@ class KinematicModelBicycle(KinematicModel):
         x, y, yaw = state.x, state.y, state.yaw
 
         # Integrate velocity from acceleration
-        v = state.v + np.deg2rad(a) * self.dt
+        v = state.v + a * self.dt
 
         # Yaw from Ackermann steering geometry
         w = v * np.tan(np.deg2rad(delta)) / self.l

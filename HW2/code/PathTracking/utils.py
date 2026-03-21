@@ -31,14 +31,13 @@ def search_nearest(path, pos):
 def search_nearest_local(path, pos, current_idx, lookahead=50):
     min_dist = 99999999
     min_id = -1
-    
-    end_idx = min(len(path), current_idx + lookahead)
-    
-    for i in range(current_idx, end_idx):
-        dist = (pos[0] - path[i,0])**2 + (pos[1] - path[i,1])**2
+    #NewFeature: to support modulo-based wraparound for the pure pursuit algorithm
+    for i in range(lookahead):
+        idx = (current_idx + i) % len(path)
+        dist = (pos[0] - path[idx,0])**2 + (pos[1] - path[idx,1])**2
         if dist < min_dist:
             min_dist = dist
-            min_id = i
+            min_id = idx
     return min_id, min_dist
     
 def angle_norm(theta):
