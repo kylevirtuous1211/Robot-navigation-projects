@@ -1,2 +1,7 @@
 numpy==2.2.1
 opencv-python==4.10.0.84
+torch
+imageio
+gymnasium
+pandas
+matplotlib

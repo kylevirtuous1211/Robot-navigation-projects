@@ -12,7 +12,7 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from path_planning.primitives import PathNode, PixelCoordinates
 from path_planning.planner_utils import world_map_to_occupancy_map, check_collision_free, check_inside_map
-from your_implementation.rrt_star_implementation import RRTStarImplementation
+from your_implementation.a_star_implementation import AStarImplementation
 
 class MapEnv(gym.Env):
     def __init__(self, map_names=None, goal_threshold=20.0, max_steps=1000, random_spawn=True, frame_stack=4):
@@ -183,8 +183,8 @@ class MapEnv(gym.Env):
         for _ in range(self.frame_stack):
             self.frames.append(initial_obs)
             
-        # Initialize RRT* to get waypoints
-        planner = RRTStarImplementation()
+        # Initialize A* to get waypoints
+        planner = AStarImplementation()
         start_px = PixelCoordinates(int(self.start_coords[0]), int(self.start_coords[1]))
         goal_px = PixelCoordinates(int(self.goal_coords[0]), int(self.goal_coords[1]))
         
@@ -194,13 +194,12 @@ class MapEnv(gym.Env):
             goal_px, 
             self.world_map, 
             goal_threshold=30.0, 
-            iteration_limit=5000,
-            step_size=30.0,
-            search_radius=50.0
+            iteration_limit=50000,
+            grid_size=20
         )
         
         if len(path) <= 1:
-            print(f"[!] RRT* failed to find path from {self.start_coords} to {self.goal_coords}")
+            print(f"[!] A* failed to find path from {self.start_coords} to {self.goal_coords}")
         
         # Convert PathNodes to numpy coords
         self.waypoints = [np.array([node.coordinates.x, node.coordinates.y], dtype=np.float32) for node in path]
