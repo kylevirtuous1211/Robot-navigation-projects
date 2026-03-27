@@ -34,7 +34,7 @@ def navigation(args, simulator, controller, planner, start_pose=(100,200,0)):
     window_name = "HW2 Navigation Demo"
     if args.headless:
         import imageio
-        output_filename = f"nav_output_{args.simulator}_{args.controller}_{args.track}.mp4"
+        output_filename = f"nav_output_{args.simulator}_{args.controller}_{args.track}_test.mp4"
         print(f"Headless mode: Saving video to {output_filename}...")
         writer = imageio.get_writer(output_filename, fps=30)
     else:

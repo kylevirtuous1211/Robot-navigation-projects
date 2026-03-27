@@ -291,14 +291,23 @@ def evaluate_and_draw_metrics(simulator, path, nav_current_idx, cte_history, has
         cte_history.append(cte)
         
         #NewFeature: Print evaluation metrics when the simulation finishes
-        if nav_current_idx == len(path) - 1 and not has_finished and sim_ticks > 50:
-            total_time = sim_ticks * simulator.model.dt
-            print(f"\n\n{'='*40}")
-            print(f"--- Simulation Finished ---")
-            print(f"Total Elapsed Time: {total_time:.2f} seconds")
-            print(f"Average Cross-Track Error: {np.mean(cte_history):.4f} meters")
-            print(f"{'='*40}\n")
-            has_finished = True
+        # Print evaluation metrics when the simulation finishes
+        # Standard finish or detect wraparound on closed-loop tracks
+        is_at_end = (nav_current_idx == len(path) - 1)
+        # If the index jumped from near the end back to the start, we finished a lap
+        # Note: nav_current_idx was updated by search_nearest_local at the start of this function
+        # We need the previous index to detect this. 
+        # Actually, let's just check if it's very close to the end.
+        
+        if not has_finished and sim_ticks > 50:
+            if is_at_end or (nav_current_idx < 10 and len(path) > 100): # Simple heuristic for wraparound
+                total_time = sim_ticks * simulator.model.dt
+                print(f"\n\n{'='*40}")
+                print(f"--- Simulation Finished ---")
+                print(f"Total Elapsed Time: {total_time:.2f} seconds")
+                print(f"Average Cross-Track Error: {np.mean(cte_history):.4f} meters")
+                print(f"{'='*40}\n")
+                has_finished = True
             
     if len(cte_history) > 0:
         current_time = sim_ticks * simulator.model.dt

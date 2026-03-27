@@ -7,7 +7,7 @@ from PathTracking.controller import Controller
 class ControllerStanleyBicycle(Controller):
     def __init__(self, model, 
                  # TODO 4.3.1: Tune Stanley Gain
-                 kp=0):
+                 kp=2.0):
         self.path = None
         self.kp = kp
         self.l = model.l
@@ -29,7 +29,7 @@ class ControllerStanleyBicycle(Controller):
 
         # Check if reached end of track
         if self.current_idx >= len(self.path) - 5:
-            return 0.0, self.path[-1]
+            return 0.0
 
         # Search Front Wheel Target Locally
         front_x = x + self.l*np.cos(np.deg2rad(yaw))
@@ -41,7 +41,19 @@ class ControllerStanleyBicycle(Controller):
         target = self.path[min_idx]
 
         # TODO 4.3.1: Stanley Control for Bicycle Kinematic Model
-        next_delta = 0
+        # Heading error: theta_e = theta_path - theta
+        # Normalize to [-180, 180]
+        theta_e = target[2] - yaw
+        theta_e = (theta_e + 180) % 360 - 180
+
+        # Cross-track error (signed distance)
+        # Vector from car to path: (target[0]-front_x, target[1]-front_y)
+        # Vector perpendicular to car's yaw (to the left): (-sin(yaw), cos(yaw))
+        e = (target[1] - front_y) * np.cos(np.deg2rad(yaw)) - (target[0] - front_x) * np.sin(np.deg2rad(yaw))
+
+        # Stanley formula: delta = theta_e + arctan(ke/vf)
+        # Avoid division by zero by adding a small constant or using arctan2
+        next_delta = theta_e + np.rad2deg(np.arctan2(self.kp * e, vf + 0.1))
         # [end] TODO 4.3.1
     
         return next_delta

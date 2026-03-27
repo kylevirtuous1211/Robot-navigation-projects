@@ -7,7 +7,7 @@ from PathTracking.controller import Controller
 class ControllerPurePursuitBicycle(Controller):
     def __init__(self, model, 
                  # TODO 4.3.1: Tune Pure Pursuit Gain
-                 kp=0.1, Lfc=5.0):
+                 kp=0.06, Lfc=5.0):
         self.path = None
         self.kp = kp
         self.Lfc = Lfc

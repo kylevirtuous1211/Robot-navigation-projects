@@ -3,10 +3,12 @@
 \usepackage[margin=1in]{geometry}
 \usepackage{amsmath, amssymb}
 \usepackage{graphicx}
+\usepackage{subcaption} % <--- This is the one you are missing!
 \usepackage{svg}
 \usepackage{tikz-cd}
 \usepackage{multicol}
 \usepackage{tikz}
+\usepackage{booktabs}
 \usetikzlibrary{arrows.meta,positioning}
 \newcommand*\circled[1]{\tikz[baseline=(char.base)]{
             \node[shape=circle,draw,inner sep=2pt] (char) {#1};}}
@@ -47,7 +49,7 @@
 \begin{document}
 \maketitle
 
-\noindent\textbf{Student ID:} \underline{\makebox[5cm][l]{\textcolor{blue}{Your Student ID}}}\hfill\textbf{Name:} \underline{\makebox[5cm][l]{\textcolor{blue}{Your Name}}} \\
+\noindent\textbf{Student ID:} \underline{\makebox[5cm][l]{\textcolor{blue}{111030034}}}\hfill\textbf{Name:} \underline{\makebox[5cm][l]{\textcolor{blue}{陳安楷}}} \\
 
 
 \noindent To complete this assignment, make sure you have the following tools installed on your computer:
@@ -153,7 +155,7 @@ In the provided codebase, the \textcolor{teal}{\texttt{State}} object encapsulat
               \item (2 pts) What is the unit of \texttt{yaw}? \\
                     \textcolor{blue}{degree}
               \item (2 pts) Why do we need \texttt{yaw = (state.yaw + state.w * self.dt) \% 360}? What would happen without this line? \\
-                    \textcolor{blue}{Your answer}
+                    \textcolor{blue}{Inside the bracket, the formula updates the current yaw with respect to time step and angular velocity. The \% 360 (modulo) operator ensures the yaw angle always stays within the range [0, 360) degrees.}
           \end{enumerate}
 
     \item \noindent\textbf{\faPen}  (2 pts) In practice, a controller may output infeasible commands (e.g., exceeding the actuator limits).
@@ -161,8 +163,9 @@ In the provided codebase, the \textcolor{teal}{\texttt{State}} object encapsulat
           Please check the code in \textcolor{teal}{\texttt{\detokenize{Simulation/}\allowbreak\detokenize{simulator_basic.py}}} and list the constraints that are enforced.
           \begin{itemize}
             \color{blue}
-                \item (Your answer)
-                \item ...
+                \item Linear Acceleration Constraints, currently set to (-20.0, 15.0) m/s\^2 . So the car cannot accelerate or decelerate over or under this boundary.
+                \item Linear Velocity Constraints, set to 90.0 (m/s) Make sure the car cannot drive faster than this velocity.
+                \item Angular Velocity Constraints, set to 180.0 to prevent wheels turning too fast. Satisfy the relationship $V_{max} / W_{max} = l$
           \end{itemize}
 \end{enumerate}
 
@@ -211,8 +214,11 @@ For more details and derivations, please refer to the lecture slides (pp.24).
     \item \textbf{\faPen} (2 pts) Similar to 2.1.2, check the code in \textcolor{teal}{\texttt{\detokenize{Simulation/}\allowbreak\detokenize{simulator_different_drive.py}}} and list the constraints that are enforced.
           \begin{itemize}
             \color{blue}
-                \item (Your answer)
-                \item ...
+                \item Wheel Angular Acceleration. The simulator limits how fast the wheel speeds can change between time steps (dt). This prevents the robot from having infinite torque.
+                \item Wheel Angular Velocity (Top Speed) The simulator caps the maximum rotational speed of each wheel.
+
+                Unlike the basic simulator (which constrains the robot's overall $v$ and $w$), the differential\_drive simulator constrains the actuators (the motors/wheels) themselves. 
+                
           \end{itemize}
     \item \textbf{\faPython} (4 pts) Complete \textcolor{teal}{\texttt{\detokenize{# TODO 2.2.2}}} in \textcolor{teal}{\texttt{\detokenize{navigation.py}}}.
           For the following lateral control algorithm, the basic and differential drive models are implemented in the same file. However, for the differential drive model, you need to convert the control input $[v, \omega]$ into $[\dot{\phi}_{\mathrm{left}}, \dot{\phi}_{\mathrm{right}}]$.
@@ -276,8 +282,10 @@ $ python navigation.py -s bicycle -c pid
     \item \textbf{\faPen} (3 pts) Similar to 2.1.2, check the code in \textcolor{teal}{\texttt{\detokenize{Simulation/}\allowbreak\detokenize{simulator_bicycle.py}}} and list the constraints that are enforced.
           \begin{itemize}
             \color{blue}
-                \item (Your answer)
-                \item ...
+                \item v\_range which is the top velocity for the car, currently set to 90.0 
+                \item a\_range sets the upper-bound and lower-bound for the car's acceleration (-20.0, 15.0)
+                \item delta\_range sets the range of steering angle to be within (-40, 40)
+                \item delta\_dot\_range sets the upper limit for the rate of steering. 
           \end{itemize}
 \end{enumerate}
 
@@ -352,14 +360,14 @@ PID control works just as well for lateral tracking. The main difference is simp
                 \centering
                 \includegraphics[width=0.5\linewidth]{PID_Lateral.pdf}
             \end{minipage}
-            \textcolor{blue}{your answer (1\textasciitilde5)}
+            \textcolor{blue}{The error term is the lateral heading-projected distance to the look-ahead point, often recognized as the cross-track error $e = d_{\text{min}} \sin(\theta_e)$.}
     \item \textbf{\faPython}\textbf{\faPen} (5 pts) Tune the PID gains $K_p$, $K_i$, and $K_d$ in \textcolor{teal}{\texttt{\detokenize{PathTracking/}}}\allowbreak\textcolor{teal}{\texttt{\detokenize{controller_pid_basic.py}}} to achieve the best performance,
           and briefly describe how you tuned the PID gains $K_p$, $K_i$, and $K_d$. It is recommended to include a screenshot of the resulting trajectory. \\
           \textbf{Hint:} You may refer to \href{https://tlk-energy.de/blog-en/practical-pid-tuning-guide}{PID Tuning Guide} (or any other PID-tuning method).
           \begin{lstlisting}
 $ python navigation.py -s basic -c pid -t 1000mStraight --init_shift 1.5
           \end{lstlisting}
-          \textcolor{blue}{Your answer}
+          \textcolor{blue}{I started by increasing the proportional gain ($K_p$) until the vehicle's trajectory began to oscillate around the path, ensuring a fast reaction to cross-track errors. Then, I gradually increased the derivative gain ($K_d$) to dampen these oscillations and reduce overshoot. Finally, a very small integral gain ($K_i$) was added to eliminate any steady-state error without causing instability.} \
 
     \item \textbf{\faPython}\textbf{\faPen} (5 pts) For the bicycle model, you may choose whether to use the same error definition as the basic model. If not, please describe the error you used. Complete \textcolor{teal}{\texttt{\detokenize{PathTracking/}}}\allowbreak\textcolor{teal}{\texttt{\detokenize{controller_pid_bicycle.py}}} \\
           Run the following command to check your PID controller:
@@ -367,7 +375,7 @@ $ python navigation.py -s basic -c pid -t 1000mStraight --init_shift 1.5
 $ python navigation.py -s bicycle -c pid -t 400mRunningTrack
           \end{lstlisting}
 
-          \textcolor{blue}{your answer (if you changed the error definition)}
+          \textcolor{blue}{I used the same error definition as the basic model since the objective (minimizing distance to the look-ahead path point) remains the same.}
 \end{enumerate}
 
 
@@ -426,7 +434,7 @@ Stanley control is a path-tracking algorithm that determines the steering angle 
               \end{equation*}
         \item Calculate the steering angle $\delta$ to move the vehicle toward the "look-ahead" point.
               \begin{equation}\label{eq:stanley}
-                  \delta = \theta_e + \delta_e = \theta_e + \arctan\left(\frac{-ke}{v_f}\right)
+                  \delta = \theta_e + \delta_e = \theta_e + \arctan\left(\frac{-kp}{v_f}\right)
               \end{equation}
     \end{enumerate}
 \end{minipage} \\
@@ -561,23 +569,34 @@ $ python navigation.py -s bicycle -c lqr -t 400mRunningTrack --lqr_control_state
           \textbf{Hint1:} Pay attention to the magnitude of $\theta_e$ \\
           \textbf{Hint2:} Ensure that the definitions of $\theta_e$, $e$, and $\delta$ in your code are consistent with Eq.~(\ref{eq:lqr_e}) and~(\ref{eq:lqr_thetae}).
     \item \textbf{\faPen} (4 pts) Write down how you choose the weight matrices $Q$ and $R$ \\
-          \textcolor{blue}{your answer}
+          \textcolor{blue}{
+            For the State Weight Matrix $Q$, I assigned the highest weight to the cross-track error $e$ to prioritize staying on the path, and a moderately high weight to the heading error $\theta_e$ to keep the vehicle aligned. For the Control Weight Matrix $R$, I penalized steering angle effort enough to avoid aggressive, jerky steering that could lead to instability at high speeds, while still maintaining responsiveness.
+            The tuned weighting matrices are represented as:
+            \begin{equation}
+            Q = \begin{bmatrix} 
+            10.0 & 0 & 0 \\ 
+            0 & 1.0 & 0 \\ 
+            0 & 0 & 1.0 
+            \end{bmatrix}, \quad R = \begin{bmatrix} 500.0 \end{bmatrix}
+            \end{equation}
+            By setting $Q_{1,1} = 10.0$, the controller aggressively minimizes lateral deviation. The high penalty of $R = 500.0$ on the steering angular velocity $\dot{\delta}$ ensures that the control action remains smooth and physically feasible for the steering actuators, preventing oscillations during high-speed maneuvers.
+            }
     \item \textbf{\faPen} (4 pts) Now, to regulate the steering speed, we need to change the control input $\mathbf{u}$ to the steering angular velocity, $\dot{\delta}$.
           The state then becomes $\mathbf{x} = [e, \theta_e, \delta]^T$. \\
           Please finish the linear system below:
-          \begin{equation*}
+                    \begin{equation*}
               \begin{split}
                   \mathbf{x}_{k+1} & = A \mathbf{x}_k + B \mathbf{u}_k                                                                                                                                                                                                                                                                                                        \\
                                    & = \begin{bmatrix} e_k \\ \theta_{e,k} \\ \delta_k \end{bmatrix} + \begin{bmatrix} \dot{e_k} \\ \dot{\theta}_{e,k} \\ \dot{\delta}_k \end{bmatrix} \Delta t                                                                                                                                                                               \\
                                    & = \begin{bmatrix} 
-                                    \textcolor{blue}{your\ answer} & \textcolor{blue}{your\ answer} & \textcolor{blue}{your\ answer} \\ 
-                                    \textcolor{blue}{your\ answer} & \textcolor{blue}{your\ answer} & \textcolor{blue}{your\ answer} \\ 
-                                    \textcolor{blue}{your\ answer} & \textcolor{blue}{your\ answer} & \textcolor{blue}{your\ answer} \end{bmatrix}
+                                    \textcolor{blue}{1} & \textcolor{blue}{-v \cdot \Delta t} & \textcolor{blue}{0} \\ 
+                                    \textcolor{blue}{0} & \textcolor{blue}{1} & \textcolor{blue}{-\frac{v}{L} \Delta t} \\ 
+                                    \textcolor{blue}{0} & \textcolor{blue}{0} & \textcolor{blue}{1} \end{bmatrix}
                   \begin{bmatrix} e_k \\ \theta_{e,k} \\ \delta_k \end{bmatrix} +
                   \begin{bmatrix} 
-                    \textcolor{blue}{your\ answer} \\ 
-                    \textcolor{blue}{your\ answer} \\ 
-                    \textcolor{blue}{your\ answer} \end{bmatrix}
+                    \textcolor{blue}{0} \\ 
+                    \textcolor{blue}{0} \\ 
+                    \textcolor{blue}{\Delta t} \end{bmatrix}
                   \begin{bmatrix} \dot{\delta}_k \end{bmatrix}
               \end{split}
           \end{equation*}
@@ -617,18 +636,59 @@ $ python navigation.py -s [basic|diff_drive|bicycle] -c [pid|pure_pursuit|stanle
           
           \textbf{\faPen} Write down your command for this challenge, and put the screenshot of your result.
           \begin{lstlisting}[backgroundcolor=\color{gray!15}, frame=single, framerule=0pt, framesep=5pt, xleftmargin=5pt, xrightmargin=5pt, escapeinside={(*@}{@*)}]
-$ python navigation.py -s (*@\textcolor{blue}{your\_model}@*) -c (*@\textcolor{blue}{your\_controller}@*) -t [Silverstone|Suzuka|Monza]
+            
+            $ python navigation.py -s (*@\textcolor{blue}{bicycle}@*) -c (*@\textcolor{blue}{pure\_pursuit}@*) -t [Silverstone|Suzuka|Monza]
           \end{lstlisting}
-          \textcolor{blue}{(Your Screenshot)}
-    \item \textbf{\faPen} (Extra up to +5 pts) Describe what you have tried to improve the performance: \\
-          \textcolor{blue}{Your answer}
-        \end{enumerate}
+\begin{figure}[htbp]
+     \centering
+     \begin{subfigure}[b]{0.3\textwidth}
+         \centering
+         \includegraphics[width=\textwidth]{pure_pursuit_Silverstone.png}
+         \caption{Silverstone Avg CTE: 0.027, Time: 55.5}
+     \end{subfigure}
+     \hfill
+     \begin{subfigure}[b]{0.3\textwidth}
+         \centering
+         \includegraphics[width=\textwidth]{pure_pursuit_Suzuka.png}
+         \caption{Suzuka Avg CTE: 0.031, Time: 53.2}
+     \end{subfigure}
+     \hfill
+     \begin{subfigure}[b]{0.3\textwidth}
+         \centering
+         \includegraphics[width=\textwidth]{pure_pursuit_Monza.png}
+         \caption{Monza Avg CTE: 0.025, Time: 47.4}
+     \end{subfigure}
+        \caption{F1 racing results with bicycle kinematic model and pure pursuit controller on three tracks}
+        \label{fig:three_graphs}
+\end{figure}
+
+\item \textbf{\faPen} (Extra up to +5 pts) Describe what you have tried to improve the performance: \\
+    \textcolor{blue}{To maximize tracking accuracy, I fine-tuned the pure pursuit components for the bicycle model, specifically focusing on handling high curvature variations on the Silverstone F1 track. By varying the proportional gain ($k_p$) while keeping the look-forward constant ($L_{fc}$) at 5.0, I identified a critical trade-off between lap time and stability.}
+
+    \textcolor{blue}{As shown in Table~\ref{tab:silverstone_results}, while a high gain ($k_p=1.0$) achieved the fastest lap time of 53.40s, it resulted in a massive Average Cross-Track Error (CTE) of 2.35m, indicating significant oscillation. The most stable performance was achieved at $k_p=0.1$, yielding the lowest CTE of 0.0265m.}
+
+    \begin{table}[ht]
+        \centering
+        \caption{Pure Pursuit Performance Comparison (Silverstone Track, $L_{fc}=5.0$)}
+        \label{tab:silverstone_results}
+        \begin{tabular}{cccc}
+            \toprule
+            $k_p$ & $L_{fc}$ & Total Elapsed Time (s) & Avg. Cross-Track Error (m) \\
+            \midrule
+            1.00 & 5.0 & \textbf{53.40} & 2.3545 \\
+            0.30 & 5.0 & 55.25 & 0.0836 \\
+            0.10 & 5.0 & 55.50 & \textbf{0.0265} \\
+            0.08 & 5.0 & 55.10 & 0.0278 \\
+            0.06 & 5.0 & 55.30 & 0.1754 \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
 
 \section{Feedback (Optional)}
 \begin{enumerate}
     \item \textbf{\faPen} (Extra up to +5 pts) We would love to hear your feedback on this homework! Please write down your thoughts, any difficulties you encountered, or suggestions for improving this assignment. 
           Your feedback will be highly valuable for future improvements. \\
-          \textcolor{blue}{Your feedback}
+          \textcolor{blue}{Thank you TA for putting so much work into this project! The codebase and overleaf templates are well structured and easy to understand. After hands on implementation, I gained understanding on different kinematic models and lateral tracking controls! Implementing pure pursuit with the bicycle model to tackle F1 corners was an fun engineering challenge.
 \end{enumerate}
 
 
@@ -665,5 +725,118 @@ $ python navigation.py -s (*@\textcolor{blue}{your\_model}@*) -c (*@\textcolor{b
         \multicolumn{4}{|r|}{\textbf{Total Score}} & \textbf{100} (+10)                                                                                                                                   \\ \hline
     \end{tabular}
 \end{table}
+
+
+\clearpage
+\section*{New Features (Code Changes Outside \texttt{\#TODO} Blocks)}
+
+The following modifications were made outside the designated \texttt{\#TODO} blocks. Each is marked with a \texttt{\#NewFeature} comment in the source code.
+
+\subsection*{1. \texttt{PathTracking/utils.py} --- \texttt{search\_nearest\_local()} function (line 31--41)}
+
+\textbf{Change:} Added a new helper function \texttt{search\_nearest\_local()} that performs a modulo-based windowed nearest-point search starting from the current path index.
+
+\textbf{Motivation:} The original \texttt{search\_nearest()} always scans the entire path, which is $O(N)$ and can also ``wrap back'' to an already-passed waypoint when the track is closed-loop. By searching only a bounded local window (\texttt{lookahead} = 50 points) from the vehicle's \texttt{current\_idx}, the search is both faster and forward-only. The modulo operator (\texttt{\%\ len(path)}) handles wrap-around for closed-loop circuits (F1 tracks) without special-casing.
+
+\begin{lstlisting}[language=Python]
+def search_nearest_local(path, pos, current_idx, lookahead=50):
+    min_dist = 99999999
+    min_id = -1
+    #NewFeature: to support modulo-based wraparound for the pure pursuit algorithm
+    for i in range(lookahead):
+        idx = (current_idx + i) % len(path)
+        dist = (pos[0] - path[idx,0])**2 + (pos[1] - path[idx,1])**2
+        if dist < min_dist:
+            min_dist = dist
+            min_id = idx
+    return min_id, min_dist
+\end{lstlisting}
+
+\subsection*{2. \texttt{PathTracking/controller\_lqr\_bicycle.py} --- \texttt{current\_idx} tracking (lines 31--32, 39--40, 63--70)}
+
+\textbf{Change:} Added a \texttt{self.current\_idx} integer attribute to \texttt{ControllerLQRBicycle} and integrated \texttt{search\_nearest\_local()} into its \texttt{feedback()} method.
+
+\textbf{Motivation:} Without a persistent index, the LQR controller on a closed-loop F1 circuit would always snap back to the nearest point globally, causing it to track the wrong segment after the first lap. By maintaining \texttt{current\_idx} across time steps and using the local search, the controller always follows the path in the correct forward direction. An early-exit guard (\texttt{self.current\_idx >= len(self.path) - 5}) is also added to cleanly terminate at the finish line.
+
+\begin{lstlisting}[language=Python]
+# In __init__:
+#NewFeature: added current_idx to track the current index of the path
+self.current_idx = 0
+
+# In set_path:
+#NewFeature: added current_idx to track the current index of the path
+self.current_idx = 0
+
+# In feedback:
+#NewFeature: added current_idx to track the current index of the path
+# Check if reached end of track
+if self.current_idx >= len(self.path) - 5:
+    return 0.0
+#NewFeature: added current_idx to track the current index of the path
+min_idx, min_dist = utils.search_nearest_local(
+    self.path, (x,y), self.current_idx, lookahead=50)
+self.current_idx = min_idx
+\end{lstlisting}
+
+\subsection*{3. \texttt{trajectory\_generator.py} --- Save speed-profile plot to disk (line 202--203)}
+
+\textbf{Change:} Added \texttt{plt.savefig()} before \texttt{plt.show()} in the \texttt{\_\_main\_\_} block so the generated speed-profile figure is saved as a PNG file to \texttt{tracks/\{TRACK\_NAME\}\_vref.png}.
+
+\textbf{Motivation:} The server environment may not support an interactive display, so persisting the figure to disk allows the speed profile to be inspected without a GUI.
+
+\begin{lstlisting}[language=Python]
+#NewFeature
+plt.savefig(f"tracks/{TRACK_NAME}_vref.png")
+plt.show()
+\end{lstlisting}
+
+\subsection*{4. \texttt{navigation\_utils.py} --- Print evaluation metrics on track completion (lines 293--310)}
+
+\textbf{Change:} Added finish-detection logic inside \texttt{evaluate\_and\_draw\_metrics()} that prints a summary (total elapsed time and average cross-track error) to the terminal when the vehicle reaches the end of the path or completes a lap.
+
+\textbf{Motivation:} Without a terminal print-out, performance metrics are only visible in the on-screen HUD and cannot be captured in headless mode. This change enables reproducible benchmarking across controller configurations.
+
+\begin{lstlisting}[language=Python]
+#NewFeature: Print evaluation metrics when the simulation finishes
+is_at_end = (nav_current_idx == len(path) - 1)
+if not has_finished and sim_ticks > 50:
+    if is_at_end or (nav_current_idx < 10 and len(path) > 100):
+        total_time = sim_ticks * simulator.model.dt
+        print(f"\n\n{'='*40}")
+        print(f"--- Simulation Fi nished ---")
+        print(f"Total Elapsed Time: {total_time:.2f} seconds")
+        print(f"Average Cross-Track Error: {np.mean(cte_history):.4f} meters")
+        print(f"{'='*40}\n")
+        has_finished = True
+\end{lstlisting}
+
+\subsection*{5. \texttt{navigation.py} --- Headless mode via \texttt{--headless} flag (lines 31--45, 142--164, 173--174)}
+
+\textbf{Change:} Added a \texttt{--headless} CLI argument that, when set, replaces the live \texttt{cv2.imshow()} window with a \texttt{imageio} MP4 video writer. The output file is named \texttt{nav\_output\_\{simulator\}\_\{controller\}\_\{track\}\_test.mp4}.
+
+\textbf{Motivation:} The server running the simulations does not have a display. The headless mode flag allows the full navigation loop to run and record output without requiring an X11 display, while keeping the normal interactive window available for local development.
+
+\begin{lstlisting}[language=Python]
+# #NewFeature: Conditional headless mode. When --headless is passed,
+# saves simulation to an MP4 instead of opening a display window.
+if args.headless:
+    import imageio
+    output_filename = f"nav_output_{args.simulator}_{args.controller}_{args.track}_test.mp4"
+    writer = imageio.get_writer(output_filename, fps=30)
+else:
+    cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+
+# #NewFeature: Branch between headless video recording and live display.
+if args.headless:
+    frame_rgb = cv2.cvtColor(final_view, cv2.COLOR_BGR2RGB)
+    writer.append_data(frame_rgb)
+    if has_finished:
+        break
+else:
+    cv2.imshow(window_name, final_view)
+
+# #NewFeature: --headless flag to save output to MP4 instead of displaying a window
+parser.add_argument("--headless", action="store_true", default=True, ...)
+\end{lstlisting}
 
 \end{document}

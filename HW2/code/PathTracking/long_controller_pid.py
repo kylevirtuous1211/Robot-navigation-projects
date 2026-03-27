@@ -32,7 +32,9 @@ class PIDLongController(Controller):
         x, y, yaw, v = info["x"], info["y"], info["yaw"], info["v"]
 
         # Check if reached end of track
-        if self.current_idx >= len(self.path) - 5:
+        # NewFeature: Changed braking start from 'len(self.path) - 5' to 'len(self.path) - 2'
+        # so perfectly tracking controllers like LQR can actually trigger the simulation finish line.
+        if self.current_idx >= len(self.path) - 2:
             # Brake to 0 speed using PID when finishing the track
             v_ref = 0.0
             target = self.path[-1]
