@@ -32,6 +32,14 @@ class RewardManager:
         2. If the current frame's index > the previous frame's index, it means progress was made. Return a positive reward
         3. If there is no change, return 0.0.
         """
+        if self.prev_observation is None:
+            return 0.0
+
+        curr_checkpoint = self.observation.get("last_checkpoint_index", 0)
+        prev_checkpoint = self.prev_observation.get("last_checkpoint_index", 0)
+
+        if curr_checkpoint > prev_checkpoint:
+            return 100.0
         return 0.0
 
     def calculate_distance_reward(self):
@@ -47,7 +55,17 @@ class RewardManager:
            - If current_distance > prev_distance (getting farther) -> penalize
         3. If the distance hasn't changed, return 0.0.
         """
-        return 0.0
+        if self.prev_observation is None:
+            return 0.0
+
+        curr_target_pos = self.observation.get("target_position", [0.0, 0.0, 0.0])
+        prev_target_pos = self.prev_observation.get("target_position", [0.0, 0.0, 0.0])
+
+        current_distance = np.linalg.norm(curr_target_pos)
+        prev_distance = np.linalg.norm(prev_target_pos)
+
+        reward = (prev_distance - current_distance) * 10.0
+        return reward
 
     def calculate_survival_reward(self):
         """
@@ -57,6 +75,9 @@ class RewardManager:
         Hints:
         Check if agent's health(agent_health) reaches 0
         """
+        health = self.observation.get("agent_health", 100)
+        if health <= 0:
+            return -100.0
         return 0.0
 
     def calculate_reward(self):
@@ -75,7 +96,12 @@ class RewardManager:
         - total_reward (float): The total score for this frame.
         """
         # TODO 6: Complete the reward function
-        return 0.0
+        checkpoint_score = self.calculate_flag_capture_reward()
+        distance_score = self.calculate_distance_reward()
+        survival_score = self.calculate_survival_reward()
+
+        total_reward = checkpoint_score + distance_score + survival_score
+        return float(total_reward)
 
 
 class MLPlay:

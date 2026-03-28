@@ -33,6 +33,7 @@ def main():
     plt.grid()
     plt.plot(its, mean_returns, color="red")
     plt.fill_between(its, mean_returns + std_returns, mean_returns - std_returns, color="red", alpha=0.4)
+    plt.savefig("save/RL_train.png")
     plt.show()
 
 

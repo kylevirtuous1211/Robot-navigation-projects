@@ -58,10 +58,13 @@ class PolicyNet(nn.Module):
             )
 
         # TODO 1: policy network architecture
-        """
-        self.main = ...
-        self.dist = ...
-        """
+        self.main = nn.Sequential(
+            init_(nn.Linear(s_dim, 64)),
+            nn.ReLU(),
+            init_(nn.Linear(64, 64)),
+            nn.ReLU(),
+        )
+        self.dist = DiagGaussian(64, a_dim, std)
 
     # Forward
     def forward(self, state, deterministic=False):
@@ -109,9 +112,13 @@ class ValueNet(nn.Module):
             )
 
         # TODO 2: value network architecture
-        """
-        self.main = ...
-        """
+        self.main = nn.Sequential(
+            init_(nn.Linear(s_dim, 64)),
+            nn.ReLU(),
+            init_(nn.Linear(64, 64)),
+            nn.ReLU(),
+            init(nn.Linear(64, 1), nn.init.orthogonal_, lambda x: nn.init.constant_(x, 0)),
+        )
 
     # Forward
     def forward(self, state):

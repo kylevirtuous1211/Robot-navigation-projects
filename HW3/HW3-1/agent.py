@@ -56,9 +56,10 @@ class PPO:
                 sample_values = self.value_net(sample_states)
 
                 # TODO 4: Policy gradient loss for PPO
-                """
-                pg_loss  = ...
-                """
+                ratio = torch.exp(sample_a_logps - sample_old_a_logps)
+                surr1 = ratio * sample_advs
+                surr2 = torch.clamp(ratio, 1.0 - self.clip_val, 1.0 + self.clip_val) * sample_advs
+                pg_loss = -torch.min(surr1, surr2).mean()
 
                 # PPO loss
                 v_pred_clip = sample_old_values + torch.clamp(

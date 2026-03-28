@@ -88,15 +88,20 @@ class EnvRunner:
             # values      : (n_env)
             # rewards     : (n_env)
             # TODO 3: Run a step to collect data
-            """
-            self.mb_states[step, :]  = ...
-            self.mb_dones[step, :]   = ...
-            self.mb_actions[step, :] = ...
-            self.mb_a_logps[step, :] = ...
-            self.mb_values[step, :]  = ...
-            self.states, rewards, self.dones, info = self.env.step(actions)
-            self.mb_rewards[step, :] = ...
-            """
+            self.mb_states[step, :] = self.states
+            self.mb_dones[step, :] = self.dones
+
+            states_tensor = torch.from_numpy(self.states).float().to(self.device)
+            with torch.no_grad():
+                actions, a_logps = policy_net(states_tensor)
+                values = value_net(states_tensor)
+
+            self.mb_actions[step, :] = actions.cpu().numpy()
+            self.mb_a_logps[step, :] = a_logps.cpu().numpy()
+            self.mb_values[step, :] = values.cpu().numpy()
+
+            self.states, rewards, self.dones, info = self.env.step(self.mb_actions[step, :])
+            self.mb_rewards[step, :] = rewards
 
         last_values = value_net(torch.from_numpy(self.states).float().to(self.device)).cpu().numpy()
         self.record()

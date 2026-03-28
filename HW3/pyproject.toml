@@ -1,0 +1,18 @@
+[project]
+name = "robot-navigation-hw3"
+version = "0.1.0"
+description = "Robot Navigation Homework 3 - Reinforcement Learning"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy",
+    "torch",
+    "opencv-python",
+    "matplotlib",
+    "stable-baselines3",
+    "gymnasium",
+    "tqdm",
+]
+
+[dependency-groups]
+dev = []
