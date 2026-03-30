@@ -1,4 +1,5 @@
 import os
+import imageio
 
 import gymnasium as gym
 import numpy as np
@@ -22,6 +23,10 @@ class MLPlay:
             print(f"ERROR: model.zip not found at {self.model_path}")
             self.model = None
 
+        self.video_writer = None
+        self.video_out_path = os.path.join(current_dir, "save", "model_play.mp4")
+        os.makedirs(os.path.join(current_dir, "save"), exist_ok=True)
+
     def reset(self):
         pass
 
@@ -37,6 +42,4 @@ class MLPlay:
 
         # NOTE: DO NOT MODIFY.
         # Sending additional dummy discrete actions that would not be needed for this assignment
-        print(self.dummy_env.action_space.shape)
-        return np.zeros(self.dummy_env.action_space.shape), (0, 0)
-        # return action, (0, 0)
+        return action, (0, 0)

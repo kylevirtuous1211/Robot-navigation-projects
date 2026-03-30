@@ -6,3 +6,16 @@ __pycache__
 *.csv
 *.png
 *.pt
+
+**__MACOSX**
+**Proly_Data**
+
+# Unity binary and shared libraries
+*.so
+*.so.*
+*.x86_64
+*.zip
+*.deb
+
+# Unity config
+HW3/HW3-2/Config/

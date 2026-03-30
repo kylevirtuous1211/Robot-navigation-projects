@@ -1,7 +1,7 @@
 import argparse
 import os
 
-import cv2
+import imageio
 import numpy as np
 import torch
 
@@ -42,16 +42,19 @@ def main():
     # ----------------------------
     policy_net.eval()
 
-    for it in range(3):
+    # Initialize VideoWriter
+    video_out_path = os.path.join(save_dir, "RL_play.mp4")
+    video_writer = imageio.get_writer(video_out_path, fps=30)
+
+    for it in range(1):
         ob, _ = env.reset()
         total_reward = 0
         length = 0
 
         while True:
-            # Render
-            if cv2.waitKey(1) == 27:
-                break
-            cv2.imshow("PPO Play", env.render())
+            # Render and Save
+            frame = env.render()
+            video_writer.append_data(frame)
 
             # Step
             state_tensor = torch.tensor(np.expand_dims(ob, axis=0), dtype=torch.float32, device=device)
@@ -64,7 +67,9 @@ def main():
 
         print(f"Total reward = {total_reward:.6f}, length = {length:d}", flush=True)
 
-    cv2.destroyWindow("PPO Play")
+    if video_writer is not None:
+        video_writer.close()
+        print(f"Video saved to {video_out_path}")
 
 
 if __name__ == "__main__":

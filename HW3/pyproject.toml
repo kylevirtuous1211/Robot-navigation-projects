@@ -3,15 +3,19 @@ name = "robot-navigation-hw3"
 version = "0.1.0"
 description = "Robot Navigation Homework 3 - Reinforcement Learning"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
-    "numpy",
-    "torch",
+    "gymnasium==1.2.3",
+    "numpy<2.0.0",
+    "mlgame3d==0.8.0",
+    "stable-baselines3==2.7.1",
+    "tensorboard==2.20.0",
+    "setuptools<81.0",
+    "torch==2.10.0",
     "opencv-python",
     "matplotlib",
-    "stable-baselines3",
-    "gymnasium",
     "tqdm",
+    "imageio[ffmpeg]",
 ]
 
 [dependency-groups]

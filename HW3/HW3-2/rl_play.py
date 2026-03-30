@@ -1,5 +1,6 @@
 import os
 import time
+import imageio
 
 import numpy as np
 import torch
@@ -139,6 +140,10 @@ class MLPlay:
         self._initialize_model()
         print("PPO initialized in training mode")
 
+        self.video_writer = None
+        self.video_out_path = os.path.join(os.path.dirname(__file__), "save", "RL_play.mp4")
+        os.makedirs(os.path.join(os.path.dirname(__file__), "save"), exist_ok=True)
+
     def reset(self):
         if self.episode_rewards:
             total_reward = sum(self.episode_rewards)
@@ -163,6 +168,14 @@ class MLPlay:
 
         reward = self.reward_manager.calculate_reward()
         action, log_prob, value = self._predict_action(observation)
+
+        # Video Saving logic
+        frame = raw_observation.get("frame")
+        if frame is not None:
+            if self.video_writer is None:
+                self.video_writer = imageio.get_writer(self.video_out_path, fps=30)
+            
+            self.video_writer.append_data(frame)
 
         if self.prev_observation is not None:
             self.episode_rewards.append(reward)
@@ -220,6 +233,11 @@ class MLPlay:
             update_path = f"{self.model_save_dir}/ppo_model_{self.update_count}.zip"
             self.model.save(update_path)
             print(f"Model saved to {update_path}")
+
+        if self.video_writer is not None:
+            self.video_writer.close()
+            self.video_writer = None
+            print(f"Video saved to {self.video_out_path}")
 
     def _predict_action(self, obs):
         obs_tensor = torch.as_tensor(obs).unsqueeze(0)
