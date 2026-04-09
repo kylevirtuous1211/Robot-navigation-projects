@@ -1,6 +1,8 @@
 import os
+import sys
 import time
 import imageio
+import logging
 
 import numpy as np
 import torch
@@ -8,11 +10,23 @@ from dummy_env import DummyEnv
 from stable_baselines3 import PPO
 from stable_baselines3.common.utils import safe_mean
 
+rl_logger = logging.getLogger("rl_debug")
+rl_logger.setLevel(logging.DEBUG)
+_log_path = os.path.join(os.path.dirname(__file__), "rl_debug.log")
+_handler = logging.FileHandler(_log_path, mode="a")
+_handler.setFormatter(logging.Formatter("%(asctime)s %(message)s", datefmt="%H:%M:%S"))
+rl_logger.addHandler(_handler)
+
 
 class RewardManager:
     def __init__(self):
         self.prev_observation = None
         self.observation = None
+        self.step_count = 0
+        self.log_interval = 100
+        self.position_history = []
+        self.history_window = 50  # check every 50 steps
+        self._death_penalized = False
 
     def update(self, observation):
         self.prev_observation = self.observation
@@ -21,6 +35,9 @@ class RewardManager:
     def reset(self):
         self.prev_observation = None
         self.observation = None
+        self.step_count = 0
+        self.position_history = []
+        self._death_penalized = False
 
     def calculate_flag_capture_reward(self):
         """
@@ -40,7 +57,22 @@ class RewardManager:
         prev_checkpoint = self.prev_observation.get("last_checkpoint_index", 0)
 
         if curr_checkpoint > prev_checkpoint:
-            return 100.0
+            curr_time = self.observation.get("current_time", 0.0)
+            target_pos = self.observation.get("target_position", [0.0, 0.0])
+            new_dist = np.linalg.norm(target_pos)
+            rl_logger.info(f"[RL CHECKPOINT] cp {prev_checkpoint}->{curr_checkpoint} "
+                  f"at step={self.step_count} time={curr_time:.1f}s | "
+                  f"new_target_dist={new_dist:.1f}")
+            return 200.0
+        return 0.0
+
+    def calculate_proximity_bonus(self):
+        """Reward being very close to the next checkpoint — encourages committing to capture."""
+        target_pos = self.observation.get("target_position", [0.0, 0.0])
+        dist = np.linalg.norm(target_pos)
+        if dist < 1.0:
+            # Sharp bonus that peaks at dist=0: up to +5.0 per step
+            return 5.0 * (1.0 - dist)
         return 0.0
 
     def calculate_distance_reward(self):
@@ -59,13 +91,20 @@ class RewardManager:
         if self.prev_observation is None:
             return 0.0
 
+        # Skip distance reward on checkpoint capture frames — target_position jumps
+        # to the next (farther) checkpoint, creating a misleading negative spike
+        curr_cp = self.observation.get("last_checkpoint_index", 0)
+        prev_cp = self.prev_observation.get("last_checkpoint_index", 0)
+        if curr_cp != prev_cp:
+            return 0.0
+
         curr_target_pos = self.observation.get("target_position", [0.0, 0.0, 0.0])
         prev_target_pos = self.prev_observation.get("target_position", [0.0, 0.0, 0.0])
 
         current_distance = np.linalg.norm(curr_target_pos)
         prev_distance = np.linalg.norm(prev_target_pos)
 
-        reward = (prev_distance - current_distance) * 10.0
+        reward = (prev_distance - current_distance) * 15.0
         return reward
 
     def calculate_survival_reward(self):
@@ -78,30 +117,120 @@ class RewardManager:
         """
         health = self.observation.get("agent_health", 100)
         if health <= 0:
-            return -100.0
+            if not self._death_penalized:
+                self._death_penalized = True
+                return -100.0
+            return 0.0
+        self._death_penalized = False
         return 0.0
 
+    def calculate_respawn_penalty(self):
+        """Penalize being in respawn state — dying costs time."""
+        is_respawning = self.observation.get("is_respawning", False)
+        if is_respawning:
+            return -5.0
+        return 0.0
+
+    def calculate_time_penalty(self):
+        return -0.1
+
+    def calculate_circling_penalty(self):
+        """Penalize staying in the same area — detects circling/stalling."""
+        pos = self.observation.get("agent_position", None)
+        if pos is None:
+            return 0.0
+
+        self.position_history.append(np.array(pos[:3]))
+
+        if len(self.position_history) < self.history_window:
+            return 0.0
+
+        # Compare current position to position N steps ago
+        old_pos = self.position_history[-self.history_window]
+        displacement = np.linalg.norm(np.array(pos[:3]) - old_pos)
+
+        # Tiered penalty: nearly stationary is much worse than slow circling
+        if displacement < 0.5:
+            return -8.0
+        if displacement < 1.5:
+            return -3.0
+        return 0.0
+
+    def calculate_terrain_penalty(self):
+        """Penalize proximity to water/obstacles using the 5x5 terrain grid."""
+        terrain_grid = self.observation.get("terrain_grid", None)
+        if terrain_grid is None:
+            return 0.0
+
+        penalty = 0.0
+        for row in terrain_grid:
+            for cell in row:
+                terrain_type = cell.get("terrain_type", 0)
+                if terrain_type == 0:  # normal
+                    continue
+                rel_pos = cell.get("relative_position", [0, 0])
+                dist = np.linalg.norm(rel_pos)
+                # Only penalize very close hazards — directly underfoot
+                if dist < 0.8:
+                    penalty -= (0.8 - dist) * 1.0
+        return penalty
+
     def calculate_reward(self):
-        """
-        [Main Update Loop] (executed every frame)
-        Goal: Calculate the total score for this instant
-
-        Hints:
-        1. Call the reward each reward components:
-           Use self.calculate_...() to get scores for each component.
-
-        2. Sum up rewards:
-           total_reward = checkpoint_score + distance_score + survival_score + ...
-
-        Return values:
-        - total_reward (float): The total score for this frame.
-        """
-        # TODO 6: Complete the reward function
         checkpoint_score = self.calculate_flag_capture_reward()
         distance_score = self.calculate_distance_reward()
+        proximity_bonus = self.calculate_proximity_bonus()
         survival_score = self.calculate_survival_reward()
+        time_penalty = self.calculate_time_penalty()
+        terrain_penalty = self.calculate_terrain_penalty()
+        circling_penalty = self.calculate_circling_penalty()
+        respawn_penalty = self.calculate_respawn_penalty()
 
-        total_reward = checkpoint_score + distance_score + survival_score
+        total_reward = checkpoint_score + distance_score + proximity_bonus + survival_score + time_penalty + terrain_penalty + circling_penalty + respawn_penalty
+
+        self.step_count += 1
+
+        # Log all observation keys on the very first step
+        if self.step_count == 1:
+            obs = self.observation
+            rl_logger.info(f"[RL KEYS] {list(obs.keys())}")
+
+        if self.step_count % self.log_interval == 0:
+            obs = self.observation
+            pos = obs.get("agent_position", [0, 0, 0])
+            target = obs.get("target_position", [0, 0])
+            dist = np.linalg.norm(target)
+            vel = obs.get("agent_velocity", [0, 0])
+            speed = np.linalg.norm(vel)
+            fwd = obs.get("agent_forward_direction", [0, 0])
+            cp = obs.get("last_checkpoint_index", -1)
+            final = obs.get("reached_final_checkpoint", False)
+            t = obs.get("current_time", 0.0)
+            health = obs.get("agent_health", -1)
+            respawn = obs.get("is_respawning", False)
+
+            # Unpassed checkpoints — absolute positions
+            unpassed = obs.get("unpassed_checkpoints", [])
+            cp_info = ""
+            for i, ucp in enumerate(unpassed[:3]):
+                ci = ucp.get("checkpoint_index", -1)
+                cp_pos = ucp.get("checkpoint_position", [0, 0, 0])
+                cp_info += f" cp{ci}=({cp_pos[0]:.1f},{cp_pos[1]:.1f},{cp_pos[2]:.1f})"
+
+            rl_logger.info(
+                f"[RL DEBUG step={self.step_count:04d}] cp={cp} final={final} | "
+                f"pos=({pos[0]:.1f},{pos[1]:.1f},{pos[2]:.1f}) | "
+                f"fwd=({fwd[0]:.2f},{fwd[1]:.2f}) | "
+                f"target=({target[0]:.1f},{target[1]:.1f}) dist={dist:.1f} | "
+                f"speed={speed:.1f} hp={health} respawn={respawn} | "
+                f"time={t:.1f}s | "
+                f"rew: cp={checkpoint_score:.1f} dist={distance_score:.1f} "
+                f"terr={terrain_penalty:.1f} circ={circling_penalty:.1f} "
+                f"resp={respawn_penalty:.1f} "
+                f"time={time_penalty:.1f} surv={survival_score:.1f} "
+                f"total={total_reward:.1f} | "
+                f"next_cps:{cp_info}"
+            )
+
         return float(total_reward)
 
 
@@ -110,15 +239,16 @@ class MLPlay:
         self.reward_manager = RewardManager()
 
         self.config = {
-            "learning_rate": 0.0003,
+            "learning_rate": 0.0001,
             "n_steps": 2048,
             "batch_size": 64,
             "n_epochs": 10,
-            "clip_range": 0.2,
+            "clip_range": 0.15,
             "gamma": 0.99,
-            "ent_coef": 0,
+            "ent_coef": 0.005,
             "vf_coef": 0.5,
             "max_grad_norm": 0.5,
+            "device": "cpu",
             "tensorboard_log": os.path.join(os.path.dirname(__file__), "tensorboard"),
             "policy_kwargs": {"net_arch": [64, 64], "activation_fn": torch.nn.Tanh},
         }
@@ -147,7 +277,7 @@ class MLPlay:
     def reset(self):
         if self.episode_rewards:
             total_reward = sum(self.episode_rewards)
-            print(
+            rl_logger.info(
                 f"Episode {self.episode_count}: Total Reward = {total_reward:.2f}, Steps = {len(self.episode_rewards)}"
             )
             self.episode_rewards = []
@@ -240,7 +370,7 @@ class MLPlay:
             print(f"Video saved to {self.video_out_path}")
 
     def _predict_action(self, obs):
-        obs_tensor = torch.as_tensor(obs).unsqueeze(0)
+        obs_tensor = torch.as_tensor(obs).unsqueeze(0).to(self.model.device)
         with torch.no_grad():
             action, value, log_prob = self.model.policy(obs_tensor)
         return action.cpu().numpy().flatten(), log_prob.cpu().numpy().flatten(), value.cpu().numpy().flatten()
