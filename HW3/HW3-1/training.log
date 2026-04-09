@@ -1,0 +1,6128 @@
+[    0 / 30000]
+----------------------------------
+Timesteps    = 0
+Elapsed time = 12.90 sec
+FPS          = 0
+actor loss   = -0.042119
+critic loss  = 0.267393
+mean return  = 0.000000
+mean length  = 1.00
+
+Saving the model ... Done.
+
+Saving the checkpoint ... Done.
+
+[   20 / 30000]
+----------------------------------
+Timesteps    = 20480
+Elapsed time = 251.49 sec
+FPS          = 81
+actor loss   = -0.047128
+critic loss  = 12.523529
+mean return  = 17.221771
+mean length  = 317.09
+
+[   40 / 30000]
+----------------------------------
+Timesteps    = 40960
+Elapsed time = 415.75 sec
+FPS          = 98
+actor loss   = 0.066981
+critic loss  = 1.359366
+mean return  = 18.273857
+mean length  = 358.06
+
+[   60 / 30000]
+----------------------------------
+Timesteps    = 61440
+Elapsed time = 545.54 sec
+FPS          = 112
+actor loss   = -0.072941
+critic loss  = 1.014358
+mean return  = 20.319242
+mean length  = 357.83
+
+[   80 / 30000]
+----------------------------------
+Timesteps    = 81920
+Elapsed time = 707.22 sec
+FPS          = 115
+actor loss   = -0.234889
+critic loss  = 0.151333
+mean return  = 22.419676
+mean length  = 362.57
+
+[  100 / 30000]
+----------------------------------
+Timesteps    = 102400
+Elapsed time = 874.48 sec
+FPS          = 117
+actor loss   = 0.009456
+critic loss  = 0.423074
+mean return  = 23.228998
+mean length  = 358.39
+
+Saving the model ... Done.
+
+[  120 / 30000]
+----------------------------------
+Timesteps    = 122880
+Elapsed time = 1024.44 sec
+FPS          = 119
+actor loss   = -0.184623
+critic loss  = 2.006193
+mean return  = 21.640753
+mean length  = 350.33
+
+[  140 / 30000]
+----------------------------------
+Timesteps    = 143360
+Elapsed time = 1172.48 sec
+FPS          = 122
+actor loss   = -0.066159
+critic loss  = 2.370193
+mean return  = 22.889484
+mean length  = 341.70
+
+[  160 / 30000]
+----------------------------------
+Timesteps    = 163840
+Elapsed time = 1332.20 sec
+FPS          = 122
+actor loss   = 0.051125
+critic loss  = 0.576712
+mean return  = 26.601377
+mean length  = 320.92
+
+[  180 / 30000]
+----------------------------------
+Timesteps    = 184320
+Elapsed time = 1488.73 sec
+FPS          = 123
+actor loss   = -0.009269
+critic loss  = 9.036876
+mean return  = 23.457298
+mean length  = 333.22
+
+[  200 / 30000]
+----------------------------------
+Timesteps    = 204800
+Elapsed time = 1623.46 sec
+FPS          = 126
+actor loss   = -0.027608
+critic loss  = 2.588083
+mean return  = 28.839760
+mean length  = 320.92
+
+Saving the model ... Done.
+
+[  220 / 30000]
+----------------------------------
+Timesteps    = 225280
+Elapsed time = 1818.10 sec
+FPS          = 123
+actor loss   = 0.001641
+critic loss  = 1.329677
+mean return  = 31.202681
+mean length  = 323.52
+
+[  240 / 30000]
+----------------------------------
+Timesteps    = 245760
+Elapsed time = 2048.98 sec
+FPS          = 119
+actor loss   = 0.109767
+critic loss  = 1.016699
+mean return  = 39.339489
+mean length  = 318.38
+
+[  260 / 30000]
+----------------------------------
+Timesteps    = 266240
+Elapsed time = 2261.85 sec
+FPS          = 117
+actor loss   = 0.159664
+critic loss  = 6.817010
+mean return  = 38.634232
+mean length  = 341.74
+
+[  280 / 30000]
+----------------------------------
+Timesteps    = 286720
+Elapsed time = 2450.51 sec
+FPS          = 117
+actor loss   = 0.152667
+critic loss  = 0.949246
+mean return  = 33.271049
+mean length  = 315.65
+
+[  300 / 30000]
+----------------------------------
+Timesteps    = 307200
+Elapsed time = 2644.06 sec
+FPS          = 116
+actor loss   = 0.050370
+critic loss  = 4.858450
+mean return  = 36.337196
+mean length  = 304.72
+
+Saving the model ... Done.
+
+[  320 / 30000]
+----------------------------------
+Timesteps    = 327680
+Elapsed time = 2863.23 sec
+FPS          = 114
+actor loss   = -0.036198
+critic loss  = 4.353200
+mean return  = 39.056030
+mean length  = 301.37
+
+[  340 / 30000]
+----------------------------------
+Timesteps    = 348160
+Elapsed time = 3084.78 sec
+FPS          = 112
+actor loss   = 0.171212
+critic loss  = 0.624827
+mean return  = 41.528351
+mean length  = 314.85
+
+[  360 / 30000]
+----------------------------------
+Timesteps    = 368640
+Elapsed time = 3173.08 sec
+FPS          = 116
+actor loss   = 0.059273
+critic loss  = 0.354015
+mean return  = 32.406376
+mean length  = 316.29
+
+[  380 / 30000]
+----------------------------------
+Timesteps    = 389120
+Elapsed time = 3264.28 sec
+FPS          = 119
+actor loss   = -0.103589
+critic loss  = 2.917570
+mean return  = 33.580814
+mean length  = 305.73
+
+[  400 / 30000]
+----------------------------------
+Timesteps    = 409600
+Elapsed time = 3333.85 sec
+FPS          = 122
+actor loss   = 0.051100
+critic loss  = 2.136679
+mean return  = 38.449089
+mean length  = 324.48
+
+Saving the model ... Done.
+
+[  420 / 30000]
+----------------------------------
+Timesteps    = 430080
+Elapsed time = 3397.01 sec
+FPS          = 126
+actor loss   = -0.137506
+critic loss  = 18.296837
+mean return  = 39.455151
+mean length  = 323.29
+
+[  440 / 30000]
+----------------------------------
+Timesteps    = 450560
+Elapsed time = 3465.57 sec
+FPS          = 130
+actor loss   = -0.038466
+critic loss  = 9.802636
+mean return  = 40.148659
+mean length  = 305.49
+
+[  460 / 30000]
+----------------------------------
+Timesteps    = 471040
+Elapsed time = 3540.26 sec
+FPS          = 133
+actor loss   = -0.041394
+critic loss  = 1.361947
+mean return  = 50.452637
+mean length  = 308.90
+
+[  480 / 30000]
+----------------------------------
+Timesteps    = 491520
+Elapsed time = 3599.53 sec
+FPS          = 136
+actor loss   = 0.004865
+critic loss  = 1.392224
+mean return  = 44.462242
+mean length  = 307.30
+
+[  500 / 30000]
+----------------------------------
+Timesteps    = 512000
+Elapsed time = 3666.01 sec
+FPS          = 139
+actor loss   = -0.153452
+critic loss  = 3.698475
+mean return  = 41.095146
+mean length  = 302.49
+
+Saving the model ... Done.
+
+Saving the checkpoint ... Done.
+
+[  520 / 30000]
+----------------------------------
+Timesteps    = 532480
+Elapsed time = 3736.24 sec
+FPS          = 142
+actor loss   = 0.154991
+critic loss  = 3.233516
+mean return  = 45.162540
+mean length  = 305.02
+
+[  540 / 30000]
+----------------------------------
+Timesteps    = 552960
+Elapsed time = 3801.67 sec
+FPS          = 145
+actor loss   = 0.099731
+critic loss  = 6.961968
+mean return  = 42.953907
+mean length  = 303.48
+
+[  560 / 30000]
+----------------------------------
+Timesteps    = 573440
+Elapsed time = 3878.97 sec
+FPS          = 147
+actor loss   = -0.037142
+critic loss  = 3.157866
+mean return  = 37.376553
+mean length  = 312.78
+
+[  580 / 30000]
+----------------------------------
+Timesteps    = 593920
+Elapsed time = 3942.14 sec
+FPS          = 150
+actor loss   = 0.054123
+critic loss  = 8.708486
+mean return  = 34.932549
+mean length  = 311.49
+
+[  600 / 30000]
+----------------------------------
+Timesteps    = 614400
+Elapsed time = 4018.55 sec
+FPS          = 152
+actor loss   = 0.079066
+critic loss  = 0.680429
+mean return  = 27.046606
+mean length  = 304.00
+
+Saving the model ... Done.
+
+[  620 / 30000]
+----------------------------------
+Timesteps    = 634880
+Elapsed time = 4088.43 sec
+FPS          = 155
+actor loss   = -0.069779
+critic loss  = 17.239227
+mean return  = 36.094707
+mean length  = 295.86
+
+[  640 / 30000]
+----------------------------------
+Timesteps    = 655360
+Elapsed time = 4287.99 sec
+FPS          = 152
+actor loss   = -0.191808
+critic loss  = 1.694077
+mean return  = 45.013817
+mean length  = 309.80
+
+[  660 / 30000]
+----------------------------------
+Timesteps    = 675840
+Elapsed time = 4560.26 sec
+FPS          = 148
+actor loss   = 0.161419
+critic loss  = 5.692920
+mean return  = 40.006126
+mean length  = 315.73
+
+[  680 / 30000]
+----------------------------------
+Timesteps    = 696320
+Elapsed time = 4809.12 sec
+FPS          = 144
+actor loss   = -0.128418
+critic loss  = 0.932796
+mean return  = 33.541939
+mean length  = 312.77
+
+[  700 / 30000]
+----------------------------------
+Timesteps    = 716800
+Elapsed time = 5043.39 sec
+FPS          = 142
+actor loss   = -0.010684
+critic loss  = 4.994136
+mean return  = 35.566387
+mean length  = 301.95
+
+Saving the model ... Done.
+
+[  720 / 30000]
+----------------------------------
+Timesteps    = 737280
+Elapsed time = 5300.08 sec
+FPS          = 139
+actor loss   = -0.065425
+critic loss  = 10.419859
+mean return  = 47.066673
+mean length  = 306.03
+
+[  740 / 30000]
+----------------------------------
+Timesteps    = 757760
+Elapsed time = 5638.27 sec
+FPS          = 134
+actor loss   = 0.001287
+critic loss  = 1.605905
+mean return  = 46.799976
+mean length  = 301.92
+
+[  760 / 30000]
+----------------------------------
+Timesteps    = 778240
+Elapsed time = 5902.61 sec
+FPS          = 131
+actor loss   = -0.194490
+critic loss  = 11.105804
+mean return  = 43.686893
+mean length  = 295.48
+
+[  780 / 30000]
+----------------------------------
+Timesteps    = 798720
+Elapsed time = 6134.82 sec
+FPS          = 130
+actor loss   = -0.030339
+critic loss  = 0.393171
+mean return  = 52.320213
+mean length  = 302.58
+
+[  800 / 30000]
+----------------------------------
+Timesteps    = 819200
+Elapsed time = 6389.67 sec
+FPS          = 128
+actor loss   = 0.018483
+critic loss  = 7.828097
+mean return  = 50.378895
+mean length  = 309.19
+
+Saving the model ... Done.
+
+[  820 / 30000]
+----------------------------------
+Timesteps    = 839680
+Elapsed time = 6617.93 sec
+FPS          = 126
+actor loss   = 0.124209
+critic loss  = 9.412629
+mean return  = 38.030369
+mean length  = 305.24
+
+[  840 / 30000]
+----------------------------------
+Timesteps    = 860160
+Elapsed time = 6848.57 sec
+FPS          = 125
+actor loss   = 0.081401
+critic loss  = 1.032572
+mean return  = 40.801964
+mean length  = 288.13
+
+[  860 / 30000]
+----------------------------------
+Timesteps    = 880640
+Elapsed time = 7095.07 sec
+FPS          = 124
+actor loss   = -0.185457
+critic loss  = 2.445652
+mean return  = 45.242054
+mean length  = 295.38
+
+[  880 / 30000]
+----------------------------------
+Timesteps    = 901120
+Elapsed time = 7277.08 sec
+FPS          = 123
+actor loss   = -0.071120
+critic loss  = 2.055709
+mean return  = 46.996826
+mean length  = 301.35
+
+[  900 / 30000]
+----------------------------------
+Timesteps    = 921600
+Elapsed time = 7409.33 sec
+FPS          = 124
+actor loss   = -0.189855
+critic loss  = 1.682932
+mean return  = 35.250778
+mean length  = 298.84
+
+Saving the model ... Done.
+
+[  920 / 30000]
+----------------------------------
+Timesteps    = 942080
+Elapsed time = 7567.35 sec
+FPS          = 124
+actor loss   = -0.055317
+critic loss  = 13.636725
+mean return  = 36.722546
+mean length  = 286.92
+
+[  940 / 30000]
+----------------------------------
+Timesteps    = 962560
+Elapsed time = 7722.07 sec
+FPS          = 124
+actor loss   = 0.004539
+critic loss  = 0.594998
+mean return  = 43.866890
+mean length  = 296.40
+
+[  960 / 30000]
+----------------------------------
+Timesteps    = 983040
+Elapsed time = 7894.56 sec
+FPS          = 124
+actor loss   = -0.110787
+critic loss  = 0.600884
+mean return  = 41.746616
+mean length  = 299.89
+
+[  980 / 30000]
+----------------------------------
+Timesteps    = 1003520
+Elapsed time = 8077.56 sec
+FPS          = 124
+actor loss   = -0.188991
+critic loss  = 5.069146
+mean return  = 41.317490
+mean length  = 295.68
+
+[ 1000 / 30000]
+----------------------------------
+Timesteps    = 1024000
+Elapsed time = 8230.71 sec
+FPS          = 124
+actor loss   = 0.009902
+critic loss  = 9.611148
+mean return  = 35.567223
+mean length  = 290.68
+
+Saving the model ... Done.
+
+Saving the checkpoint ... Done.
+
+[ 1020 / 30000]
+----------------------------------
+Timesteps    = 1044480
+Elapsed time = 8395.13 sec
+FPS          = 124
+actor loss   = -0.041834
+critic loss  = 2.550574
+mean return  = 46.334175
+mean length  = 294.65
+
+[ 1040 / 30000]
+----------------------------------
+Timesteps    = 1064960
+Elapsed time = 8578.31 sec
+FPS          = 124
+actor loss   = 0.254739
+critic loss  = 4.215163
+mean return  = 55.555714
+mean length  = 291.33
+
+[ 1060 / 30000]
+----------------------------------
+Timesteps    = 1085440
+Elapsed time = 8710.63 sec
+FPS          = 124
+actor loss   = -0.015294
+critic loss  = 1.099593
+mean return  = 46.008778
+mean length  = 304.50
+
+[ 1080 / 30000]
+----------------------------------
+Timesteps    = 1105920
+Elapsed time = 8872.15 sec
+FPS          = 124
+actor loss   = -0.046659
+critic loss  = 4.461908
+mean return  = 42.757076
+mean length  = 301.92
+
+[ 1100 / 30000]
+----------------------------------
+Timesteps    = 1126400
+Elapsed time = 9040.32 sec
+FPS          = 124
+actor loss   = 0.168143
+critic loss  = 3.396531
+mean return  = 38.630718
+mean length  = 299.12
+
+Saving the model ... Done.
+
+[ 1120 / 30000]
+----------------------------------
+Timesteps    = 1146880
+Elapsed time = 9183.34 sec
+FPS          = 124
+actor loss   = -0.161264
+critic loss  = 1.732734
+mean return  = 40.646152
+mean length  = 308.12
+
+[ 1140 / 30000]
+----------------------------------
+Timesteps    = 1167360
+Elapsed time = 9315.02 sec
+FPS          = 125
+actor loss   = -0.124016
+critic loss  = 2.902689
+mean return  = 42.046425
+mean length  = 306.04
+
+[ 1160 / 30000]
+----------------------------------
+Timesteps    = 1187840
+Elapsed time = 9456.02 sec
+FPS          = 125
+actor loss   = -0.045943
+critic loss  = 0.921705
+mean return  = 46.201767
+mean length  = 308.75
+
+[ 1180 / 30000]
+----------------------------------
+Timesteps    = 1208320
+Elapsed time = 9581.96 sec
+FPS          = 126
+actor loss   = -0.019402
+critic loss  = 2.039318
+mean return  = 50.107155
+mean length  = 294.09
+
+[ 1200 / 30000]
+----------------------------------
+Timesteps    = 1228800
+Elapsed time = 9736.11 sec
+FPS          = 126
+actor loss   = 0.028456
+critic loss  = 1.322862
+mean return  = 39.209778
+mean length  = 298.03
+
+Saving the model ... Done.
+
+[ 1220 / 30000]
+----------------------------------
+Timesteps    = 1249280
+Elapsed time = 9897.25 sec
+FPS          = 126
+actor loss   = 0.069147
+critic loss  = 2.432093
+mean return  = 42.529530
+mean length  = 293.90
+
+[ 1240 / 30000]
+----------------------------------
+Timesteps    = 1269760
+Elapsed time = 10017.99 sec
+FPS          = 126
+actor loss   = 0.094065
+critic loss  = 2.350231
+mean return  = 43.093052
+mean length  = 298.65
+
+[ 1260 / 30000]
+----------------------------------
+Timesteps    = 1290240
+Elapsed time = 10135.76 sec
+FPS          = 127
+actor loss   = 0.132621
+critic loss  = 0.697262
+mean return  = 33.187454
+mean length  = 313.38
+
+[ 1280 / 30000]
+----------------------------------
+Timesteps    = 1310720
+Elapsed time = 10254.44 sec
+FPS          = 127
+actor loss   = -0.138227
+critic loss  = 2.915761
+mean return  = 37.495594
+mean length  = 300.66
+
+[ 1300 / 30000]
+----------------------------------
+Timesteps    = 1331200
+Elapsed time = 10384.02 sec
+FPS          = 128
+actor loss   = -0.169977
+critic loss  = 2.985040
+mean return  = 37.751026
+mean length  = 294.79
+
+Saving the model ... Done.
+
+[ 1320 / 30000]
+----------------------------------
+Timesteps    = 1351680
+Elapsed time = 10522.97 sec
+FPS          = 128
+actor loss   = -0.048534
+critic loss  = 3.620286
+mean return  = 39.368736
+mean length  = 307.41
+
+[ 1340 / 30000]
+----------------------------------
+Timesteps    = 1372160
+Elapsed time = 10654.77 sec
+FPS          = 128
+actor loss   = -0.113671
+critic loss  = 0.513272
+mean return  = 37.880695
+mean length  = 310.43
+
+[ 1360 / 30000]
+----------------------------------
+Timesteps    = 1392640
+Elapsed time = 10780.96 sec
+FPS          = 129
+actor loss   = -0.046816
+critic loss  = 6.162158
+mean return  = 37.713699
+mean length  = 317.14
+
+[ 1380 / 30000]
+----------------------------------
+Timesteps    = 1413120
+Elapsed time = 10912.50 sec
+FPS          = 129
+actor loss   = 0.061966
+critic loss  = 1.014729
+mean return  = 37.846230
+mean length  = 298.24
+
+[ 1400 / 30000]
+----------------------------------
+Timesteps    = 1433600
+Elapsed time = 11040.86 sec
+FPS          = 129
+actor loss   = 0.104692
+critic loss  = 8.209238
+mean return  = 43.347809
+mean length  = 301.75
+
+Saving the model ... Done.
+
+[ 1420 / 30000]
+----------------------------------
+Timesteps    = 1454080
+Elapsed time = 11199.59 sec
+FPS          = 129
+actor loss   = 0.071765
+critic loss  = 10.436262
+mean return  = 45.245625
+mean length  = 303.55
+
+[ 1440 / 30000]
+----------------------------------
+Timesteps    = 1474560
+Elapsed time = 11349.19 sec
+FPS          = 129
+actor loss   = 0.199618
+critic loss  = 2.949249
+mean return  = 53.531830
+mean length  = 300.09
+
+[ 1460 / 30000]
+----------------------------------
+Timesteps    = 1495040
+Elapsed time = 11527.40 sec
+FPS          = 129
+actor loss   = 0.169311
+critic loss  = 0.875751
+mean return  = 45.605446
+mean length  = 299.11
+
+[ 1480 / 30000]
+----------------------------------
+Timesteps    = 1515520
+Elapsed time = 11740.89 sec
+FPS          = 129
+actor loss   = 0.030451
+critic loss  = 11.586462
+mean return  = 41.643345
+mean length  = 292.44
+
+[ 1500 / 30000]
+----------------------------------
+Timesteps    = 1536000
+Elapsed time = 11932.14 sec
+FPS          = 128
+actor loss   = -0.006759
+critic loss  = 2.478075
+mean return  = 51.267128
+mean length  = 298.09
+
+Saving the model ... Done.
+
+Saving the checkpoint ... Done.
+
+[ 1520 / 30000]
+----------------------------------
+Timesteps    = 1556480
+Elapsed time = 12070.44 sec
+FPS          = 128
+actor loss   = -0.022432
+critic loss  = 3.961468
+mean return  = 42.811535
+mean length  = 306.20
+
+[ 1540 / 30000]
+----------------------------------
+Timesteps    = 1576960
+Elapsed time = 12188.58 sec
+FPS          = 129
+actor loss   = 0.148997
+critic loss  = 4.555755
+mean return  = 42.436054
+mean length  = 307.73
+
+[ 1560 / 30000]
+----------------------------------
+Timesteps    = 1597440
+Elapsed time = 12320.15 sec
+FPS          = 129
+actor loss   = 0.124264
+critic loss  = 2.228414
+mean return  = 38.906582
+mean length  = 305.34
+
+[ 1580 / 30000]
+----------------------------------
+Timesteps    = 1617920
+Elapsed time = 12459.48 sec
+FPS          = 129
+actor loss   = -0.256406
+critic loss  = 5.322688
+mean return  = 35.603615
+mean length  = 300.24
+
+[ 1600 / 30000]
+----------------------------------
+Timesteps    = 1638400
+Elapsed time = 12576.02 sec
+FPS          = 130
+actor loss   = 0.027423
+critic loss  = 3.649532
+mean return  = 40.011127
+mean length  = 297.55
+
+Saving the model ... Done.
+
+[ 1620 / 30000]
+----------------------------------
+Timesteps    = 1658880
+Elapsed time = 12702.44 sec
+FPS          = 130
+actor loss   = -0.072250
+critic loss  = 1.811040
+mean return  = 35.461037
+mean length  = 304.60
+
+[ 1640 / 30000]
+----------------------------------
+Timesteps    = 1679360
+Elapsed time = 12804.96 sec
+FPS          = 131
+actor loss   = -0.122889
+critic loss  = 6.153538
+mean return  = 38.954689
+mean length  = 299.70
+
+[ 1660 / 30000]
+----------------------------------
+Timesteps    = 1699840
+Elapsed time = 12937.85 sec
+FPS          = 131
+actor loss   = -0.113595
+critic loss  = 15.566029
+mean return  = 64.714432
+mean length  = 305.20
+
+[ 1680 / 30000]
+----------------------------------
+Timesteps    = 1720320
+Elapsed time = 13040.91 sec
+FPS          = 131
+actor loss   = -0.035591
+critic loss  = 9.083348
+mean return  = 57.016357
+mean length  = 310.46
+
+[ 1700 / 30000]
+----------------------------------
+Timesteps    = 1740800
+Elapsed time = 13172.14 sec
+FPS          = 132
+actor loss   = 0.030913
+critic loss  = 1.180074
+mean return  = 41.803593
+mean length  = 296.42
+
+Saving the model ... Done.
+
+[ 1720 / 30000]
+----------------------------------
+Timesteps    = 1761280
+Elapsed time = 13273.17 sec
+FPS          = 132
+actor loss   = 0.001092
+critic loss  = 3.580738
+mean return  = 30.926655
+mean length  = 300.45
+
+[ 1740 / 30000]
+----------------------------------
+Timesteps    = 1781760
+Elapsed time = 13382.89 sec
+FPS          = 133
+actor loss   = 0.005888
+critic loss  = 1.116719
+mean return  = 29.908133
+mean length  = 310.08
+
+[ 1760 / 30000]
+----------------------------------
+Timesteps    = 1802240
+Elapsed time = 13520.17 sec
+FPS          = 133
+actor loss   = -0.016930
+critic loss  = 0.251424
+mean return  = 28.942883
+mean length  = 311.79
+
+[ 1780 / 30000]
+----------------------------------
+Timesteps    = 1822720
+Elapsed time = 13658.14 sec
+FPS          = 133
+actor loss   = 0.017069
+critic loss  = 0.167064
+mean return  = 23.901497
+mean length  = 316.24
+
+[ 1800 / 30000]
+----------------------------------
+Timesteps    = 1843200
+Elapsed time = 13779.31 sec
+FPS          = 133
+actor loss   = 0.193400
+critic loss  = 0.330099
+mean return  = 21.846704
+mean length  = 326.23
+
+Saving the model ... Done.
+
+[ 1820 / 30000]
+----------------------------------
+Timesteps    = 1863680
+Elapsed time = 13937.12 sec
+FPS          = 133
+actor loss   = -0.113185
+critic loss  = 0.563861
+mean return  = 18.724144
+mean length  = 319.97
+
+[ 1840 / 30000]
+----------------------------------
+Timesteps    = 1884160
+Elapsed time = 14064.34 sec
+FPS          = 133
+actor loss   = -0.120514
+critic loss  = 0.120279
+mean return  = 16.845728
+mean length  = 347.49
+
+[ 1860 / 30000]
+----------------------------------
+Timesteps    = 1904640
+Elapsed time = 14162.10 sec
+FPS          = 134
+actor loss   = 0.065537
+critic loss  = 0.116965
+mean return  = 16.547504
+mean length  = 320.76
+
+[ 1880 / 30000]
+----------------------------------
+Timesteps    = 1925120
+Elapsed time = 14291.16 sec
+FPS          = 134
+actor loss   = 0.086943
+critic loss  = 0.056860
+mean return  = 16.140253
+mean length  = 314.84
+
+[ 1900 / 30000]
+----------------------------------
+Timesteps    = 1945600
+Elapsed time = 14403.96 sec
+FPS          = 135
+actor loss   = 0.123273
+critic loss  = 0.307067
+mean return  = 15.801556
+mean length  = 333.03
+
+Saving the model ... Done.
+
+[ 1920 / 30000]
+----------------------------------
+Timesteps    = 1966080
+Elapsed time = 14522.57 sec
+FPS          = 135
+actor loss   = 0.007288
+critic loss  = 0.056941
+mean return  = 20.762026
+mean length  = 319.46
+
+[ 1940 / 30000]
+----------------------------------
+Timesteps    = 1986560
+Elapsed time = 14657.18 sec
+FPS          = 135
+actor loss   = 0.100524
+critic loss  = 0.498449
+mean return  = 24.673147
+mean length  = 337.35
+
+[ 1960 / 30000]
+----------------------------------
+Timesteps    = 2007040
+Elapsed time = 14778.24 sec
+FPS          = 135
+actor loss   = 0.080651
+critic loss  = 2.953133
+mean return  = 30.299532
+mean length  = 334.64
+
+[ 1980 / 30000]
+----------------------------------
+Timesteps    = 2027520
+Elapsed time = 14899.70 sec
+FPS          = 136
+actor loss   = 0.039978
+critic loss  = 0.301293
+mean return  = 36.491871
+mean length  = 318.32
+
+[ 2000 / 30000]
+----------------------------------
+Timesteps    = 2048000
+Elapsed time = 15006.98 sec
+FPS          = 136
+actor loss   = 0.096003
+critic loss  = 1.948993
+mean return  = 39.844231
+mean length  = 323.19
+
+Saving the model ... Done.
+
+Saving the checkpoint ... Done.
+
+[ 2020 / 30000]
+----------------------------------
+Timesteps    = 2068480
+Elapsed time = 15126.31 sec
+FPS          = 136
+actor loss   = -0.049778
+critic loss  = 7.193455
+mean return  = 42.680000
+mean length  = 326.42
+
+[ 2040 / 30000]
+----------------------------------
+Timesteps    = 2088960
+Elapsed time = 15231.93 sec
+FPS          = 137
+actor loss   = -0.287012
+critic loss  = 13.163730
+mean return  = 50.469410
+mean length  = 306.29
+
+[ 2060 / 30000]
+----------------------------------
+Timesteps    = 2109440
+Elapsed time = 15362.31 sec
+FPS          = 137
+actor loss   = 0.028451
+critic loss  = 2.208890
+mean return  = 42.623466
+mean length  = 324.21
+
+[ 2080 / 30000]
+----------------------------------
+Timesteps    = 2129920
+Elapsed time = 15481.04 sec
+FPS          = 137
+actor loss   = 0.092522
+critic loss  = 10.008663
+mean return  = 38.353504
+mean length  = 316.07
+
+[ 2100 / 30000]
+----------------------------------
+Timesteps    = 2150400
+Elapsed time = 15606.72 sec
+FPS          = 137
+actor loss   = 0.235631
+critic loss  = 0.636956
+mean return  = 39.607731
+mean length  = 296.05
+
+Saving the model ... Done.
+
+[ 2120 / 30000]
+----------------------------------
+Timesteps    = 2170880
+Elapsed time = 15715.98 sec
+FPS          = 138
+actor loss   = -0.032670
+critic loss  = 0.523543
+mean return  = 46.391396
+mean length  = 302.20
+
+[ 2140 / 30000]
+----------------------------------
+Timesteps    = 2191360
+Elapsed time = 15839.32 sec
+FPS          = 138
+actor loss   = 0.062456
+critic loss  = 3.534037
+mean return  = 37.399986
+mean length  = 298.34
+
+[ 2160 / 30000]
+----------------------------------
+Timesteps    = 2211840
+Elapsed time = 15940.69 sec
+FPS          = 138
+actor loss   = -0.043873
+critic loss  = 1.671722
+mean return  = 30.422720
+mean length  = 301.26
+
+[ 2180 / 30000]
+----------------------------------
+Timesteps    = 2232320
+Elapsed time = 16089.03 sec
+FPS          = 138
+actor loss   = 0.195133
+critic loss  = 1.510486
+mean return  = 36.033295
+mean length  = 301.13
+
+[ 2200 / 30000]
+----------------------------------
+Timesteps    = 2252800
+Elapsed time = 16209.62 sec
+FPS          = 138
+actor loss   = -0.211191
+critic loss  = 0.216476
+mean return  = 32.643295
+mean length  = 298.07
+
+Saving the model ... Done.
+
+[ 2220 / 30000]
+----------------------------------
+Timesteps    = 2273280
+Elapsed time = 16332.48 sec
+FPS          = 139
+actor loss   = 0.095838
+critic loss  = 2.003587
+mean return  = 36.033386
+mean length  = 303.33
+
+[ 2240 / 30000]
+----------------------------------
+Timesteps    = 2293760
+Elapsed time = 16467.37 sec
+FPS          = 139
+actor loss   = -0.090729
+critic loss  = 2.367225
+mean return  = 46.556187
+mean length  = 305.98
+
+[ 2260 / 30000]
+----------------------------------
+Timesteps    = 2314240
+Elapsed time = 16582.69 sec
+FPS          = 139
+actor loss   = 0.065196
+critic loss  = 5.498871
+mean return  = 44.566597
+mean length  = 312.89
+
+[ 2280 / 30000]
+----------------------------------
+Timesteps    = 2334720
+Elapsed time = 16690.29 sec
+FPS          = 139
+actor loss   = -0.265467
+critic loss  = 12.535883
+mean return  = 36.476223
+mean length  = 304.13
+
+[ 2300 / 30000]
+----------------------------------
+Timesteps    = 2355200
+Elapsed time = 16815.11 sec
+FPS          = 140
+actor loss   = -0.008058
+critic loss  = 2.848206
+mean return  = 43.167126
+mean length  = 293.04
+
+Saving the model ... Done.
+
+[ 2320 / 30000]
+----------------------------------
+Timesteps    = 2375680
+Elapsed time = 16902.16 sec
+FPS          = 140
+actor loss   = -0.150053
+critic loss  = 2.176998
+mean return  = 48.712563
+mean length  = 299.05
+
+[ 2340 / 30000]
+----------------------------------
+Timesteps    = 2396160
+Elapsed time = 17006.94 sec
+FPS          = 140
+actor loss   = 0.039916
+critic loss  = 4.458661
+mean return  = 48.915314
+mean length  = 302.40
+
+[ 2360 / 30000]
+----------------------------------
+Timesteps    = 2416640
+Elapsed time = 17113.22 sec
+FPS          = 141
+actor loss   = 0.026966
+critic loss  = 0.387667
+mean return  = 40.761925
+mean length  = 294.15
+
+[ 2380 / 30000]
+----------------------------------
+Timesteps    = 2437120
+Elapsed time = 17246.91 sec
+FPS          = 141
+actor loss   = 0.087090
+critic loss  = 0.965203
+mean return  = 38.613819
+mean length  = 305.05
+
+[ 2400 / 30000]
+----------------------------------
+Timesteps    = 2457600
+Elapsed time = 17371.20 sec
+FPS          = 141
+actor loss   = -0.019318
+critic loss  = 3.544454
+mean return  = 33.990978
+mean length  = 323.89
+
+Saving the model ... Done.
+
+[ 2420 / 30000]
+----------------------------------
+Timesteps    = 2478080
+Elapsed time = 17514.63 sec
+FPS          = 141
+actor loss   = 0.023844
+critic loss  = 0.755785
+mean return  = 30.136053
+mean length  = 329.05
+
+[ 2440 / 30000]
+----------------------------------
+Timesteps    = 2498560
+Elapsed time = 17646.50 sec
+FPS          = 141
+actor loss   = 0.101020
+critic loss  = 0.991118
+mean return  = 27.167898
+mean length  = 342.17
+
+[ 2460 / 30000]
+----------------------------------
+Timesteps    = 2519040
+Elapsed time = 17803.38 sec
+FPS          = 141
+actor loss   = -0.124729
+critic loss  = 1.161059
+mean return  = 20.660507
+mean length  = 364.37
+
+[ 2480 / 30000]
+----------------------------------
+Timesteps    = 2539520
+Elapsed time = 17932.56 sec
+FPS          = 141
+actor loss   = -0.027322
+critic loss  = 0.073039
+mean return  = 14.948011
+mean length  = 366.61
+
+[ 2500 / 30000]
+----------------------------------
+Timesteps    = 2560000
+Elapsed time = 18088.09 sec
+FPS          = 141
+actor loss   = 0.035368
+critic loss  = 0.928259
+mean return  = 19.771629
+mean length  = 356.98
+
+Saving the model ... Done.
+
+Saving the checkpoint ... Done.
+
+[ 2520 / 30000]
+----------------------------------
+Timesteps    = 2580480
+Elapsed time = 18246.35 sec
+FPS          = 141
+actor loss   = 0.091157
+critic loss  = 0.160383
+mean return  = 21.494823
+mean length  = 329.18
+
+[ 2540 / 30000]
+----------------------------------
+Timesteps    = 2600960
+Elapsed time = 18384.41 sec
+FPS          = 141
+actor loss   = 0.129050
+critic loss  = 3.421790
+mean return  = 25.313431
+mean length  = 322.91
+
+[ 2560 / 30000]
+----------------------------------
+Timesteps    = 2621440
+Elapsed time = 18533.27 sec
+FPS          = 141
+actor loss   = -0.127866
+critic loss  = 3.451510
+mean return  = 31.074133
+mean length  = 327.47
+
+[ 2580 / 30000]
+----------------------------------
+Timesteps    = 2641920
+Elapsed time = 18678.28 sec
+FPS          = 141
+actor loss   = 0.056588
+critic loss  = 6.692807
+mean return  = 28.123999
+mean length  = 347.08
+
+[ 2600 / 30000]
+----------------------------------
+Timesteps    = 2662400
+Elapsed time = 18771.35 sec
+FPS          = 141
+actor loss   = -0.083698
+critic loss  = 0.053209
+mean return  = 27.940235
+mean length  = 329.18
+
+Saving the model ... Done.
+
+[ 2620 / 30000]
+----------------------------------
+Timesteps    = 2682880
+Elapsed time = 18933.77 sec
+FPS          = 141
+actor loss   = 0.004018
+critic loss  = 0.316915
+mean return  = 32.324013
+mean length  = 310.91
+
+[ 2640 / 30000]
+----------------------------------
+Timesteps    = 2703360
+Elapsed time = 19066.78 sec
+FPS          = 141
+actor loss   = -0.031557
+critic loss  = 1.902167
+mean return  = 29.497635
+mean length  = 327.65
+
+[ 2660 / 30000]
+----------------------------------
+Timesteps    = 2723840
+Elapsed time = 19232.91 sec
+FPS          = 141
+actor loss   = -0.100871
+critic loss  = 0.961233
+mean return  = 33.517246
+mean length  = 318.68
+
+[ 2680 / 30000]
+----------------------------------
+Timesteps    = 2744320
+Elapsed time = 19385.40 sec
+FPS          = 141
+actor loss   = -0.014341
+critic loss  = 2.857714
+mean return  = 43.728668
+mean length  = 291.75
+
+[ 2700 / 30000]
+----------------------------------
+Timesteps    = 2764800
+Elapsed time = 19537.62 sec
+FPS          = 141
+actor loss   = 0.036864
+critic loss  = 3.499291
+mean return  = 58.315361
+mean length  = 299.01
+
+Saving the model ... Done.
+
+[ 2720 / 30000]
+----------------------------------
+Timesteps    = 2785280
+Elapsed time = 19664.22 sec
+FPS          = 141
+actor loss   = 0.095184
+critic loss  = 12.707257
+mean return  = 61.910866
+mean length  = 293.94
+
+[ 2740 / 30000]
+----------------------------------
+Timesteps    = 2805760
+Elapsed time = 19776.19 sec
+FPS          = 141
+actor loss   = 0.096048
+critic loss  = 12.588995
+mean return  = 61.340199
+mean length  = 299.61
+
+[ 2760 / 30000]
+----------------------------------
+Timesteps    = 2826240
+Elapsed time = 19909.26 sec
+FPS          = 141
+actor loss   = -0.066118
+critic loss  = 3.762806
+mean return  = 46.066483
+mean length  = 310.33
+
+[ 2780 / 30000]
+----------------------------------
+Timesteps    = 2846720
+Elapsed time = 20019.64 sec
+FPS          = 142
+actor loss   = 0.039001
+critic loss  = 1.427189
+mean return  = 34.310234
+mean length  = 304.66
+
+[ 2800 / 30000]
+----------------------------------
+Timesteps    = 2867200
+Elapsed time = 20135.25 sec
+FPS          = 142
+actor loss   = -0.014085
+critic loss  = 2.931906
+mean return  = 45.641468
+mean length  = 311.08
+
+Saving the model ... Done.
+
+[ 2820 / 30000]
+----------------------------------
+Timesteps    = 2887680
+Elapsed time = 20265.39 sec
+FPS          = 142
+actor loss   = -0.154296
+critic loss  = 3.056668
+mean return  = 55.372780
+mean length  = 294.26
+
+[ 2840 / 30000]
+----------------------------------
+Timesteps    = 2908160
+Elapsed time = 20376.50 sec
+FPS          = 142
+actor loss   = 0.031956
+critic loss  = 0.995339
+mean return  = 32.692047
+mean length  = 304.81
+
+[ 2860 / 30000]
+----------------------------------
+Timesteps    = 2928640
+Elapsed time = 20513.63 sec
+FPS          = 142
+actor loss   = -0.075904
+critic loss  = 0.942163
+mean return  = 36.181297
+mean length  = 307.13
+
+[ 2880 / 30000]
+----------------------------------
+Timesteps    = 2949120
+Elapsed time = 20621.66 sec
+FPS          = 143
+actor loss   = 0.219363
+critic loss  = 21.650301
+mean return  = 39.344372
+mean length  = 312.36
+
+[ 2900 / 30000]
+----------------------------------
+Timesteps    = 2969600
+Elapsed time = 20732.73 sec
+FPS          = 143
+actor loss   = -0.065682
+critic loss  = 1.559559
+mean return  = 49.627060
+mean length  = 304.59
+
+Saving the model ... Done.
+
+[ 2920 / 30000]
+----------------------------------
+Timesteps    = 2990080
+Elapsed time = 20854.28 sec
+FPS          = 143
+actor loss   = -0.065138
+critic loss  = 0.904908
+mean return  = 42.257267
+mean length  = 298.32
+
+[ 2940 / 30000]
+----------------------------------
+Timesteps    = 3010560
+Elapsed time = 20985.21 sec
+FPS          = 143
+actor loss   = -0.025172
+critic loss  = 2.408955
+mean return  = 32.431778
+mean length  = 303.56
+
+[ 2960 / 30000]
+----------------------------------
+Timesteps    = 3031040
+Elapsed time = 21129.83 sec
+FPS          = 143
+actor loss   = -0.023547
+critic loss  = 3.883855
+mean return  = 39.431625
+mean length  = 308.14
+
+[ 2980 / 30000]
+----------------------------------
+Timesteps    = 3051520
+Elapsed time = 21246.56 sec
+FPS          = 143
+actor loss   = 0.248218
+critic loss  = 1.227656
+mean return  = 40.700523
+mean length  = 301.74
+
+[ 3000 / 30000]
+----------------------------------
+Timesteps    = 3072000
+Elapsed time = 21366.81 sec
+FPS          = 143
+actor loss   = -0.137612
+critic loss  = 2.429999
+mean return  = 38.777817
+mean length  = 294.87
+
+Saving the model ... Done.
+
+Saving the checkpoint ... Done.
+
+[ 3020 / 30000]
+----------------------------------
+Timesteps    = 3092480
+Elapsed time = 21485.87 sec
+FPS          = 143
+actor loss   = 0.111665
+critic loss  = 2.185932
+mean return  = 43.225773
+mean length  = 303.52
+
+[ 3040 / 30000]
+----------------------------------
+Timesteps    = 3112960
+Elapsed time = 21600.51 sec
+FPS          = 144
+actor loss   = -0.051396
+critic loss  = 13.288857
+mean return  = 51.446568
+mean length  = 306.06
+
+[ 3060 / 30000]
+----------------------------------
+Timesteps    = 3133440
+Elapsed time = 21721.81 sec
+FPS          = 144
+actor loss   = 0.110682
+critic loss  = 1.655564
+mean return  = 58.730377
+mean length  = 303.41
+
+[ 3080 / 30000]
+----------------------------------
+Timesteps    = 3153920
+Elapsed time = 21845.67 sec
+FPS          = 144
+actor loss   = -0.126163
+critic loss  = 9.783607
+mean return  = 56.565556
+mean length  = 304.25
+
+[ 3100 / 30000]
+----------------------------------
+Timesteps    = 3174400
+Elapsed time = 21997.38 sec
+FPS          = 144
+actor loss   = 0.060001
+critic loss  = 0.557140
+mean return  = 54.393898
+mean length  = 312.34
+
+Saving the model ... Done.
+
+[ 3120 / 30000]
+----------------------------------
+Timesteps    = 3194880
+Elapsed time = 22125.54 sec
+FPS          = 144
+actor loss   = 0.144931
+critic loss  = 2.730577
+mean return  = 52.742237
+mean length  = 304.04
+
+[ 3140 / 30000]
+----------------------------------
+Timesteps    = 3215360
+Elapsed time = 22246.85 sec
+FPS          = 144
+actor loss   = 0.059159
+critic loss  = 1.281204
+mean return  = 48.493118
+mean length  = 297.46
+
+[ 3160 / 30000]
+----------------------------------
+Timesteps    = 3235840
+Elapsed time = 22363.37 sec
+FPS          = 144
+actor loss   = 0.142611
+critic loss  = 7.200836
+mean return  = 44.382904
+mean length  = 291.73
+
+[ 3180 / 30000]
+----------------------------------
+Timesteps    = 3256320
+Elapsed time = 22479.50 sec
+FPS          = 144
+actor loss   = 0.126601
+critic loss  = 4.915231
+mean return  = 53.888077
+mean length  = 303.09
+
+[ 3200 / 30000]
+----------------------------------
+Timesteps    = 3276800
+Elapsed time = 22600.53 sec
+FPS          = 144
+actor loss   = 0.072360
+critic loss  = 1.484244
+mean return  = 45.407833
+mean length  = 299.21
+
+Saving the model ... Done.
+
+[ 3220 / 30000]
+----------------------------------
+Timesteps    = 3297280
+Elapsed time = 22749.24 sec
+FPS          = 144
+actor loss   = 0.068934
+critic loss  = 0.992656
+mean return  = 38.965355
+mean length  = 302.79
+
+[ 3240 / 30000]
+----------------------------------
+Timesteps    = 3317760
+Elapsed time = 22875.85 sec
+FPS          = 145
+actor loss   = 0.003847
+critic loss  = 8.491846
+mean return  = 41.444527
+mean length  = 292.67
+
+[ 3260 / 30000]
+----------------------------------
+Timesteps    = 3338240
+Elapsed time = 22999.94 sec
+FPS          = 145
+actor loss   = 0.072920
+critic loss  = 18.261383
+mean return  = 42.145195
+mean length  = 304.58
+
+[ 3280 / 30000]
+----------------------------------
+Timesteps    = 3358720
+Elapsed time = 23121.55 sec
+FPS          = 145
+actor loss   = 0.067579
+critic loss  = 0.376595
+mean return  = 47.020996
+mean length  = 307.11
+
+[ 3300 / 30000]
+----------------------------------
+Timesteps    = 3379200
+Elapsed time = 23230.96 sec
+FPS          = 145
+actor loss   = 0.012648
+critic loss  = 1.399157
+mean return  = 35.758965
+mean length  = 309.21
+
+Saving the model ... Done.
+
+[ 3320 / 30000]
+----------------------------------
+Timesteps    = 3399680
+Elapsed time = 23367.30 sec
+FPS          = 145
+actor loss   = 0.096095
+critic loss  = 0.345013
+mean return  = 38.486217
+mean length  = 305.95
+
+[ 3340 / 30000]
+----------------------------------
+Timesteps    = 3420160
+Elapsed time = 23534.55 sec
+FPS          = 145
+actor loss   = 0.217327
+critic loss  = 2.066809
+mean return  = 42.313057
+mean length  = 308.38
+
+[ 3360 / 30000]
+----------------------------------
+Timesteps    = 3440640
+Elapsed time = 23733.29 sec
+FPS          = 144
+actor loss   = 0.017584
+critic loss  = 15.005437
+mean return  = 42.435093
+mean length  = 294.86
+
+[ 3380 / 30000]
+----------------------------------
+Timesteps    = 3461120
+Elapsed time = 23897.82 sec
+FPS          = 144
+actor loss   = -0.098835
+critic loss  = 5.644132
+mean return  = 45.978302
+mean length  = 295.12
+
+[ 3400 / 30000]
+----------------------------------
+Timesteps    = 3481600
+Elapsed time = 24062.38 sec
+FPS          = 144
+actor loss   = 0.172571
+critic loss  = 1.411348
+mean return  = 48.031525
+mean length  = 296.13
+
+Saving the model ... Done.
+
+[ 3420 / 30000]
+----------------------------------
+Timesteps    = 3502080
+Elapsed time = 24228.52 sec
+FPS          = 144
+actor loss   = 0.030818
+critic loss  = 1.095356
+mean return  = 57.684078
+mean length  = 301.33
+
+[ 3440 / 30000]
+----------------------------------
+Timesteps    = 3522560
+Elapsed time = 24378.66 sec
+FPS          = 144
+actor loss   = 0.083955
+critic loss  = 4.209499
+mean return  = 43.091919
+mean length  = 302.85
+
+[ 3460 / 30000]
+----------------------------------
+Timesteps    = 3543040
+Elapsed time = 24514.37 sec
+FPS          = 144
+actor loss   = -0.094804
+critic loss  = 1.323799
+mean return  = 47.369408
+mean length  = 304.43
+
+[ 3480 / 30000]
+----------------------------------
+Timesteps    = 3563520
+Elapsed time = 24649.13 sec
+FPS          = 144
+actor loss   = -0.232120
+critic loss  = 1.295134
+mean return  = 42.607819
+mean length  = 303.86
+
+[ 3500 / 30000]
+----------------------------------
+Timesteps    = 3584000
+Elapsed time = 24807.23 sec
+FPS          = 144
+actor loss   = 0.115017
+critic loss  = 4.236301
+mean return  = 43.150234
+mean length  = 302.98
+
+Saving the model ... Done.
+
+Saving the checkpoint ... Done.
+
+[ 3520 / 30000]
+----------------------------------
+Timesteps    = 3604480
+Elapsed time = 24932.02 sec
+FPS          = 144
+actor loss   = -0.079354
+critic loss  = 23.276602
+mean return  = 50.431324
+mean length  = 306.44
+
+[ 3540 / 30000]
+----------------------------------
+Timesteps    = 3624960
+Elapsed time = 25056.22 sec
+FPS          = 144
+actor loss   = -0.126247
+critic loss  = 2.501786
+mean return  = 56.988514
+mean length  = 304.59
+
+[ 3560 / 30000]
+----------------------------------
+Timesteps    = 3645440
+Elapsed time = 25181.16 sec
+FPS          = 144
+actor loss   = 0.089027
+critic loss  = 0.892072
+mean return  = 45.992016
+mean length  = 301.92
+
+[ 3580 / 30000]
+----------------------------------
+Timesteps    = 3665920
+Elapsed time = 25343.20 sec
+FPS          = 144
+actor loss   = 0.024660
+critic loss  = 11.353709
+mean return  = 52.313908
+mean length  = 302.95
+
+[ 3600 / 30000]
+----------------------------------
+Timesteps    = 3686400
+Elapsed time = 25499.46 sec
+FPS          = 144
+actor loss   = -0.026191
+critic loss  = 5.280143
+mean return  = 45.053471
+mean length  = 299.58
+
+Saving the model ... Done.
+
+[ 3620 / 30000]
+----------------------------------
+Timesteps    = 3706880
+Elapsed time = 25612.65 sec
+FPS          = 144
+actor loss   = 0.146646
+critic loss  = 1.396170
+mean return  = 41.031471
+mean length  = 304.12
+
+[ 3640 / 30000]
+----------------------------------
+Timesteps    = 3727360
+Elapsed time = 25738.13 sec
+FPS          = 144
+actor loss   = 0.144081
+critic loss  = 2.576701
+mean return  = 46.517406
+mean length  = 312.99
+
+[ 3660 / 30000]
+----------------------------------
+Timesteps    = 3747840
+Elapsed time = 25856.85 sec
+FPS          = 144
+actor loss   = -0.200566
+critic loss  = 1.701898
+mean return  = 55.541107
+mean length  = 308.79
+
+[ 3680 / 30000]
+----------------------------------
+Timesteps    = 3768320
+Elapsed time = 25972.17 sec
+FPS          = 145
+actor loss   = -0.129131
+critic loss  = 4.874273
+mean return  = 54.871971
+mean length  = 302.64
+
+[ 3700 / 30000]
+----------------------------------
+Timesteps    = 3788800
+Elapsed time = 26090.20 sec
+FPS          = 145
+actor loss   = 0.146122
+critic loss  = 6.929269
+mean return  = 45.977299
+mean length  = 297.87
+
+Saving the model ... Done.
+
+[ 3720 / 30000]
+----------------------------------
+Timesteps    = 3809280
+Elapsed time = 26200.07 sec
+FPS          = 145
+actor loss   = -0.081445
+critic loss  = 9.093650
+mean return  = 42.635689
+mean length  = 297.64
+
+[ 3740 / 30000]
+----------------------------------
+Timesteps    = 3829760
+Elapsed time = 26295.10 sec
+FPS          = 145
+actor loss   = 0.002281
+critic loss  = 4.491074
+mean return  = 47.478966
+mean length  = 309.34
+
+[ 3760 / 30000]
+----------------------------------
+Timesteps    = 3850240
+Elapsed time = 26403.90 sec
+FPS          = 145
+actor loss   = -0.009710
+critic loss  = 0.639870
+mean return  = 52.735165
+mean length  = 294.83
+
+[ 3780 / 30000]
+----------------------------------
+Timesteps    = 3870720
+Elapsed time = 26498.98 sec
+FPS          = 146
+actor loss   = -0.036381
+critic loss  = 6.947968
+mean return  = 58.649704
+mean length  = 305.01
+
+[ 3800 / 30000]
+----------------------------------
+Timesteps    = 3891200
+Elapsed time = 26623.05 sec
+FPS          = 146
+actor loss   = 0.005381
+critic loss  = 9.052940
+mean return  = 54.060982
+mean length  = 302.02
+
+Saving the model ... Done.
+
+[ 3820 / 30000]
+----------------------------------
+Timesteps    = 3911680
+Elapsed time = 26753.52 sec
+FPS          = 146
+actor loss   = -0.105208
+critic loss  = 2.343649
+mean return  = 43.787796
+mean length  = 307.34
+
+[ 3840 / 30000]
+----------------------------------
+Timesteps    = 3932160
+Elapsed time = 26861.96 sec
+FPS          = 146
+actor loss   = -0.023568
+critic loss  = 3.757978
+mean return  = 44.969837
+mean length  = 304.32
+
+[ 3860 / 30000]
+----------------------------------
+Timesteps    = 3952640
+Elapsed time = 26994.74 sec
+FPS          = 146
+actor loss   = -0.240440
+critic loss  = 1.001881
+mean return  = 50.971588
+mean length  = 293.49
+
+[ 3880 / 30000]
+----------------------------------
+Timesteps    = 3973120
+Elapsed time = 27133.07 sec
+FPS          = 146
+actor loss   = 0.031653
+critic loss  = 0.451645
+mean return  = 40.479172
+mean length  = 295.57
+
+[ 3900 / 30000]
+----------------------------------
+Timesteps    = 3993600
+Elapsed time = 27264.20 sec
+FPS          = 146
+actor loss   = 0.008532
+critic loss  = 4.272550
+mean return  = 37.625084
+mean length  = 300.40
+
+Saving the model ... Done.
+
+[ 3920 / 30000]
+----------------------------------
+Timesteps    = 4014080
+Elapsed time = 27387.27 sec
+FPS          = 146
+actor loss   = 0.132942
+critic loss  = 1.630012
+mean return  = 43.244415
+mean length  = 304.48
+
+[ 3940 / 30000]
+----------------------------------
+Timesteps    = 4034560
+Elapsed time = 27495.88 sec
+FPS          = 146
+actor loss   = 0.068306
+critic loss  = 7.912420
+mean return  = 48.141590
+mean length  = 304.59
+
+[ 3960 / 30000]
+----------------------------------
+Timesteps    = 4055040
+Elapsed time = 27611.28 sec
+FPS          = 146
+actor loss   = -0.245590
+critic loss  = 6.168236
+mean return  = 43.514793
+mean length  = 303.62
+
+[ 3980 / 30000]
+----------------------------------
+Timesteps    = 4075520
+Elapsed time = 27734.34 sec
+FPS          = 146
+actor loss   = 0.126858
+critic loss  = 0.999126
+mean return  = 49.053944
+mean length  = 304.20
+
+[ 4000 / 30000]
+----------------------------------
+Timesteps    = 4096000
+Elapsed time = 27870.61 sec
+FPS          = 146
+actor loss   = -0.151130
+critic loss  = 1.116472
+mean return  = 41.980278
+mean length  = 296.13
+
+Saving the model ... Done.
+
+Saving the checkpoint ... Done.
+
+[ 4020 / 30000]
+----------------------------------
+Timesteps    = 4116480
+Elapsed time = 27997.79 sec
+FPS          = 147
+actor loss   = 0.058054
+critic loss  = 2.801533
+mean return  = 44.342876
+mean length  = 297.07
+
+[ 4040 / 30000]
+----------------------------------
+Timesteps    = 4136960
+Elapsed time = 28116.15 sec
+FPS          = 147
+actor loss   = 0.142389
+critic loss  = 1.655487
+mean return  = 50.012142
+mean length  = 303.53
+
+[ 4060 / 30000]
+----------------------------------
+Timesteps    = 4157440
+Elapsed time = 28223.98 sec
+FPS          = 147
+actor loss   = 0.112359
+critic loss  = 1.149032
+mean return  = 40.557266
+mean length  = 297.79
+
+[ 4080 / 30000]
+----------------------------------
+Timesteps    = 4177920
+Elapsed time = 28343.33 sec
+FPS          = 147
+actor loss   = 0.140154
+critic loss  = 3.406307
+mean return  = 37.067616
+mean length  = 297.80
+
+[ 4100 / 30000]
+----------------------------------
+Timesteps    = 4198400
+Elapsed time = 28476.34 sec
+FPS          = 147
+actor loss   = -0.109719
+critic loss  = 3.266434
+mean return  = 45.674492
+mean length  = 307.27
+
+Saving the model ... Done.
+
+[ 4120 / 30000]
+----------------------------------
+Timesteps    = 4218880
+Elapsed time = 28593.48 sec
+FPS          = 147
+actor loss   = 0.057448
+critic loss  = 0.477424
+mean return  = 43.995155
+mean length  = 297.77
+
+[ 4140 / 30000]
+----------------------------------
+Timesteps    = 4239360
+Elapsed time = 28714.05 sec
+FPS          = 147
+actor loss   = -0.077612
+critic loss  = 8.416634
+mean return  = 49.296921
+mean length  = 303.08
+
+[ 4160 / 30000]
+----------------------------------
+Timesteps    = 4259840
+Elapsed time = 28834.64 sec
+FPS          = 147
+actor loss   = -0.046015
+critic loss  = 2.590351
+mean return  = 55.284615
+mean length  = 304.21
+
+[ 4180 / 30000]
+----------------------------------
+Timesteps    = 4280320
+Elapsed time = 28952.42 sec
+FPS          = 147
+actor loss   = 0.110143
+critic loss  = 8.573895
+mean return  = 55.308727
+mean length  = 309.29
+
+[ 4200 / 30000]
+----------------------------------
+Timesteps    = 4300800
+Elapsed time = 29056.58 sec
+FPS          = 148
+actor loss   = 0.113766
+critic loss  = 3.919653
+mean return  = 53.635597
+mean length  = 306.26
+
+Saving the model ... Done.
+
+[ 4220 / 30000]
+----------------------------------
+Timesteps    = 4321280
+Elapsed time = 29203.21 sec
+FPS          = 147
+actor loss   = -0.130822
+critic loss  = 0.318692
+mean return  = 43.654575
+mean length  = 300.53
+
+[ 4240 / 30000]
+----------------------------------
+Timesteps    = 4341760
+Elapsed time = 29344.30 sec
+FPS          = 147
+actor loss   = -0.140470
+critic loss  = 1.370673
+mean return  = 49.000111
+mean length  = 305.35
+
+[ 4260 / 30000]
+----------------------------------
+Timesteps    = 4362240
+Elapsed time = 29481.24 sec
+FPS          = 147
+actor loss   = 0.072541
+critic loss  = 12.871094
+mean return  = 36.767540
+mean length  = 301.97
+
+[ 4280 / 30000]
+----------------------------------
+Timesteps    = 4382720
+Elapsed time = 29595.05 sec
+FPS          = 148
+actor loss   = 0.153951
+critic loss  = 0.262318
+mean return  = 39.856110
+mean length  = 297.02
+
+[ 4300 / 30000]
+----------------------------------
+Timesteps    = 4403200
+Elapsed time = 29711.32 sec
+FPS          = 148
+actor loss   = -0.046251
+critic loss  = 5.471869
+mean return  = 45.561512
+mean length  = 292.49
+
+Saving the model ... Done.
+
+[ 4320 / 30000]
+----------------------------------
+Timesteps    = 4423680
+Elapsed time = 29858.04 sec
+FPS          = 148
+actor loss   = -0.173087
+critic loss  = 5.857002
+mean return  = 51.072803
+mean length  = 297.02
+
+[ 4340 / 30000]
+----------------------------------
+Timesteps    = 4444160
+Elapsed time = 29980.02 sec
+FPS          = 148
+actor loss   = 0.138307
+critic loss  = 1.949302
+mean return  = 57.095726
+mean length  = 304.43
+
+[ 4360 / 30000]
+----------------------------------
+Timesteps    = 4464640
+Elapsed time = 30117.35 sec
+FPS          = 148
+actor loss   = -0.259365
+critic loss  = 12.325448
+mean return  = 47.223637
+mean length  = 297.80
+
+[ 4380 / 30000]
+----------------------------------
+Timesteps    = 4485120
+Elapsed time = 30290.81 sec
+FPS          = 148
+actor loss   = 0.052218
+critic loss  = 18.577032
+mean return  = 66.684746
+mean length  = 313.86
+
+[ 4400 / 30000]
+----------------------------------
+Timesteps    = 4505600
+Elapsed time = 30448.98 sec
+FPS          = 147
+actor loss   = 0.052707
+critic loss  = 1.524250
+mean return  = 71.097504
+mean length  = 310.75
+
+Saving the model ... Done.
+
+[ 4420 / 30000]
+----------------------------------
+Timesteps    = 4526080
+Elapsed time = 30612.06 sec
+FPS          = 147
+actor loss   = 0.050930
+critic loss  = 8.751670
+mean return  = 48.468945
+mean length  = 305.79
+
+[ 4440 / 30000]
+----------------------------------
+Timesteps    = 4546560
+Elapsed time = 30761.22 sec
+FPS          = 147
+actor loss   = 0.244479
+critic loss  = 7.578184
+mean return  = 45.556850
+mean length  = 312.61
+
+[ 4460 / 30000]
+----------------------------------
+Timesteps    = 4567040
+Elapsed time = 30904.66 sec
+FPS          = 147
+actor loss   = 0.062310
+critic loss  = 1.853901
+mean return  = 49.683521
+mean length  = 295.72
+
+[ 4480 / 30000]
+----------------------------------
+Timesteps    = 4587520
+Elapsed time = 31044.93 sec
+FPS          = 147
+actor loss   = -0.010090
+critic loss  = 14.097989
+mean return  = 41.160210
+mean length  = 292.88
+
+[ 4500 / 30000]
+----------------------------------
+Timesteps    = 4608000
+Elapsed time = 31169.30 sec
+FPS          = 147
+actor loss   = 0.011106
+critic loss  = 16.487118
+mean return  = 48.680389
+mean length  = 310.17
+
+Saving the model ... Done.
+
+Saving the checkpoint ... Done.
+
+[ 4520 / 30000]
+----------------------------------
+Timesteps    = 4628480
+Elapsed time = 31329.12 sec
+FPS          = 147
+actor loss   = -0.084637
+critic loss  = 1.040532
+mean return  = 50.826138
+mean length  = 315.89
+
+[ 4540 / 30000]
+----------------------------------
+Timesteps    = 4648960
+Elapsed time = 31478.47 sec
+FPS          = 147
+actor loss   = 0.040919
+critic loss  = 1.281322
+mean return  = 41.075226
+mean length  = 308.73
+
+[ 4560 / 30000]
+----------------------------------
+Timesteps    = 4669440
+Elapsed time = 31656.03 sec
+FPS          = 147
+actor loss   = -0.015821
+critic loss  = 1.121785
+mean return  = 41.928726
+mean length  = 289.28
+
+[ 4580 / 30000]
+----------------------------------
+Timesteps    = 4689920
+Elapsed time = 31792.22 sec
+FPS          = 147
+actor loss   = -0.151899
+critic loss  = 29.813271
+mean return  = 42.564342
+mean length  = 299.00
+
+[ 4600 / 30000]
+----------------------------------
+Timesteps    = 4710400
+Elapsed time = 31944.87 sec
+FPS          = 147
+actor loss   = -0.002604
+critic loss  = 7.563335
+mean return  = 55.032715
+mean length  = 305.48
+
+Saving the model ... Done.
+
+[ 4620 / 30000]
+----------------------------------
+Timesteps    = 4730880
+Elapsed time = 32121.24 sec
+FPS          = 147
+actor loss   = 0.057453
+critic loss  = 6.338223
+mean return  = 60.264095
+mean length  = 312.09
+
+[ 4640 / 30000]
+----------------------------------
+Timesteps    = 4751360
+Elapsed time = 32242.93 sec
+FPS          = 147
+actor loss   = 0.035030
+critic loss  = 1.992766
+mean return  = 50.310150
+mean length  = 303.51
+
+[ 4660 / 30000]
+----------------------------------
+Timesteps    = 4771840
+Elapsed time = 32362.72 sec
+FPS          = 147
+actor loss   = -0.036315
+critic loss  = 2.667926
+mean return  = 41.131393
+mean length  = 301.52
+
+[ 4680 / 30000]
+----------------------------------
+Timesteps    = 4792320
+Elapsed time = 32499.52 sec
+FPS          = 147
+actor loss   = -0.174387
+critic loss  = 3.655998
+mean return  = 38.566601
+mean length  = 301.68
+
+[ 4700 / 30000]
+----------------------------------
+Timesteps    = 4812800
+Elapsed time = 32618.41 sec
+FPS          = 147
+actor loss   = 0.018948
+critic loss  = 1.320862
+mean return  = 29.253601
+mean length  = 313.26
+
+Saving the model ... Done.
+
+[ 4720 / 30000]
+----------------------------------
+Timesteps    = 4833280
+Elapsed time = 32731.53 sec
+FPS          = 147
+actor loss   = 0.042790
+critic loss  = 0.385328
+mean return  = 23.393499
+mean length  = 308.24
+
+[ 4740 / 30000]
+----------------------------------
+Timesteps    = 4853760
+Elapsed time = 32868.80 sec
+FPS          = 147
+actor loss   = -0.129958
+critic loss  = 4.903094
+mean return  = 18.862482
+mean length  = 300.28
+
+[ 4760 / 30000]
+----------------------------------
+Timesteps    = 4874240
+Elapsed time = 33008.72 sec
+FPS          = 147
+actor loss   = -0.067539
+critic loss  = 0.194864
+mean return  = 22.393467
+mean length  = 320.01
+
+[ 4780 / 30000]
+----------------------------------
+Timesteps    = 4894720
+Elapsed time = 33139.33 sec
+FPS          = 147
+actor loss   = -0.119552
+critic loss  = 0.850713
+mean return  = 28.579807
+mean length  = 330.10
+
+[ 4800 / 30000]
+----------------------------------
+Timesteps    = 4915200
+Elapsed time = 33251.73 sec
+FPS          = 147
+actor loss   = 0.114981
+critic loss  = 2.171364
+mean return  = 26.204798
+mean length  = 335.20
+
+Saving the model ... Done.
+
+[ 4820 / 30000]
+----------------------------------
+Timesteps    = 4935680
+Elapsed time = 33384.75 sec
+FPS          = 147
+actor loss   = -0.012598
+critic loss  = 0.729854
+mean return  = 23.574690
+mean length  = 354.08
+
+[ 4840 / 30000]
+----------------------------------
+Timesteps    = 4956160
+Elapsed time = 33512.83 sec
+FPS          = 147
+actor loss   = -0.004373
+critic loss  = 0.680477
+mean return  = 24.692059
+mean length  = 338.67
+
+[ 4860 / 30000]
+----------------------------------
+Timesteps    = 4976640
+Elapsed time = 33650.91 sec
+FPS          = 147
+actor loss   = 0.018757
+critic loss  = 0.218212
+mean return  = 23.186348
+mean length  = 319.83
+
+[ 4880 / 30000]
+----------------------------------
+Timesteps    = 4997120
+Elapsed time = 33863.47 sec
+FPS          = 147
+actor loss   = 0.020645
+critic loss  = 0.437796
+mean return  = 22.504910
+mean length  = 323.17
+
+[ 4900 / 30000]
+----------------------------------
+Timesteps    = 5017600
+Elapsed time = 34042.36 sec
+FPS          = 147
+actor loss   = 0.285555
+critic loss  = 0.507967
+mean return  = 21.121235
+mean length  = 311.91
+
+Saving the model ... Done.
+
+[ 4920 / 30000]
+----------------------------------
+Timesteps    = 5038080
+Elapsed time = 34222.52 sec
+FPS          = 147
+actor loss   = -0.069718
+critic loss  = 0.533988
+mean return  = 24.592321
+mean length  = 322.15
+
+[ 4940 / 30000]
+----------------------------------
+Timesteps    = 5058560
+Elapsed time = 34409.80 sec
+FPS          = 147
+actor loss   = -0.093649
+critic loss  = 1.899899
+mean return  = 31.387083
+mean length  = 307.68
+
+[ 4960 / 30000]
+----------------------------------
+Timesteps    = 5079040
+Elapsed time = 34569.75 sec
+FPS          = 146
+actor loss   = -0.266947
+critic loss  = 0.583918
+mean return  = 38.653912
+mean length  = 322.44
+
+[ 4980 / 30000]
+----------------------------------
+Timesteps    = 5099520
+Elapsed time = 34761.35 sec
+FPS          = 146
+actor loss   = 0.086205
+critic loss  = 1.405337
+mean return  = 33.724621
+mean length  = 337.73
+
+[ 5000 / 30000]
+----------------------------------
+Timesteps    = 5120000
+Elapsed time = 34974.65 sec
+FPS          = 146
+actor loss   = 0.049281
+critic loss  = 0.280130
+mean return  = 31.007725
+mean length  = 340.53
+
+Saving the model ... Done.
+
+Saving the checkpoint ... Done.
+
+[ 5020 / 30000]
+----------------------------------
+Timesteps    = 5140480
+Elapsed time = 35169.75 sec
+FPS          = 146
+actor loss   = 0.006130
+critic loss  = 0.945594
+mean return  = 33.031281
+mean length  = 334.35
+
+[ 5040 / 30000]
+----------------------------------
+Timesteps    = 5160960
+Elapsed time = 35332.48 sec
+FPS          = 146
+actor loss   = -0.071084
+critic loss  = 2.727997
+mean return  = 31.440418
+mean length  = 332.54
+
+[ 5060 / 30000]
+----------------------------------
+Timesteps    = 5181440
+Elapsed time = 35535.13 sec
+FPS          = 145
+actor loss   = -0.081559
+critic loss  = 1.343576
+mean return  = 27.685329
+mean length  = 326.32
+
+[ 5080 / 30000]
+----------------------------------
+Timesteps    = 5201920
+Elapsed time = 35725.50 sec
+FPS          = 145
+actor loss   = -0.091522
+critic loss  = 1.900279
+mean return  = 29.221729
+mean length  = 314.71
+
+[ 5100 / 30000]
+----------------------------------
+Timesteps    = 5222400
+Elapsed time = 35876.43 sec
+FPS          = 145
+actor loss   = 0.197423
+critic loss  = 1.368158
+mean return  = 31.201233
+mean length  = 321.24
+
+Saving the model ... Done.
+
+[ 5120 / 30000]
+----------------------------------
+Timesteps    = 5242880
+Elapsed time = 36053.88 sec
+FPS          = 145
+actor loss   = -0.239680
+critic loss  = 2.141690
+mean return  = 30.839863
+mean length  = 349.10
+
+[ 5140 / 30000]
+----------------------------------
+Timesteps    = 5263360
+Elapsed time = 36194.61 sec
+FPS          = 145
+actor loss   = 0.123653
+critic loss  = 1.019333
+mean return  = 27.557859
+mean length  = 348.89
+
+[ 5160 / 30000]
+----------------------------------
+Timesteps    = 5283840
+Elapsed time = 36333.74 sec
+FPS          = 145
+actor loss   = 0.047823
+critic loss  = 2.345150
+mean return  = 27.995159
+mean length  = 341.06
+
+[ 5180 / 30000]
+----------------------------------
+Timesteps    = 5304320
+Elapsed time = 36470.68 sec
+FPS          = 145
+actor loss   = -0.152296
+critic loss  = 6.423662
+mean return  = 27.428947
+mean length  = 329.21
+
+[ 5200 / 30000]
+----------------------------------
+Timesteps    = 5324800
+Elapsed time = 36618.02 sec
+FPS          = 145
+actor loss   = 0.011268
+critic loss  = 0.164042
+mean return  = 38.676979
+mean length  = 339.00
+
+Saving the model ... Done.
+
+[ 5220 / 30000]
+----------------------------------
+Timesteps    = 5345280
+Elapsed time = 36752.26 sec
+FPS          = 145
+actor loss   = -0.048548
+critic loss  = 0.709722
+mean return  = 32.864731
+mean length  = 329.11
+
+[ 5240 / 30000]
+----------------------------------
+Timesteps    = 5365760
+Elapsed time = 36910.17 sec
+FPS          = 145
+actor loss   = 0.127680
+critic loss  = 0.531228
+mean return  = 26.394909
+mean length  = 330.23
+
+[ 5260 / 30000]
+----------------------------------
+Timesteps    = 5386240
+Elapsed time = 37079.48 sec
+FPS          = 145
+actor loss   = -0.189399
+critic loss  = 2.575795
+mean return  = 26.638222
+mean length  = 337.35
+
+[ 5280 / 30000]
+----------------------------------
+Timesteps    = 5406720
+Elapsed time = 37219.01 sec
+FPS          = 145
+actor loss   = 0.145984
+critic loss  = 0.597275
+mean return  = 30.460180
+mean length  = 344.44
+
+[ 5300 / 30000]
+----------------------------------
+Timesteps    = 5427200
+Elapsed time = 37328.11 sec
+FPS          = 145
+actor loss   = -0.050075
+critic loss  = 1.337612
+mean return  = 26.940275
+mean length  = 339.81
+
+Saving the model ... Done.
+
+[ 5320 / 30000]
+----------------------------------
+Timesteps    = 5447680
+Elapsed time = 37471.20 sec
+FPS          = 145
+actor loss   = 0.123482
+critic loss  = 0.178496
+mean return  = 26.599054
+mean length  = 321.74
+
+[ 5340 / 30000]
+----------------------------------
+Timesteps    = 5468160
+Elapsed time = 37604.13 sec
+FPS          = 145
+actor loss   = 0.045754
+critic loss  = 1.033105
+mean return  = 25.746943
+mean length  = 343.02
+
+[ 5360 / 30000]
+----------------------------------
+Timesteps    = 5488640
+Elapsed time = 37749.07 sec
+FPS          = 145
+actor loss   = -0.014217
+critic loss  = 3.078341
+mean return  = 28.202068
+mean length  = 349.21
+
+[ 5380 / 30000]
+----------------------------------
+Timesteps    = 5509120
+Elapsed time = 37900.52 sec
+FPS          = 145
+actor loss   = -0.205838
+critic loss  = 3.692953
+mean return  = 28.803455
+mean length  = 337.28
+
+[ 5400 / 30000]
+----------------------------------
+Timesteps    = 5529600
+Elapsed time = 38042.84 sec
+FPS          = 145
+actor loss   = 0.186079
+critic loss  = 12.599890
+mean return  = 38.535133
+mean length  = 350.08
+
+Saving the model ... Done.
+
+[ 5420 / 30000]
+----------------------------------
+Timesteps    = 5550080
+Elapsed time = 38172.30 sec
+FPS          = 145
+actor loss   = 0.118182
+critic loss  = 0.316352
+mean return  = 39.082535
+mean length  = 342.04
+
+[ 5440 / 30000]
+----------------------------------
+Timesteps    = 5570560
+Elapsed time = 38300.99 sec
+FPS          = 145
+actor loss   = 0.305619
+critic loss  = 0.165607
+mean return  = 24.806633
+mean length  = 343.26
+
+[ 5460 / 30000]
+----------------------------------
+Timesteps    = 5591040
+Elapsed time = 38478.14 sec
+FPS          = 145
+actor loss   = 0.029764
+critic loss  = 1.283956
+mean return  = 22.367041
+mean length  = 360.15
+
+[ 5480 / 30000]
+----------------------------------
+Timesteps    = 5611520
+Elapsed time = 38599.14 sec
+FPS          = 145
+actor loss   = 0.031310
+critic loss  = 1.626282
+mean return  = 24.742821
+mean length  = 364.15
+
+[ 5500 / 30000]
+----------------------------------
+Timesteps    = 5632000
+Elapsed time = 38735.66 sec
+FPS          = 145
+actor loss   = -0.004240
+critic loss  = 0.229390
+mean return  = 28.194641
+mean length  = 352.61
+
+Saving the model ... Done.
+
+Saving the checkpoint ... Done.
+
+[ 5520 / 30000]
+----------------------------------
+Timesteps    = 5652480
+Elapsed time = 38884.08 sec
+FPS          = 145
+actor loss   = 0.121859
+critic loss  = 0.160631
+mean return  = 22.776840
+mean length  = 332.48
+
+[ 5540 / 30000]
+----------------------------------
+Timesteps    = 5672960
+Elapsed time = 39070.91 sec
+FPS          = 145
+actor loss   = -0.043217
+critic loss  = 1.979405
+mean return  = 20.464035
+mean length  = 337.19
+
+[ 5560 / 30000]
+----------------------------------
+Timesteps    = 5693440
+Elapsed time = 39251.78 sec
+FPS          = 145
+actor loss   = -0.039243
+critic loss  = 0.129814
+mean return  = 24.443327
+mean length  = 351.70
+
+[ 5580 / 30000]
+----------------------------------
+Timesteps    = 5713920
+Elapsed time = 39408.31 sec
+FPS          = 144
+actor loss   = -0.148788
+critic loss  = 0.273279
+mean return  = 23.004725
+mean length  = 357.26
+
+[ 5600 / 30000]
+----------------------------------
+Timesteps    = 5734400
+Elapsed time = 39561.13 sec
+FPS          = 144
+actor loss   = 0.042181
+critic loss  = 0.886175
+mean return  = 24.442604
+mean length  = 356.90
+
+Saving the model ... Done.
+
+[ 5620 / 30000]
+----------------------------------
+Timesteps    = 5754880
+Elapsed time = 39693.03 sec
+FPS          = 144
+actor loss   = -0.156869
+critic loss  = 0.596567
+mean return  = 23.922361
+mean length  = 371.63
+
+[ 5640 / 30000]
+----------------------------------
+Timesteps    = 5775360
+Elapsed time = 39826.92 sec
+FPS          = 145
+actor loss   = 0.088374
+critic loss  = 0.561789
+mean return  = 22.410851
+mean length  = 365.81
+
+[ 5660 / 30000]
+----------------------------------
+Timesteps    = 5795840
+Elapsed time = 39945.74 sec
+FPS          = 145
+actor loss   = -0.126091
+critic loss  = 4.224756
+mean return  = 22.980982
+mean length  = 358.09
+
+[ 5680 / 30000]
+----------------------------------
+Timesteps    = 5816320
+Elapsed time = 40101.33 sec
+FPS          = 145
+actor loss   = 0.154003
+critic loss  = 0.637129
+mean return  = 22.064533
+mean length  = 358.15
+
+[ 5700 / 30000]
+----------------------------------
+Timesteps    = 5836800
+Elapsed time = 40263.40 sec
+FPS          = 144
+actor loss   = 0.017442
+critic loss  = 0.176354
+mean return  = 20.166433
+mean length  = 360.79
+
+Saving the model ... Done.
+
+[ 5720 / 30000]
+----------------------------------
+Timesteps    = 5857280
+Elapsed time = 40498.00 sec
+FPS          = 144
+actor loss   = -0.055758
+critic loss  = 0.490308
+mean return  = 22.745468
+mean length  = 347.99
+
+[ 5740 / 30000]
+----------------------------------
+Timesteps    = 5877760
+Elapsed time = 40773.04 sec
+FPS          = 144
+actor loss   = -0.181294
+critic loss  = 0.345733
+mean return  = 24.192184
+mean length  = 346.23
+
+[ 5760 / 30000]
+----------------------------------
+Timesteps    = 5898240
+Elapsed time = 41039.45 sec
+FPS          = 143
+actor loss   = -0.035199
+critic loss  = 0.803917
+mean return  = 28.021282
+mean length  = 362.07
+
+[ 5780 / 30000]
+----------------------------------
+Timesteps    = 5918720
+Elapsed time = 41239.65 sec
+FPS          = 143
+actor loss   = -0.132905
+critic loss  = 5.639831
+mean return  = 29.135008
+mean length  = 374.68
+
+[ 5800 / 30000]
+----------------------------------
+Timesteps    = 5939200
+Elapsed time = 41487.15 sec
+FPS          = 143
+actor loss   = -0.133890
+critic loss  = 9.831738
+mean return  = 33.054970
+mean length  = 360.39
+
+Saving the model ... Done.
+
+[ 5820 / 30000]
+----------------------------------
+Timesteps    = 5959680
+Elapsed time = 41725.19 sec
+FPS          = 142
+actor loss   = 0.039023
+critic loss  = 0.505807
+mean return  = 32.575970
+mean length  = 353.37
+
+[ 5840 / 30000]
+----------------------------------
+Timesteps    = 5980160
+Elapsed time = 41943.03 sec
+FPS          = 142
+actor loss   = 0.162999
+critic loss  = 0.331726
+mean return  = 25.840845
+mean length  = 375.09
+
+[ 5860 / 30000]
+----------------------------------
+Timesteps    = 6000640
+Elapsed time = 42096.98 sec
+FPS          = 142
+actor loss   = -0.094286
+critic loss  = 1.253276
+mean return  = 19.987772
+mean length  = 366.55
+
+[ 5880 / 30000]
+----------------------------------
+Timesteps    = 6021120
+Elapsed time = 42252.50 sec
+FPS          = 142
+actor loss   = -0.047497
+critic loss  = 0.537650
+mean return  = 20.776312
+mean length  = 354.08
+
+[ 5900 / 30000]
+----------------------------------
+Timesteps    = 6041600
+Elapsed time = 42382.70 sec
+FPS          = 142
+actor loss   = -0.007640
+critic loss  = 0.373095
+mean return  = 26.177244
+mean length  = 353.36
+
+Saving the model ... Done.
+
+[ 5920 / 30000]
+----------------------------------
+Timesteps    = 6062080
+Elapsed time = 42551.23 sec
+FPS          = 142
+actor loss   = 0.084708
+critic loss  = 0.888726
+mean return  = 27.876822
+mean length  = 348.32
+
+[ 5940 / 30000]
+----------------------------------
+Timesteps    = 6082560
+Elapsed time = 42757.32 sec
+FPS          = 142
+actor loss   = 0.046936
+critic loss  = 0.090177
+mean return  = 23.245129
+mean length  = 344.08
+
+[ 5960 / 30000]
+----------------------------------
+Timesteps    = 6103040
+Elapsed time = 42938.97 sec
+FPS          = 142
+actor loss   = -0.080186
+critic loss  = 0.552727
+mean return  = 23.542809
+mean length  = 355.90
+
+[ 5980 / 30000]
+----------------------------------
+Timesteps    = 6123520
+Elapsed time = 43091.75 sec
+FPS          = 142
+actor loss   = 0.066202
+critic loss  = 0.942823
+mean return  = 24.918230
+mean length  = 355.70
+
+[ 6000 / 30000]
+----------------------------------
+Timesteps    = 6144000
+Elapsed time = 43259.89 sec
+FPS          = 142
+actor loss   = 0.057493
+critic loss  = 2.040028
+mean return  = 23.661020
+mean length  = 359.10
+
+Saving the model ... Done.
+
+Saving the checkpoint ... Done.
+
+[ 6020 / 30000]
+----------------------------------
+Timesteps    = 6164480
+Elapsed time = 43405.43 sec
+FPS          = 142
+actor loss   = -0.115157
+critic loss  = 1.350090
+mean return  = 29.318506
+mean length  = 357.35
+
+[ 6040 / 30000]
+----------------------------------
+Timesteps    = 6184960
+Elapsed time = 43601.16 sec
+FPS          = 141
+actor loss   = 0.030388
+critic loss  = 0.169005
+mean return  = 27.860186
+mean length  = 355.48
+
+[ 6060 / 30000]
+----------------------------------
+Timesteps    = 6205440
+Elapsed time = 43764.35 sec
+FPS          = 141
+actor loss   = -0.318129
+critic loss  = 0.988667
+mean return  = 28.302179
+mean length  = 351.98
+
+[ 6080 / 30000]
+----------------------------------
+Timesteps    = 6225920
+Elapsed time = 43898.28 sec
+FPS          = 141
+actor loss   = 0.053135
+critic loss  = 1.386851
+mean return  = 24.055891
+mean length  = 322.62
+
+[ 6100 / 30000]
+----------------------------------
+Timesteps    = 6246400
+Elapsed time = 44065.05 sec
+FPS          = 141
+actor loss   = 0.068357
+critic loss  = 0.908347
+mean return  = 21.173706
+mean length  = 341.53
+
+Saving the model ... Done.
+
+[ 6120 / 30000]
+----------------------------------
+Timesteps    = 6266880
+Elapsed time = 44213.38 sec
+FPS          = 141
+actor loss   = 0.001096
+critic loss  = 0.423783
+mean return  = 20.258705
+mean length  = 362.74
+
+[ 6140 / 30000]
+----------------------------------
+Timesteps    = 6287360
+Elapsed time = 44356.00 sec
+FPS          = 141
+actor loss   = 0.022356
+critic loss  = 1.056707
+mean return  = 18.319941
+mean length  = 365.44
+
+[ 6160 / 30000]
+----------------------------------
+Timesteps    = 6307840
+Elapsed time = 44492.22 sec
+FPS          = 141
+actor loss   = -0.097607
+critic loss  = 0.489438
+mean return  = 20.784191
+mean length  = 370.90
+
+[ 6180 / 30000]
+----------------------------------
+Timesteps    = 6328320
+Elapsed time = 44642.12 sec
+FPS          = 141
+actor loss   = 0.061836
+critic loss  = 0.576166
+mean return  = 20.192163
+mean length  = 370.95
+
+[ 6200 / 30000]
+----------------------------------
+Timesteps    = 6348800
+Elapsed time = 44785.26 sec
+FPS          = 141
+actor loss   = -0.087127
+critic loss  = 0.187809
+mean return  = 19.950579
+mean length  = 353.84
+
+Saving the model ... Done.
+
+[ 6220 / 30000]
+----------------------------------
+Timesteps    = 6369280
+Elapsed time = 44911.08 sec
+FPS          = 141
+actor loss   = -0.035197
+critic loss  = 0.918712
+mean return  = 20.488735
+mean length  = 351.89
+
+[ 6240 / 30000]
+----------------------------------
+Timesteps    = 6389760
+Elapsed time = 45059.16 sec
+FPS          = 141
+actor loss   = -0.061535
+critic loss  = 0.640200
+mean return  = 20.537209
+mean length  = 359.58
+
+[ 6260 / 30000]
+----------------------------------
+Timesteps    = 6410240
+Elapsed time = 45207.73 sec
+FPS          = 141
+actor loss   = 0.035940
+critic loss  = 0.416031
+mean return  = 20.215033
+mean length  = 371.41
+
+[ 6280 / 30000]
+----------------------------------
+Timesteps    = 6430720
+Elapsed time = 45331.27 sec
+FPS          = 141
+actor loss   = 0.085908
+critic loss  = 0.576183
+mean return  = 20.399246
+mean length  = 359.52
+
+[ 6300 / 30000]
+----------------------------------
+Timesteps    = 6451200
+Elapsed time = 45443.19 sec
+FPS          = 141
+actor loss   = -0.113910
+critic loss  = 0.785581
+mean return  = 21.268448
+mean length  = 346.47
+
+Saving the model ... Done.
+
+[ 6320 / 30000]
+----------------------------------
+Timesteps    = 6471680
+Elapsed time = 45562.08 sec
+FPS          = 142
+actor loss   = 0.020048
+critic loss  = 0.363464
+mean return  = 19.879452
+mean length  = 332.44
+
+[ 6340 / 30000]
+----------------------------------
+Timesteps    = 6492160
+Elapsed time = 45679.66 sec
+FPS          = 142
+actor loss   = 0.070380
+critic loss  = 0.167711
+mean return  = 18.193403
+mean length  = 330.79
+
+[ 6360 / 30000]
+----------------------------------
+Timesteps    = 6512640
+Elapsed time = 45793.57 sec
+FPS          = 142
+actor loss   = -0.049039
+critic loss  = 1.091845
+mean return  = 18.682163
+mean length  = 337.71
+
+[ 6380 / 30000]
+----------------------------------
+Timesteps    = 6533120
+Elapsed time = 45916.49 sec
+FPS          = 142
+actor loss   = -0.040905
+critic loss  = 1.871416
+mean return  = 25.079222
+mean length  = 346.69
+
+[ 6400 / 30000]
+----------------------------------
+Timesteps    = 6553600
+Elapsed time = 46059.40 sec
+FPS          = 142
+actor loss   = 0.005982
+critic loss  = 0.037328
+mean return  = 22.800274
+mean length  = 336.49
+
+Saving the model ... Done.
+
+[ 6420 / 30000]
+----------------------------------
+Timesteps    = 6574080
+Elapsed time = 46216.74 sec
+FPS          = 142
+actor loss   = -0.047313
+critic loss  = 2.828982
+mean return  = 18.070145
+mean length  = 327.48
+
+[ 6440 / 30000]
+----------------------------------
+Timesteps    = 6594560
+Elapsed time = 46345.02 sec
+FPS          = 142
+actor loss   = 0.098831
+critic loss  = 0.630520
+mean return  = 21.945606
+mean length  = 294.44
+
+[ 6460 / 30000]
+----------------------------------
+Timesteps    = 6615040
+Elapsed time = 46487.81 sec
+FPS          = 142
+actor loss   = -0.312591
+critic loss  = 0.057585
+mean return  = 23.612278
+mean length  = 305.14
+
+[ 6480 / 30000]
+----------------------------------
+Timesteps    = 6635520
+Elapsed time = 46596.48 sec
+FPS          = 142
+actor loss   = -0.047984
+critic loss  = 1.478970
+mean return  = 28.232624
+mean length  = 314.07
+
+[ 6500 / 30000]
+----------------------------------
+Timesteps    = 6656000
+Elapsed time = 46704.42 sec
+FPS          = 142
+actor loss   = -0.312829
+critic loss  = 1.550161
+mean return  = 29.397215
+mean length  = 325.39
+
+Saving the model ... Done.
+
+Saving the checkpoint ... Done.
+
+[ 6520 / 30000]
+----------------------------------
+Timesteps    = 6676480
+Elapsed time = 46827.51 sec
+FPS          = 142
+actor loss   = -0.021321
+critic loss  = 0.089535
+mean return  = 21.166590
+mean length  = 330.50
+
+[ 6540 / 30000]
+----------------------------------
+Timesteps    = 6696960
+Elapsed time = 46980.96 sec
+FPS          = 142
+actor loss   = -0.380480
+critic loss  = 0.589861
+mean return  = 18.834145
+mean length  = 347.86
+
+[ 6560 / 30000]
+----------------------------------
+Timesteps    = 6717440
+Elapsed time = 47120.54 sec
+FPS          = 142
+actor loss   = -0.019031
+critic loss  = 5.961023
+mean return  = 19.822788
+mean length  = 332.75
+
+[ 6580 / 30000]
+----------------------------------
+Timesteps    = 6737920
+Elapsed time = 47276.38 sec
+FPS          = 142
+actor loss   = 0.000203
+critic loss  = 4.077907
+mean return  = 23.529348
+mean length  = 326.56
+
+[ 6600 / 30000]
+----------------------------------
+Timesteps    = 6758400
+Elapsed time = 47395.44 sec
+FPS          = 142
+actor loss   = -0.011100
+critic loss  = 0.614901
+mean return  = 19.364853
+mean length  = 331.87
+
+Saving the model ... Done.
+
+[ 6620 / 30000]
+----------------------------------
+Timesteps    = 6778880
+Elapsed time = 47533.49 sec
+FPS          = 142
+actor loss   = -0.098789
+critic loss  = 0.416280
+mean return  = 18.924711
+mean length  = 355.16
+
+[ 6640 / 30000]
+----------------------------------
+Timesteps    = 6799360
+Elapsed time = 47677.53 sec
+FPS          = 142
+actor loss   = 0.166848
+critic loss  = 0.961206
+mean return  = 24.004684
+mean length  = 354.69
+
+[ 6660 / 30000]
+----------------------------------
+Timesteps    = 6819840
+Elapsed time = 47808.54 sec
+FPS          = 142
+actor loss   = 0.016410
+critic loss  = 1.216022
+mean return  = 24.372429
+mean length  = 307.72
+
+[ 6680 / 30000]
+----------------------------------
+Timesteps    = 6840320
+Elapsed time = 47919.34 sec
+FPS          = 142
+actor loss   = -0.071791
+critic loss  = 1.099922
+mean return  = 20.693426
+mean length  = 328.66
+
+[ 6700 / 30000]
+----------------------------------
+Timesteps    = 6860800
+Elapsed time = 48085.58 sec
+FPS          = 142
+actor loss   = 0.117366
+critic loss  = 1.952918
+mean return  = 20.774376
+mean length  = 340.13
+
+Saving the model ... Done.
+
+[ 6720 / 30000]
+----------------------------------
+Timesteps    = 6881280
+Elapsed time = 48237.97 sec
+FPS          = 142
+actor loss   = 0.019320
+critic loss  = 0.325924
+mean return  = 23.458269
+mean length  = 336.65
+
+[ 6740 / 30000]
+----------------------------------
+Timesteps    = 6901760
+Elapsed time = 48396.23 sec
+FPS          = 142
+actor loss   = 0.093248
+critic loss  = 0.086471
+mean return  = 20.904175
+mean length  = 324.40
+
+[ 6760 / 30000]
+----------------------------------
+Timesteps    = 6922240
+Elapsed time = 48537.70 sec
+FPS          = 142
+actor loss   = 0.073973
+critic loss  = 0.928217
+mean return  = 21.376543
+mean length  = 300.94
+
+[ 6780 / 30000]
+----------------------------------
+Timesteps    = 6942720
+Elapsed time = 48667.72 sec
+FPS          = 142
+actor loss   = 0.162150
+critic loss  = 0.086222
+mean return  = 22.939827
+mean length  = 308.85
+
+[ 6800 / 30000]
+----------------------------------
+Timesteps    = 6963200
+Elapsed time = 48804.63 sec
+FPS          = 142
+actor loss   = 0.050080
+critic loss  = 0.222548
+mean return  = 21.661903
+mean length  = 326.02
+
+Saving the model ... Done.
+
+[ 6820 / 30000]
+----------------------------------
+Timesteps    = 6983680
+Elapsed time = 48922.52 sec
+FPS          = 142
+actor loss   = 0.022792
+critic loss  = 1.482768
+mean return  = 23.548548
+mean length  = 313.18
+
+[ 6840 / 30000]
+----------------------------------
+Timesteps    = 7004160
+Elapsed time = 49074.06 sec
+FPS          = 142
+actor loss   = 0.132753
+critic loss  = 4.821996
+mean return  = 26.654463
+mean length  = 320.30
+
+[ 6860 / 30000]
+----------------------------------
+Timesteps    = 7024640
+Elapsed time = 49200.66 sec
+FPS          = 142
+actor loss   = -0.105022
+critic loss  = 0.755928
+mean return  = 29.134539
+mean length  = 352.01
+
+[ 6880 / 30000]
+----------------------------------
+Timesteps    = 7045120
+Elapsed time = 49356.40 sec
+FPS          = 142
+actor loss   = 0.080879
+critic loss  = 0.311757
+mean return  = 25.326899
+mean length  = 353.98
+
+[ 6900 / 30000]
+----------------------------------
+Timesteps    = 7065600
+Elapsed time = 49468.16 sec
+FPS          = 142
+actor loss   = 0.023561
+critic loss  = 1.948778
+mean return  = 23.480494
+mean length  = 331.72
+
+Saving the model ... Done.
+
+[ 6920 / 30000]
+----------------------------------
+Timesteps    = 7086080
+Elapsed time = 49611.67 sec
+FPS          = 142
+actor loss   = -0.068162
+critic loss  = 1.271109
+mean return  = 24.879036
+mean length  = 347.87
+
+[ 6940 / 30000]
+----------------------------------
+Timesteps    = 7106560
+Elapsed time = 49724.06 sec
+FPS          = 142
+actor loss   = -0.167142
+critic loss  = 1.992016
+mean return  = 27.802402
+mean length  = 356.10
+
+[ 6960 / 30000]
+----------------------------------
+Timesteps    = 7127040
+Elapsed time = 49840.90 sec
+FPS          = 142
+actor loss   = 0.142031
+critic loss  = 9.722553
+mean return  = 28.812780
+mean length  = 336.03
+
+[ 6980 / 30000]
+----------------------------------
+Timesteps    = 7147520
+Elapsed time = 49979.10 sec
+FPS          = 143
+actor loss   = -0.159673
+critic loss  = 1.594505
+mean return  = 27.366270
+mean length  = 331.77
+
+[ 7000 / 30000]
+----------------------------------
+Timesteps    = 7168000
+Elapsed time = 50101.26 sec
+FPS          = 143
+actor loss   = 0.164078
+critic loss  = 0.232968
+mean return  = 26.535616
+mean length  = 332.42
+
+Saving the model ... Done.
+
+Saving the checkpoint ... Done.
+
+[ 7020 / 30000]
+----------------------------------
+Timesteps    = 7188480
+Elapsed time = 50232.76 sec
+FPS          = 143
+actor loss   = -0.143855
+critic loss  = 5.751287
+mean return  = 31.094677
+mean length  = 346.57
+
+[ 7040 / 30000]
+----------------------------------
+Timesteps    = 7208960
+Elapsed time = 50390.56 sec
+FPS          = 143
+actor loss   = -0.130711
+critic loss  = 0.659073
+mean return  = 30.702944
+mean length  = 348.28
+
+[ 7060 / 30000]
+----------------------------------
+Timesteps    = 7229440
+Elapsed time = 50485.16 sec
+FPS          = 143
+actor loss   = 0.122326
+critic loss  = 1.377967
+mean return  = 31.803955
+mean length  = 316.18
+
+[ 7080 / 30000]
+----------------------------------
+Timesteps    = 7249920
+Elapsed time = 50612.45 sec
+FPS          = 143
+actor loss   = 0.020102
+critic loss  = 0.661477
+mean return  = 35.917534
+mean length  = 314.77
+
+[ 7100 / 30000]
+----------------------------------
+Timesteps    = 7270400
+Elapsed time = 50739.59 sec
+FPS          = 143
+actor loss   = 0.096257
+critic loss  = 0.330875
+mean return  = 33.242321
+mean length  = 320.73
+
+Saving the model ... Done.
+
+[ 7120 / 30000]
+----------------------------------
+Timesteps    = 7290880
+Elapsed time = 50860.68 sec
+FPS          = 143
+actor loss   = -0.010934
+critic loss  = 0.714851
+mean return  = 29.795799
+mean length  = 330.83
+
+[ 7140 / 30000]
+----------------------------------
+Timesteps    = 7311360
+Elapsed time = 50996.02 sec
+FPS          = 143
+actor loss   = -0.142741
+critic loss  = 1.325222
+mean return  = 27.875591
+mean length  = 332.10
+
+[ 7160 / 30000]
+----------------------------------
+Timesteps    = 7331840
+Elapsed time = 51106.12 sec
+FPS          = 143
+actor loss   = 0.048596
+critic loss  = 0.946806
+mean return  = 25.169004
+mean length  = 339.77
+
+[ 7180 / 30000]
+----------------------------------
+Timesteps    = 7352320
+Elapsed time = 51218.76 sec
+FPS          = 143
+actor loss   = 0.232739
+critic loss  = 0.838896
+mean return  = 32.744877
+mean length  = 328.05
+
+[ 7200 / 30000]
+----------------------------------
+Timesteps    = 7372800
+Elapsed time = 51323.45 sec
+FPS          = 143
+actor loss   = 0.055799
+critic loss  = 1.673848
+mean return  = 33.802338
+mean length  = 330.26
+
+Saving the model ... Done.
+
+[ 7220 / 30000]
+----------------------------------
+Timesteps    = 7393280
+Elapsed time = 51446.31 sec
+FPS          = 143
+actor loss   = 0.027109
+critic loss  = 14.217209
+mean return  = 33.173138
+mean length  = 325.67
+
+[ 7240 / 30000]
+----------------------------------
+Timesteps    = 7413760
+Elapsed time = 51569.85 sec
+FPS          = 143
+actor loss   = -0.029893
+critic loss  = 1.587008
+mean return  = 46.712479
+mean length  = 322.66
+
+[ 7260 / 30000]
+----------------------------------
+Timesteps    = 7434240
+Elapsed time = 51682.82 sec
+FPS          = 143
+actor loss   = -0.166404
+critic loss  = 6.807481
+mean return  = 39.032440
+mean length  = 340.62
+
+[ 7280 / 30000]
+----------------------------------
+Timesteps    = 7454720
+Elapsed time = 51807.31 sec
+FPS          = 143
+actor loss   = -0.005099
+critic loss  = 1.174928
+mean return  = 35.790089
+mean length  = 339.59
+
+[ 7300 / 30000]
+----------------------------------
+Timesteps    = 7475200
+Elapsed time = 51955.29 sec
+FPS          = 143
+actor loss   = -0.016541
+critic loss  = 10.126542
+mean return  = 26.642675
+mean length  = 329.91
+
+Saving the model ... Done.
+
+[ 7320 / 30000]
+----------------------------------
+Timesteps    = 7495680
+Elapsed time = 52068.00 sec
+FPS          = 143
+actor loss   = -0.072655
+critic loss  = 0.504252
+mean return  = 26.120369
+mean length  = 331.99
+
+[ 7340 / 30000]
+----------------------------------
+Timesteps    = 7516160
+Elapsed time = 52193.56 sec
+FPS          = 144
+actor loss   = 0.003215
+critic loss  = 12.703410
+mean return  = 26.179590
+mean length  = 324.18
+
+[ 7360 / 30000]
+----------------------------------
+Timesteps    = 7536640
+Elapsed time = 52312.56 sec
+FPS          = 144
+actor loss   = 0.136376
+critic loss  = 1.259446
+mean return  = 34.633148
+mean length  = 315.39
+
+[ 7380 / 30000]
+----------------------------------
+Timesteps    = 7557120
+Elapsed time = 52426.49 sec
+FPS          = 144
+actor loss   = 0.128154
+critic loss  = 0.401735
+mean return  = 30.754580
+mean length  = 326.09
+
+[ 7400 / 30000]
+----------------------------------
+Timesteps    = 7577600
+Elapsed time = 52536.17 sec
+FPS          = 144
+actor loss   = 0.135962
+critic loss  = 2.110390
+mean return  = 32.654919
+mean length  = 313.88
+
+Saving the model ... Done.
+
+[ 7420 / 30000]
+----------------------------------
+Timesteps    = 7598080
+Elapsed time = 52642.71 sec
+FPS          = 144
+actor loss   = -0.105622
+critic loss  = 1.291886
+mean return  = 34.423599
+mean length  = 307.79
+
+[ 7440 / 30000]
+----------------------------------
+Timesteps    = 7618560
+Elapsed time = 52755.58 sec
+FPS          = 144
+actor loss   = -0.141644
+critic loss  = 0.732725
+mean return  = 32.456676
+mean length  = 316.29
+
+[ 7460 / 30000]
+----------------------------------
+Timesteps    = 7639040
+Elapsed time = 52863.74 sec
+FPS          = 144
+actor loss   = -0.155326
+critic loss  = 2.722197
+mean return  = 35.194828
+mean length  = 316.41
+
+[ 7480 / 30000]
+----------------------------------
+Timesteps    = 7659520
+Elapsed time = 52978.45 sec
+FPS          = 144
+actor loss   = 0.115005
+critic loss  = 0.348132
+mean return  = 33.694199
+mean length  = 334.56
+
+[ 7500 / 30000]
+----------------------------------
+Timesteps    = 7680000
+Elapsed time = 53115.19 sec
+FPS          = 144
+actor loss   = 0.041287
+critic loss  = 1.478517
+mean return  = 36.498409
+mean length  = 337.19
+
+Saving the model ... Done.
+
+Saving the checkpoint ... Done.
+
+[ 7520 / 30000]
+----------------------------------
+Timesteps    = 7700480
+Elapsed time = 53247.98 sec
+FPS          = 144
+actor loss   = -0.134430
+critic loss  = 1.280575
+mean return  = 44.198185
+mean length  = 342.41
+
+[ 7540 / 30000]
+----------------------------------
+Timesteps    = 7720960
+Elapsed time = 53391.71 sec
+FPS          = 144
+actor loss   = 0.210511
+critic loss  = 0.465633
+mean return  = 43.338013
+mean length  = 325.81
+
+[ 7560 / 30000]
+----------------------------------
+Timesteps    = 7741440
+Elapsed time = 53524.05 sec
+FPS          = 144
+actor loss   = 0.084753
+critic loss  = 7.570423
+mean return  = 34.364731
+mean length  = 330.96
+
+[ 7580 / 30000]
+----------------------------------
+Timesteps    = 7761920
+Elapsed time = 53605.75 sec
+FPS          = 144
+actor loss   = -0.094757
+critic loss  = 0.315072
+mean return  = 27.072311
+mean length  = 328.36
+
+[ 7600 / 30000]
+----------------------------------
+Timesteps    = 7782400
+Elapsed time = 53727.35 sec
+FPS          = 144
+actor loss   = -0.049758
+critic loss  = 1.341467
+mean return  = 23.654463
+mean length  = 317.22
+
+Saving the model ... Done.
+
+[ 7620 / 30000]
+----------------------------------
+Timesteps    = 7802880
+Elapsed time = 53844.78 sec
+FPS          = 144
+actor loss   = -0.183389
+critic loss  = 6.608340
+mean return  = 25.663715
+mean length  = 332.24
+
+[ 7640 / 30000]
+----------------------------------
+Timesteps    = 7823360
+Elapsed time = 53962.47 sec
+FPS          = 144
+actor loss   = -0.051078
+critic loss  = 1.022568
+mean return  = 35.713879
+mean length  = 320.00
+
+[ 7660 / 30000]
+----------------------------------
+Timesteps    = 7843840
+Elapsed time = 54085.48 sec
+FPS          = 145
+actor loss   = -0.152778
+critic loss  = 1.700201
+mean return  = 39.553986
+mean length  = 319.68
+
+[ 7680 / 30000]
+----------------------------------
+Timesteps    = 7864320
+Elapsed time = 54219.50 sec
+FPS          = 145
+actor loss   = -0.208376
+critic loss  = 1.623120
+mean return  = 48.086514
+mean length  = 327.98
+
+[ 7700 / 30000]
+----------------------------------
+Timesteps    = 7884800
+Elapsed time = 54360.31 sec
+FPS          = 145
+actor loss   = 0.211925
+critic loss  = 0.804739
+mean return  = 41.079079
+mean length  = 331.04
+
+Saving the model ... Done.
+
+[ 7720 / 30000]
+----------------------------------
+Timesteps    = 7905280
+Elapsed time = 54490.50 sec
+FPS          = 145
+actor loss   = -0.196767
+critic loss  = 0.898718
+mean return  = 28.302258
+mean length  = 342.84
+
+[ 7740 / 30000]
+----------------------------------
+Timesteps    = 7925760
+Elapsed time = 54612.36 sec
+FPS          = 145
+actor loss   = -0.079401
+critic loss  = 2.612367
+mean return  = 25.091240
+mean length  = 340.25
+
+[ 7760 / 30000]
+----------------------------------
+Timesteps    = 7946240
+Elapsed time = 54748.81 sec
+FPS          = 145
+actor loss   = 0.098533
+critic loss  = 0.124520
+mean return  = 26.412048
+mean length  = 338.58
+
+[ 7780 / 30000]
+----------------------------------
+Timesteps    = 7966720
+Elapsed time = 54877.84 sec
+FPS          = 145
+actor loss   = 0.041072
+critic loss  = 2.798341
+mean return  = 26.161192
+mean length  = 346.64
+
+[ 7800 / 30000]
+----------------------------------
+Timesteps    = 7987200
+Elapsed time = 55000.84 sec
+FPS          = 145
+actor loss   = 0.040615
+critic loss  = 3.484444
+mean return  = 28.715605
+mean length  = 338.27
+
+Saving the model ... Done.
+
+[ 7820 / 30000]
+----------------------------------
+Timesteps    = 8007680
+Elapsed time = 55109.68 sec
+FPS          = 145
+actor loss   = -0.010250
+critic loss  = 1.935338
+mean return  = 30.239695
+mean length  = 328.83
+
+[ 7840 / 30000]
+----------------------------------
+Timesteps    = 8028160
+Elapsed time = 55260.28 sec
+FPS          = 145
+actor loss   = -0.066404
+critic loss  = 0.512129
+mean return  = 28.043163
+mean length  = 322.52
+
+[ 7860 / 30000]
+----------------------------------
+Timesteps    = 8048640
+Elapsed time = 55373.90 sec
+FPS          = 145
+actor loss   = 0.113252
+critic loss  = 0.415706
+mean return  = 26.365002
+mean length  = 314.39
+
+[ 7880 / 30000]
+----------------------------------
+Timesteps    = 8069120
+Elapsed time = 55516.03 sec
+FPS          = 145
+actor loss   = 0.220131
+critic loss  = 0.669871
+mean return  = 32.126644
+mean length  = 307.56
+
+[ 7900 / 30000]
+----------------------------------
+Timesteps    = 8089600
+Elapsed time = 55646.01 sec
+FPS          = 145
+actor loss   = -0.035962
+critic loss  = 3.269117
+mean return  = 41.146015
+mean length  = 302.27
+
+Saving the model ... Done.
+
+[ 7920 / 30000]
+----------------------------------
+Timesteps    = 8110080
+Elapsed time = 55770.13 sec
+FPS          = 145
+actor loss   = -0.005169
+critic loss  = 17.968246
+mean return  = 43.439213
+mean length  = 311.69
+
+[ 7940 / 30000]
+----------------------------------
+Timesteps    = 8130560
+Elapsed time = 55884.21 sec
+FPS          = 145
+actor loss   = -0.068840
+critic loss  = 0.633986
+mean return  = 44.336472
+mean length  = 328.93
+
+[ 7960 / 30000]
+----------------------------------
+Timesteps    = 8151040
+Elapsed time = 56014.64 sec
+FPS          = 145
+actor loss   = -0.104644
+critic loss  = 1.788600
+mean return  = 33.495396
+mean length  = 356.57
+
+[ 7980 / 30000]
+----------------------------------
+Timesteps    = 8171520
+Elapsed time = 56117.47 sec
+FPS          = 145
+actor loss   = 0.066246
+critic loss  = 1.039714
+mean return  = 30.913443
+mean length  = 328.96
+
+[ 8000 / 30000]
+----------------------------------
+Timesteps    = 8192000
+Elapsed time = 56237.70 sec
+FPS          = 145
+actor loss   = -0.069660
+critic loss  = 3.529219
+mean return  = 29.715103
+mean length  = 324.32
+
+Saving the model ... Done.
+
+Saving the checkpoint ... Done.
+
+[ 8020 / 30000]
+----------------------------------
+Timesteps    = 8212480
+Elapsed time = 56369.59 sec
+FPS          = 145
+actor loss   = 0.081465
+critic loss  = 0.681279
+mean return  = 33.873177
+mean length  = 312.92
+
+[ 8040 / 30000]
+----------------------------------
+Timesteps    = 8232960
+Elapsed time = 56486.58 sec
+FPS          = 145
+actor loss   = -0.206294
+critic loss  = 2.118671
+mean return  = 33.244705
+mean length  = 323.44
+
+[ 8060 / 30000]
+----------------------------------
+Timesteps    = 8253440
+Elapsed time = 56619.99 sec
+FPS          = 145
+actor loss   = -0.046082
+critic loss  = 1.852753
+mean return  = 30.019493
+mean length  = 325.96
+
+[ 8080 / 30000]
+----------------------------------
+Timesteps    = 8273920
+Elapsed time = 56730.53 sec
+FPS          = 145
+actor loss   = -0.000084
+critic loss  = 19.374493
+mean return  = 39.468479
+mean length  = 305.85
+
+[ 8100 / 30000]
+----------------------------------
+Timesteps    = 8294400
+Elapsed time = 56822.98 sec
+FPS          = 145
+actor loss   = 0.061084
+critic loss  = 1.989490
+mean return  = 42.776443
+mean length  = 311.23
+
+Saving the model ... Done.
+
+[ 8120 / 30000]
+----------------------------------
+Timesteps    = 8314880
+Elapsed time = 56962.45 sec
+FPS          = 145
+actor loss   = 0.154447
+critic loss  = 2.515085
+mean return  = 31.798805
+mean length  = 315.25
+
+[ 8140 / 30000]
+----------------------------------
+Timesteps    = 8335360
+Elapsed time = 57079.86 sec
+FPS          = 146
+actor loss   = 0.207502
+critic loss  = 2.858759
+mean return  = 38.089245
+mean length  = 318.09
+
+[ 8160 / 30000]
+----------------------------------
+Timesteps    = 8355840
+Elapsed time = 57194.52 sec
+FPS          = 146
+actor loss   = -0.038737
+critic loss  = 1.840747
+mean return  = 43.117516
+mean length  = 324.46
+
+[ 8180 / 30000]
+----------------------------------
+Timesteps    = 8376320
+Elapsed time = 57320.34 sec
+FPS          = 146
+actor loss   = 0.282191
+critic loss  = 1.658997
+mean return  = 44.557541
+mean length  = 316.05
+
+[ 8200 / 30000]
+----------------------------------
+Timesteps    = 8396800
+Elapsed time = 57448.28 sec
+FPS          = 146
+actor loss   = -0.093531
+critic loss  = 1.178545
+mean return  = 32.770859
+mean length  = 329.53
+
+Saving the model ... Done.
+
+[ 8220 / 30000]
+----------------------------------
+Timesteps    = 8417280
+Elapsed time = 57570.49 sec
+FPS          = 146
+actor loss   = -0.094360
+critic loss  = 6.868672
+mean return  = 26.001579
+mean length  = 320.24
+
+[ 8240 / 30000]
+----------------------------------
+Timesteps    = 8437760
+Elapsed time = 57690.75 sec
+FPS          = 146
+actor loss   = 0.029007
+critic loss  = 0.364748
+mean return  = 35.426399
+mean length  = 315.93
+
+[ 8260 / 30000]
+----------------------------------
+Timesteps    = 8458240
+Elapsed time = 57793.37 sec
+FPS          = 146
+actor loss   = -0.132368
+critic loss  = 8.401329
+mean return  = 31.020422
+mean length  = 325.75
+
+[ 8280 / 30000]
+----------------------------------
+Timesteps    = 8478720
+Elapsed time = 57892.12 sec
+FPS          = 146
+actor loss   = -0.102616
+critic loss  = 1.866925
+mean return  = 31.231073
+mean length  = 326.14
+
+[ 8300 / 30000]
+----------------------------------
+Timesteps    = 8499200
+Elapsed time = 57990.00 sec
+FPS          = 146
+actor loss   = 0.080475
+critic loss  = 0.177204
+mean return  = 24.789785
+mean length  = 327.76
+
+Saving the model ... Done.
+
+[ 8320 / 30000]
+----------------------------------
+Timesteps    = 8519680
+Elapsed time = 58096.42 sec
+FPS          = 146
+actor loss   = 0.065525
+critic loss  = 0.107009
+mean return  = 23.595808
+mean length  = 317.31
+
+[ 8340 / 30000]
+----------------------------------
+Timesteps    = 8540160
+Elapsed time = 58221.65 sec
+FPS          = 146
+actor loss   = 0.180951
+critic loss  = 3.165930
+mean return  = 30.725842
+mean length  = 315.65
+
+[ 8360 / 30000]
+----------------------------------
+Timesteps    = 8560640
+Elapsed time = 58342.49 sec
+FPS          = 146
+actor loss   = -0.089357
+critic loss  = 2.277012
+mean return  = 42.466896
+mean length  = 326.53
+
+[ 8380 / 30000]
+----------------------------------
+Timesteps    = 8581120
+Elapsed time = 58450.78 sec
+FPS          = 146
+actor loss   = 0.257540
+critic loss  = 1.198013
+mean return  = 45.672089
+mean length  = 316.57
+
+[ 8400 / 30000]
+----------------------------------
+Timesteps    = 8601600
+Elapsed time = 58597.16 sec
+FPS          = 146
+actor loss   = 0.094769
+critic loss  = 3.200293
+mean return  = 52.261520
+mean length  = 321.82
+
+Saving the model ... Done.
+
+[ 8420 / 30000]
+----------------------------------
+Timesteps    = 8622080
+Elapsed time = 58710.04 sec
+FPS          = 146
+actor loss   = -0.119710
+critic loss  = 1.908657
+mean return  = 47.707298
+mean length  = 335.08
+
+[ 8440 / 30000]
+----------------------------------
+Timesteps    = 8642560
+Elapsed time = 58839.01 sec
+FPS          = 146
+actor loss   = 0.004137
+critic loss  = 1.070116
+mean return  = 36.976578
+mean length  = 345.48
+
+[ 8460 / 30000]
+----------------------------------
+Timesteps    = 8663040
+Elapsed time = 58972.54 sec
+FPS          = 146
+actor loss   = -0.073475
+critic loss  = 1.679247
+mean return  = 41.211422
+mean length  = 339.79
+
+[ 8480 / 30000]
+----------------------------------
+Timesteps    = 8683520
+Elapsed time = 59096.21 sec
+FPS          = 146
+actor loss   = 0.068152
+critic loss  = 1.491394
+mean return  = 37.490589
+mean length  = 345.08
+
+[ 8500 / 30000]
+----------------------------------
+Timesteps    = 8704000
+Elapsed time = 59202.10 sec
+FPS          = 147
+actor loss   = 0.022654
+critic loss  = 7.632808
+mean return  = 34.359276
+mean length  = 336.53
+
+Saving the model ... Done.
+
+Saving the checkpoint ... Done.
+
+[ 8520 / 30000]
+----------------------------------
+Timesteps    = 8724480
+Elapsed time = 59319.02 sec
+FPS          = 147
+actor loss   = 0.027433
+critic loss  = 2.076993
+mean return  = 40.548702
+mean length  = 314.83
+
+[ 8540 / 30000]
+----------------------------------
+Timesteps    = 8744960
+Elapsed time = 59439.14 sec
+FPS          = 147
+actor loss   = 0.000239
+critic loss  = 1.386740
+mean return  = 26.536194
+mean length  = 347.63
+
+[ 8560 / 30000]
+----------------------------------
+Timesteps    = 8765440
+Elapsed time = 59580.35 sec
+FPS          = 147
+actor loss   = 0.055487
+critic loss  = 0.678881
+mean return  = 24.519009
+mean length  = 366.63
+
+[ 8580 / 30000]
+----------------------------------
+Timesteps    = 8785920
+Elapsed time = 59735.99 sec
+FPS          = 147
+actor loss   = -0.122394
+critic loss  = 0.358178
+mean return  = 21.331877
+mean length  = 371.66
+
+[ 8600 / 30000]
+----------------------------------
+Timesteps    = 8806400
+Elapsed time = 59855.89 sec
+FPS          = 147
+actor loss   = 0.124528
+critic loss  = 0.108417
+mean return  = 15.414513
+mean length  = 372.87
+
+Saving the model ... Done.
+
+[ 8620 / 30000]
+----------------------------------
+Timesteps    = 8826880
+Elapsed time = 59996.72 sec
+FPS          = 147
+actor loss   = 0.003205
+critic loss  = 0.443592
+mean return  = 13.953205
+mean length  = 377.72
+
+[ 8640 / 30000]
+----------------------------------
+Timesteps    = 8847360
+Elapsed time = 60106.27 sec
+FPS          = 147
+actor loss   = 0.054500
+critic loss  = 0.327006
+mean return  = 19.181688
+mean length  = 359.97
+
+[ 8660 / 30000]
+----------------------------------
+Timesteps    = 8867840
+Elapsed time = 60226.85 sec
+FPS          = 147
+actor loss   = 0.060124
+critic loss  = 0.984461
+mean return  = 18.836424
+mean length  = 369.51
+
+[ 8680 / 30000]
+----------------------------------
+Timesteps    = 8888320
+Elapsed time = 60341.04 sec
+FPS          = 147
+actor loss   = -0.073978
+critic loss  = 0.860504
+mean return  = 21.241280
+mean length  = 355.68
+
+[ 8700 / 30000]
+----------------------------------
+Timesteps    = 8908800
+Elapsed time = 60487.89 sec
+FPS          = 147
+actor loss   = -0.173575
+critic loss  = 4.986691
+mean return  = 30.191528
+mean length  = 315.31
+
+Saving the model ... Done.
+
+[ 8720 / 30000]
+----------------------------------
+Timesteps    = 8929280
+Elapsed time = 60628.60 sec
+FPS          = 147
+actor loss   = -0.091145
+critic loss  = 6.405496
+mean return  = 37.586281
+mean length  = 325.00
+
+[ 8740 / 30000]
+----------------------------------
+Timesteps    = 8949760
+Elapsed time = 60755.95 sec
+FPS          = 147
+actor loss   = -0.061539
+critic loss  = 0.861039
+mean return  = 35.450027
+mean length  = 327.50
+
+[ 8760 / 30000]
+----------------------------------
+Timesteps    = 8970240
+Elapsed time = 60873.26 sec
+FPS          = 147
+actor loss   = 0.064643
+critic loss  = 0.487882
+mean return  = 36.781811
+mean length  = 319.27
+
+[ 8780 / 30000]
+----------------------------------
+Timesteps    = 8990720
+Elapsed time = 60986.97 sec
+FPS          = 147
+actor loss   = -0.128772
+critic loss  = 1.517946
+mean return  = 38.184879
+mean length  = 299.01
+
+[ 8800 / 30000]
+----------------------------------
+Timesteps    = 9011200
+Elapsed time = 61108.48 sec
+FPS          = 147
+actor loss   = -0.088282
+critic loss  = 3.640677
+mean return  = 50.472504
+mean length  = 314.06
+
+Saving the model ... Done.
+
+[ 8820 / 30000]
+----------------------------------
+Timesteps    = 9031680
+Elapsed time = 61246.69 sec
+FPS          = 147
+actor loss   = 0.059182
+critic loss  = 4.896671
+mean return  = 46.322559
+mean length  = 313.39
+
+[ 8840 / 30000]
+----------------------------------
+Timesteps    = 9052160
+Elapsed time = 61387.00 sec
+FPS          = 147
+actor loss   = -0.008797
+critic loss  = 5.273672
+mean return  = 36.171696
+mean length  = 318.19
+
+[ 8860 / 30000]
+----------------------------------
+Timesteps    = 9072640
+Elapsed time = 61492.03 sec
+FPS          = 147
+actor loss   = 0.189308
+critic loss  = 3.646503
+mean return  = 38.137470
+mean length  = 320.77
+
+[ 8880 / 30000]
+----------------------------------
+Timesteps    = 9093120
+Elapsed time = 61608.73 sec
+FPS          = 147
+actor loss   = -0.147123
+critic loss  = 0.823839
+mean return  = 35.778027
+mean length  = 317.54
+
+[ 8900 / 30000]
+----------------------------------
+Timesteps    = 9113600
+Elapsed time = 61709.32 sec
+FPS          = 147
+actor loss   = -0.226423
+critic loss  = 2.820715
+mean return  = 39.078026
+mean length  = 319.76
+
+Saving the model ... Done.
+
+[ 8920 / 30000]
+----------------------------------
+Timesteps    = 9134080
+Elapsed time = 61819.04 sec
+FPS          = 147
+actor loss   = -0.005177
+critic loss  = 0.917796
+mean return  = 44.628796
+mean length  = 316.89
+
+[ 8940 / 30000]
+----------------------------------
+Timesteps    = 9154560
+Elapsed time = 61934.66 sec
+FPS          = 147
+actor loss   = 0.070183
+critic loss  = 3.924917
+mean return  = 28.661457
+mean length  = 332.11
+
+[ 8960 / 30000]
+----------------------------------
+Timesteps    = 9175040
+Elapsed time = 62057.63 sec
+FPS          = 147
+actor loss   = -0.097106
+critic loss  = 0.730855
+mean return  = 20.621132
+mean length  = 331.86
+
+[ 8980 / 30000]
+----------------------------------
+Timesteps    = 9195520
+Elapsed time = 62181.98 sec
+FPS          = 147
+actor loss   = 0.052855
+critic loss  = 2.689134
+mean return  = 22.758675
+mean length  = 325.75
+
+[ 9000 / 30000]
+----------------------------------
+Timesteps    = 9216000
+Elapsed time = 62307.97 sec
+FPS          = 147
+actor loss   = -0.051621
+critic loss  = 0.355759
+mean return  = 25.164427
+mean length  = 311.35
+
+Saving the model ... Done.
+
+Saving the checkpoint ... Done.
+
+[ 9020 / 30000]
+----------------------------------
+Timesteps    = 9236480
+Elapsed time = 62425.97 sec
+FPS          = 147
+actor loss   = -0.147037
+critic loss  = 0.434592
+mean return  = 23.240555
+mean length  = 317.15
+
+[ 9040 / 30000]
+----------------------------------
+Timesteps    = 9256960
+Elapsed time = 62514.21 sec
+FPS          = 148
+actor loss   = -0.120279
+critic loss  = 0.646648
+mean return  = 23.825157
+mean length  = 306.87
+
+[ 9060 / 30000]
+----------------------------------
+Timesteps    = 9277440
+Elapsed time = 62577.31 sec
+FPS          = 148
+actor loss   = 0.314359
+critic loss  = 0.540409
+mean return  = 24.207195
+mean length  = 300.84
+
+[ 9080 / 30000]
+----------------------------------
+Timesteps    = 9297920
+Elapsed time = 62632.55 sec
+FPS          = 148
+actor loss   = -0.242116
+critic loss  = 0.251566
+mean return  = 25.514238
+mean length  = 300.12
+
+[ 9100 / 30000]
+----------------------------------
+Timesteps    = 9318400
+Elapsed time = 62685.09 sec
+FPS          = 148
+actor loss   = 0.027593
+critic loss  = 1.022372
+mean return  = 23.144312
+mean length  = 306.68
+
+Saving the model ... Done.
+
+[ 9120 / 30000]
+----------------------------------
+Timesteps    = 9338880
+Elapsed time = 62744.28 sec
+FPS          = 148
+actor loss   = 0.203108
+critic loss  = 4.023801
+mean return  = 27.360571
+mean length  = 310.18
+
+[ 9140 / 30000]
+----------------------------------
+Timesteps    = 9359360
+Elapsed time = 62798.88 sec
+FPS          = 149
+actor loss   = -0.090381
+critic loss  = 1.023575
+mean return  = 47.002594
+mean length  = 321.92
+
+[ 9160 / 30000]
+----------------------------------
+Timesteps    = 9379840
+Elapsed time = 62856.57 sec
+FPS          = 149
+actor loss   = -0.166390
+critic loss  = 0.383644
+mean return  = 51.712543
+mean length  = 304.05
+
+[ 9180 / 30000]
+----------------------------------
+Timesteps    = 9400320
+Elapsed time = 62916.83 sec
+FPS          = 149
+actor loss   = 0.140717
+critic loss  = 1.132581
+mean return  = 30.673151
+mean length  = 308.80
+
+[ 9200 / 30000]
+----------------------------------
+Timesteps    = 9420800
+Elapsed time = 62970.13 sec
+FPS          = 149
+actor loss   = 0.023005
+critic loss  = 0.343005
+mean return  = 34.652233
+mean length  = 323.16
+
+Saving the model ... Done.
+
+[ 9220 / 30000]
+----------------------------------
+Timesteps    = 9441280
+Elapsed time = 63024.37 sec
+FPS          = 149
+actor loss   = -0.163415
+critic loss  = 8.667398
+mean return  = 34.081860
+mean length  = 314.93
+
+[ 9240 / 30000]
+----------------------------------
+Timesteps    = 9461760
+Elapsed time = 63084.03 sec
+FPS          = 149
+actor loss   = -0.051654
+critic loss  = 12.728162
+mean return  = 41.435822
+mean length  = 293.80
+
+[ 9260 / 30000]
+----------------------------------
+Timesteps    = 9482240
+Elapsed time = 63144.27 sec
+FPS          = 150
+actor loss   = 0.078693
+critic loss  = 1.741612
+mean return  = 43.153152
+mean length  = 308.98
+
+[ 9280 / 30000]
+----------------------------------
+Timesteps    = 9502720
+Elapsed time = 63205.27 sec
+FPS          = 150
+actor loss   = -0.226488
+critic loss  = 2.911534
+mean return  = 47.940575
+mean length  = 317.19
+
+[ 9300 / 30000]
+----------------------------------
+Timesteps    = 9523200
+Elapsed time = 63267.76 sec
+FPS          = 150
+actor loss   = -0.022050
+critic loss  = 2.724910
+mean return  = 46.326694
+mean length  = 321.08
+
+Saving the model ... Done.
+
+[ 9320 / 30000]
+----------------------------------
+Timesteps    = 9543680
+Elapsed time = 63323.26 sec
+FPS          = 150
+actor loss   = -0.061887
+critic loss  = 9.708651
+mean return  = 30.642502
+mean length  = 305.51
+
+[ 9340 / 30000]
+----------------------------------
+Timesteps    = 9564160
+Elapsed time = 63384.26 sec
+FPS          = 150
+actor loss   = -0.046321
+critic loss  = 1.837363
+mean return  = 35.669956
+mean length  = 301.50
+
+[ 9360 / 30000]
+----------------------------------
+Timesteps    = 9584640
+Elapsed time = 63444.48 sec
+FPS          = 151
+actor loss   = -0.121728
+critic loss  = 5.756582
+mean return  = 41.646118
+mean length  = 308.62
+
+[ 9380 / 30000]
+----------------------------------
+Timesteps    = 9605120
+Elapsed time = 63506.55 sec
+FPS          = 151
+actor loss   = 0.086521
+critic loss  = 2.061346
+mean return  = 44.471733
+mean length  = 299.27
+
+[ 9400 / 30000]
+----------------------------------
+Timesteps    = 9625600
+Elapsed time = 63569.12 sec
+FPS          = 151
+actor loss   = -0.131236
+critic loss  = 3.127619
+mean return  = 42.524433
+mean length  = 302.89
+
+Saving the model ... Done.
+
+[ 9420 / 30000]
+----------------------------------
+Timesteps    = 9646080
+Elapsed time = 63626.26 sec
+FPS          = 151
+actor loss   = 0.066481
+critic loss  = 0.597073
+mean return  = 33.210541
+mean length  = 299.99
+
+[ 9440 / 30000]
+----------------------------------
+Timesteps    = 9666560
+Elapsed time = 63682.82 sec
+FPS          = 151
+actor loss   = 0.017436
+critic loss  = 2.252995
+mean return  = 37.342804
+mean length  = 298.34
+
+[ 9460 / 30000]
+----------------------------------
+Timesteps    = 9687040
+Elapsed time = 63747.63 sec
+FPS          = 151
+actor loss   = -0.095442
+critic loss  = 0.906523
+mean return  = 38.055981
+mean length  = 303.28
+
+[ 9480 / 30000]
+----------------------------------
+Timesteps    = 9707520
+Elapsed time = 63803.50 sec
+FPS          = 152
+actor loss   = 0.069538
+critic loss  = 2.717429
+mean return  = 28.000700
+mean length  = 294.72
+
+[ 9500 / 30000]
+----------------------------------
+Timesteps    = 9728000
+Elapsed time = 63861.02 sec
+FPS          = 152
+actor loss   = 0.084386
+critic loss  = 0.330836
+mean return  = 27.900564
+mean length  = 299.56
+
+Saving the model ... Done.
+
+Saving the checkpoint ... Done.
+
+[ 9520 / 30000]
+----------------------------------
+Timesteps    = 9748480
+Elapsed time = 63921.50 sec
+FPS          = 152
+actor loss   = -0.034913
+critic loss  = 2.121116
+mean return  = 30.502857
+mean length  = 312.01
+
+[ 9540 / 30000]
+----------------------------------
+Timesteps    = 9768960
+Elapsed time = 63982.80 sec
+FPS          = 152
+actor loss   = 0.156623
+critic loss  = 0.447784
+mean return  = 27.924196
+mean length  = 300.66
+
+[ 9560 / 30000]
+----------------------------------
+Timesteps    = 9789440
+Elapsed time = 64049.27 sec
+FPS          = 152
+actor loss   = 0.077361
+critic loss  = 0.356388
+mean return  = 24.774632
+mean length  = 313.59
+
+[ 9580 / 30000]
+----------------------------------
+Timesteps    = 9809920
+Elapsed time = 64107.38 sec
+FPS          = 153
+actor loss   = -0.177168
+critic loss  = 1.581027
+mean return  = 25.391075
+mean length  = 315.93
+
+[ 9600 / 30000]
+----------------------------------
+Timesteps    = 9830400
+Elapsed time = 64167.64 sec
+FPS          = 153
+actor loss   = 0.047290
+critic loss  = 3.906845
+mean return  = 27.699263
+mean length  = 309.36
+
+Saving the model ... Done.
+
+[ 9620 / 30000]
+----------------------------------
+Timesteps    = 9850880
+Elapsed time = 64225.25 sec
+FPS          = 153
+actor loss   = -0.162963
+critic loss  = 0.258407
+mean return  = 32.732521
+mean length  = 291.45
+
+[ 9640 / 30000]
+----------------------------------
+Timesteps    = 9871360
+Elapsed time = 64285.76 sec
+FPS          = 153
+actor loss   = -0.040252
+critic loss  = 33.228519
+mean return  = 29.710243
+mean length  = 295.31
+
+[ 9660 / 30000]
+----------------------------------
+Timesteps    = 9891840
+Elapsed time = 64347.85 sec
+FPS          = 153
+actor loss   = -0.093430
+critic loss  = 7.477055
+mean return  = 48.333878
+mean length  = 305.34
+
+[ 9680 / 30000]
+----------------------------------
+Timesteps    = 9912320
+Elapsed time = 64407.58 sec
+FPS          = 153
+actor loss   = -0.037857
+critic loss  = 0.569192
+mean return  = 36.231041
+mean length  = 316.40
+
+[ 9700 / 30000]
+----------------------------------
+Timesteps    = 9932800
+Elapsed time = 64469.59 sec
+FPS          = 154
+actor loss   = -0.048569
+critic loss  = 9.100037
+mean return  = 34.640362
+mean length  = 308.24
+
+Saving the model ... Done.
+
+[ 9720 / 30000]
+----------------------------------
+Timesteps    = 9953280
+Elapsed time = 64531.32 sec
+FPS          = 154
+actor loss   = 0.028037
+critic loss  = 0.482826
+mean return  = 39.365822
+mean length  = 298.79
+
+[ 9740 / 30000]
+----------------------------------
+Timesteps    = 9973760
+Elapsed time = 64593.17 sec
+FPS          = 154
+actor loss   = -0.112948
+critic loss  = 0.253127
+mean return  = 30.881399
+mean length  = 293.03
+
+[ 9760 / 30000]
+----------------------------------
+Timesteps    = 9994240
+Elapsed time = 64656.03 sec
+FPS          = 154
+actor loss   = 0.117403
+critic loss  = 0.211171
+mean return  = 29.911856
+mean length  = 294.15
+
+[ 9780 / 30000]
+----------------------------------
+Timesteps    = 10014720
+Elapsed time = 64717.65 sec
+FPS          = 154
+actor loss   = -0.094730
+critic loss  = 3.572629
+mean return  = 33.385563
+mean length  = 295.78
+
+[ 9800 / 30000]
+----------------------------------
+Timesteps    = 10035200
+Elapsed time = 64784.86 sec
+FPS          = 154
+actor loss   = 0.140343
+critic loss  = 3.103001
+mean return  = 40.021030
+mean length  = 296.67
+
+Saving the model ... Done.
+
+[ 9820 / 30000]
+----------------------------------
+Timesteps    = 10055680
+Elapsed time = 64849.13 sec
+FPS          = 155
+actor loss   = 0.200421
+critic loss  = 1.497391
+mean return  = 43.354298
+mean length  = 297.28
+
+[ 9840 / 30000]
+----------------------------------
+Timesteps    = 10076160
+Elapsed time = 64911.50 sec
+FPS          = 155
+actor loss   = 0.233742
+critic loss  = 2.420398
+mean return  = 39.466190
+mean length  = 290.17
+
+[ 9860 / 30000]
+----------------------------------
+Timesteps    = 10096640
+Elapsed time = 64970.14 sec
+FPS          = 155
+actor loss   = -0.052693
+critic loss  = 2.076977
+mean return  = 42.253902
+mean length  = 294.18
+
+[ 9880 / 30000]
+----------------------------------
+Timesteps    = 10117120
+Elapsed time = 65032.32 sec
+FPS          = 155
+actor loss   = -0.172731
+critic loss  = 4.640254
+mean return  = 43.389359
+mean length  = 305.99
+
+[ 9900 / 30000]
+----------------------------------
+Timesteps    = 10137600
+Elapsed time = 65095.72 sec
+FPS          = 155
+actor loss   = -0.024609
+critic loss  = 3.133795
+mean return  = 44.000469
+mean length  = 304.49
+
+Saving the model ... Done.
+
+[ 9920 / 30000]
+----------------------------------
+Timesteps    = 10158080
+Elapsed time = 65169.83 sec
+FPS          = 155
+actor loss   = 0.012831
+critic loss  = 1.932218
+mean return  = 45.494503
+mean length  = 292.60
+
+[ 9940 / 30000]
+----------------------------------
+Timesteps    = 10178560
+Elapsed time = 65232.68 sec
+FPS          = 156
+actor loss   = -0.157278
+critic loss  = 6.274987
+mean return  = 54.195499
+mean length  = 294.64
+
+[ 9960 / 30000]
+----------------------------------
+Timesteps    = 10199040
+Elapsed time = 65311.62 sec
+FPS          = 156
+actor loss   = -0.226298
+critic loss  = 5.778608
+mean return  = 50.168896
+mean length  = 301.92
+
+[ 9980 / 30000]
+----------------------------------
+Timesteps    = 10219520
+Elapsed time = 65379.56 sec
+FPS          = 156
+actor loss   = -0.047235
+critic loss  = 8.752606
+mean return  = 49.795364
+mean length  = 305.08
+
+[10000 / 30000]
+----------------------------------
+Timesteps    = 10240000
+Elapsed time = 65446.68 sec
+FPS          = 156
+actor loss   = -0.260556
+critic loss  = 7.369264
+mean return  = 41.877853
+mean length  = 301.57
+
+Saving the model ... Done.
+
+Saving the checkpoint ... Done.
+
+[10020 / 30000]
+----------------------------------
+Timesteps    = 10260480
+Elapsed time = 65501.92 sec
+FPS          = 156
+actor loss   = -0.173007
+critic loss  = 10.123419
+mean return  = 35.899601
+mean length  = 298.49
+
+[10040 / 30000]
+----------------------------------
+Timesteps    = 10280960
+Elapsed time = 65566.53 sec
+FPS          = 156
+actor loss   = -0.064626
+critic loss  = 6.980650
+mean return  = 35.894569
+mean length  = 300.01
+
+[10060 / 30000]
+----------------------------------
+Timesteps    = 10301440
+Elapsed time = 65629.81 sec
+FPS          = 156
+actor loss   = -0.113597
+critic loss  = 10.857647
+mean return  = 47.201866
+mean length  = 305.99
+
+[10080 / 30000]
+----------------------------------
+Timesteps    = 10321920
+Elapsed time = 65696.53 sec
+FPS          = 157
+actor loss   = 0.018357
+critic loss  = 5.016594
+mean return  = 62.072533
+mean length  = 299.94
+
+[10100 / 30000]
+----------------------------------
+Timesteps    = 10342400
+Elapsed time = 65754.53 sec
+FPS          = 157
+actor loss   = -0.063112
+critic loss  = 9.350501
+mean return  = 57.671215
+mean length  = 309.13
+
+Saving the model ... Done.
+
+[10120 / 30000]
+----------------------------------
+Timesteps    = 10362880
+Elapsed time = 65817.41 sec
+FPS          = 157
+actor loss   = 0.181778
+critic loss  = 3.243287
+mean return  = 65.625557
+mean length  = 296.29
+
+[10140 / 30000]
+----------------------------------
+Timesteps    = 10383360
+Elapsed time = 65880.33 sec
+FPS          = 157
+actor loss   = 0.163775
+critic loss  = 3.498173
+mean return  = 62.485489
+mean length  = 307.76
+
+[10160 / 30000]
+----------------------------------
+Timesteps    = 10403840
+Elapsed time = 65945.28 sec
+FPS          = 157
+actor loss   = -0.181219
+critic loss  = 12.441155
+mean return  = 56.185215
+mean length  = 307.27
+
+[10180 / 30000]
+----------------------------------
+Timesteps    = 10424320
+Elapsed time = 66002.72 sec
+FPS          = 157
+actor loss   = -0.001927
+critic loss  = 2.962266
+mean return  = 61.752300
+mean length  = 314.40
+
+[10200 / 30000]
+----------------------------------
+Timesteps    = 10444800
+Elapsed time = 66064.36 sec
+FPS          = 158
+actor loss   = 0.177976
+critic loss  = 2.030254
+mean return  = 46.762863
+mean length  = 309.44
+
+Saving the model ... Done.
+
+[10220 / 30000]
+----------------------------------
+Timesteps    = 10465280
+Elapsed time = 66116.16 sec
+FPS          = 158
+actor loss   = -0.008948
+critic loss  = 24.684261
+mean return  = 50.633923
+mean length  = 306.40
+
+[10240 / 30000]
+----------------------------------
+Timesteps    = 10485760
+Elapsed time = 66176.55 sec
+FPS          = 158
+actor loss   = 0.224432
+critic loss  = 2.411401
+mean return  = 63.861958
+mean length  = 302.30
+
+[10260 / 30000]
+----------------------------------
+Timesteps    = 10506240
+Elapsed time = 66229.38 sec
+FPS          = 158
+actor loss   = 0.050281
+critic loss  = 7.792366
+mean return  = 53.974857
+mean length  = 305.12
+
+[10280 / 30000]
+----------------------------------
+Timesteps    = 10526720
+Elapsed time = 66300.25 sec
+FPS          = 158
+actor loss   = -0.061026
+critic loss  = 7.771516
+mean return  = 49.127274
+mean length  = 306.28
+
+[10300 / 30000]
+----------------------------------
+Timesteps    = 10547200
+Elapsed time = 66378.25 sec
+FPS          = 158
+actor loss   = -0.187705
+critic loss  = 6.609461
+mean return  = 47.766876
+mean length  = 303.34
+
+Saving the model ... Done.
+
+[10320 / 30000]
+----------------------------------
+Timesteps    = 10567680
+Elapsed time = 66433.76 sec
+FPS          = 159
+actor loss   = -0.132360
+critic loss  = 4.600763
+mean return  = 41.929794
+mean length  = 310.46
+
+[10340 / 30000]
+----------------------------------
+Timesteps    = 10588160
+Elapsed time = 66502.02 sec
+FPS          = 159
+actor loss   = 0.030230
+critic loss  = 1.530805
+mean return  = 37.683285
+mean length  = 303.03
+
+[10360 / 30000]
+----------------------------------
+Timesteps    = 10608640
+Elapsed time = 66569.30 sec
+FPS          = 159
+actor loss   = -0.132642
+critic loss  = 0.731843
+mean return  = 29.145363
+mean length  = 296.53
+
+[10380 / 30000]
+----------------------------------
+Timesteps    = 10629120
+Elapsed time = 66641.20 sec
+FPS          = 159
+actor loss   = 0.044352
+critic loss  = 0.573555
+mean return  = 25.500629
+mean length  = 307.46
+
+[10400 / 30000]
+----------------------------------
+Timesteps    = 10649600
+Elapsed time = 66705.29 sec
+FPS          = 159
+actor loss   = 0.203902
+critic loss  = 0.854987
+mean return  = 32.764511
+mean length  = 299.36
+
+Saving the model ... Done.
+
+[10420 / 30000]
+----------------------------------
+Timesteps    = 10670080
+Elapsed time = 66769.68 sec
+FPS          = 159
+actor loss   = 0.102683
+critic loss  = 1.626709
+mean return  = 37.193863
+mean length  = 320.28
+
+[10440 / 30000]
+----------------------------------
+Timesteps    = 10690560
+Elapsed time = 66835.39 sec
+FPS          = 159
+actor loss   = 0.028407
+critic loss  = 6.208515
+mean return  = 44.154678
+mean length  = 313.91
+
+[10460 / 30000]
+----------------------------------
+Timesteps    = 10711040
+Elapsed time = 66901.58 sec
+FPS          = 160
+actor loss   = 0.205739
+critic loss  = 1.212392
+mean return  = 63.049564
+mean length  = 306.53
+
+[10480 / 30000]
+----------------------------------
+Timesteps    = 10731520
+Elapsed time = 66973.87 sec
+FPS          = 160
+actor loss   = -0.049022
+critic loss  = 5.904497
+mean return  = 53.404057
+mean length  = 309.87
+
+[10500 / 30000]
+----------------------------------
+Timesteps    = 10752000
+Elapsed time = 67039.95 sec
+FPS          = 160
+actor loss   = 0.007379
+critic loss  = 4.853266
+mean return  = 52.833778
+mean length  = 307.79
+
+Saving the model ... Done.
+
+Saving the checkpoint ... Done.
+
+[10520 / 30000]
+----------------------------------
+Timesteps    = 10772480
+Elapsed time = 67102.92 sec
+FPS          = 160
+actor loss   = 0.056521
+critic loss  = 3.928994
+mean return  = 55.934185
+mean length  = 306.81
+
+[10540 / 30000]
+----------------------------------
+Timesteps    = 10792960
+Elapsed time = 67176.91 sec
+FPS          = 160
+actor loss   = 0.015394
+critic loss  = 3.517664
+mean return  = 46.392075
+mean length  = 312.50
+
+[10560 / 30000]
+----------------------------------
+Timesteps    = 10813440
+Elapsed time = 67237.17 sec
+FPS          = 160
+actor loss   = 0.048896
+critic loss  = 1.191913
+mean return  = 53.116467
+mean length  = 310.32
+
+[10580 / 30000]
+----------------------------------
+Timesteps    = 10833920
+Elapsed time = 67293.64 sec
+FPS          = 160
+actor loss   = -0.061741
+critic loss  = 6.897680
+mean return  = 52.016979
+mean length  = 308.06
+
+[10600 / 30000]
+----------------------------------
+Timesteps    = 10854400
+Elapsed time = 67356.99 sec
+FPS          = 161
+actor loss   = 0.055031
+critic loss  = 2.032846
+mean return  = 48.861366
+mean length  = 299.42
+
+Saving the model ... Done.
+
+[10620 / 30000]
+----------------------------------
+Timesteps    = 10874880
+Elapsed time = 67418.94 sec
+FPS          = 161
+actor loss   = 0.142219
+critic loss  = 13.097517
+mean return  = 41.832630
+mean length  = 306.73
+
+[10640 / 30000]
+----------------------------------
+Timesteps    = 10895360
+Elapsed time = 67484.17 sec
+FPS          = 161
+actor loss   = 0.164139
+critic loss  = 4.728004
+mean return  = 49.638519
+mean length  = 309.56
+
+[10660 / 30000]
+----------------------------------
+Timesteps    = 10915840
+Elapsed time = 67541.41 sec
+FPS          = 161
+actor loss   = 0.117632
+critic loss  = 1.504977
+mean return  = 44.701851
+mean length  = 299.41
+
+[10680 / 30000]
+----------------------------------
+Timesteps    = 10936320
+Elapsed time = 67604.75 sec
+FPS          = 161
+actor loss   = -0.060594
+critic loss  = 6.704615
+mean return  = 43.000431
+mean length  = 304.52
+
+[10700 / 30000]
+----------------------------------
+Timesteps    = 10956800
+Elapsed time = 67663.91 sec
+FPS          = 161
+actor loss   = -0.267582
+critic loss  = 14.534838
+mean return  = 48.909546
+mean length  = 305.54
+
+Saving the model ... Done.
+
+[10720 / 30000]
+----------------------------------
+Timesteps    = 10977280
+Elapsed time = 67724.93 sec
+FPS          = 162
+actor loss   = 0.053113
+critic loss  = 2.558667
+mean return  = 44.121639
+mean length  = 307.34
+
+[10740 / 30000]
+----------------------------------
+Timesteps    = 10997760
+Elapsed time = 67788.29 sec
+FPS          = 162
+actor loss   = -0.075889
+critic loss  = 9.605255
+mean return  = 42.726215
+mean length  = 310.78
+
+[10760 / 30000]
+----------------------------------
+Timesteps    = 11018240
+Elapsed time = 67865.60 sec
+FPS          = 162
+actor loss   = 0.020867
+critic loss  = 8.181276
+mean return  = 41.194077
+mean length  = 315.69
+
+[10780 / 30000]
+----------------------------------
+Timesteps    = 11038720
+Elapsed time = 67932.06 sec
+FPS          = 162
+actor loss   = -0.041237
+critic loss  = 2.345974
+mean return  = 36.978073
+mean length  = 328.45
+
+[10800 / 30000]
+----------------------------------
+Timesteps    = 11059200
+Elapsed time = 67996.23 sec
+FPS          = 162
+actor loss   = -0.147910
+critic loss  = 2.699498
+mean return  = 32.724731
+mean length  = 320.70
+
+Saving the model ... Done.
+
+[10820 / 30000]
+----------------------------------
+Timesteps    = 11079680
+Elapsed time = 68068.33 sec
+FPS          = 162
+actor loss   = -0.130373
+critic loss  = 7.859700
+mean return  = 35.385597
+mean length  = 328.25
+
+[10840 / 30000]
+----------------------------------
+Timesteps    = 11100160
+Elapsed time = 68134.48 sec
+FPS          = 162
+actor loss   = -0.360535
+critic loss  = 6.133680
+mean return  = 44.000118
+mean length  = 342.96
+
+[10860 / 30000]
+----------------------------------
+Timesteps    = 11120640
+Elapsed time = 68194.45 sec
+FPS          = 163
+actor loss   = -0.457306
+critic loss  = 5.386904
+mean return  = 44.686211
+mean length  = 318.80
+
+[10880 / 30000]
+----------------------------------
+Timesteps    = 11141120
+Elapsed time = 68269.90 sec
+FPS          = 163
+actor loss   = -0.107701
+critic loss  = 0.975559
+mean return  = 40.793999
+mean length  = 318.39
+
+[10900 / 30000]
+----------------------------------
+Timesteps    = 11161600
+Elapsed time = 68330.68 sec
+FPS          = 163
+actor loss   = -0.067207
+critic loss  = 1.517236
+mean return  = 36.919262
+mean length  = 335.89
+
+Saving the model ... Done.
+
+[10920 / 30000]
+----------------------------------
+Timesteps    = 11182080
+Elapsed time = 68394.58 sec
+FPS          = 163
+actor loss   = 0.201819
+critic loss  = 1.484079
+mean return  = 35.425930
+mean length  = 333.32
+
+[10940 / 30000]
+----------------------------------
+Timesteps    = 11202560
+Elapsed time = 68459.67 sec
+FPS          = 163
+actor loss   = -0.073389
+critic loss  = 2.067085
+mean return  = 32.469234
+mean length  = 332.92
+
+[10960 / 30000]
+----------------------------------
+Timesteps    = 11223040
+Elapsed time = 68531.62 sec
+FPS          = 163
+actor loss   = 0.086191
+critic loss  = 1.502667
+mean return  = 37.094967
+mean length  = 320.38
+
+[10980 / 30000]
+----------------------------------
+Timesteps    = 11243520
+Elapsed time = 68599.25 sec
+FPS          = 163
+actor loss   = -0.169185
+critic loss  = 1.671991
+mean return  = 39.265697
+mean length  = 325.52
+
+[11000 / 30000]
+----------------------------------
+Timesteps    = 11264000
+Elapsed time = 68655.92 sec
+FPS          = 164
+actor loss   = -0.117781
+critic loss  = 2.470082
+mean return  = 32.655411
+mean length  = 314.54
+
+Saving the model ... Done.
+
+Saving the checkpoint ... Done.
+
+[11020 / 30000]
+----------------------------------
+Timesteps    = 11284480
+Elapsed time = 68719.68 sec
+FPS          = 164
+actor loss   = 0.127452
+critic loss  = 0.722129
+mean return  = 29.682337
+mean length  = 328.27
+
+[11040 / 30000]
+----------------------------------
+Timesteps    = 11304960
+Elapsed time = 68787.65 sec
+FPS          = 164
+actor loss   = 0.125366
+critic loss  = 0.344938
+mean return  = 29.915136
+mean length  = 336.02
+
+[11060 / 30000]
+----------------------------------
+Timesteps    = 11325440
+Elapsed time = 68848.66 sec
+FPS          = 164
+actor loss   = 0.022116
+critic loss  = 0.696934
+mean return  = 24.930767
+mean length  = 343.87
+
+[11080 / 30000]
+----------------------------------
+Timesteps    = 11345920
+Elapsed time = 68904.25 sec
+FPS          = 164
+actor loss   = -0.070331
+critic loss  = 0.460982
+mean return  = 24.252369
+mean length  = 336.35
+
+[11100 / 30000]
+----------------------------------
+Timesteps    = 11366400
+Elapsed time = 68962.93 sec
+FPS          = 164
+actor loss   = 0.088769
+critic loss  = 0.172165
+mean return  = 22.490124
+mean length  = 339.52
+
+Saving the model ... Done.
+
+[11120 / 30000]
+----------------------------------
+Timesteps    = 11386880
+Elapsed time = 69020.48 sec
+FPS          = 164
+actor loss   = 0.162620
+critic loss  = 0.749403
+mean return  = 20.697485
+mean length  = 334.40
+
+[11140 / 30000]
+----------------------------------
+Timesteps    = 11407360
+Elapsed time = 69080.56 sec
+FPS          = 165
+actor loss   = -0.265949
+critic loss  = 0.547054
+mean return  = 21.145828
+mean length  = 340.35
+
+[11160 / 30000]
+----------------------------------
+Timesteps    = 11427840
+Elapsed time = 69134.69 sec
+FPS          = 165
+actor loss   = -0.082772
+critic loss  = 0.456773
+mean return  = 19.431826
+mean length  = 346.87
+
+[11180 / 30000]
+----------------------------------
+Timesteps    = 11448320
+Elapsed time = 69195.30 sec
+FPS          = 165
+actor loss   = -0.091509
+critic loss  = 0.371653
+mean return  = 19.395079
+mean length  = 337.33
+
+[11200 / 30000]
+----------------------------------
+Timesteps    = 11468800
+Elapsed time = 69256.20 sec
+FPS          = 165
+actor loss   = -0.088463
+critic loss  = 0.196312
+mean return  = 26.235956
+mean length  = 325.07
+
+Saving the model ... Done.
+
+[11220 / 30000]
+----------------------------------
+Timesteps    = 11489280
+Elapsed time = 69318.58 sec
+FPS          = 165
+actor loss   = -0.042566
+critic loss  = 0.551415
+mean return  = 26.397079
+mean length  = 319.41
+
+[11240 / 30000]
+----------------------------------
+Timesteps    = 11509760
+Elapsed time = 69386.98 sec
+FPS          = 165
+actor loss   = -0.023437
+critic loss  = 0.658806
+mean return  = 22.742800
+mean length  = 327.95
+
+[11260 / 30000]
+----------------------------------
+Timesteps    = 11530240
+Elapsed time = 69485.96 sec
+FPS          = 165
+actor loss   = 0.077609
+critic loss  = 0.364978
+mean return  = 22.809120
+mean length  = 341.00
+
+[11280 / 30000]
+----------------------------------
+Timesteps    = 11550720
+Elapsed time = 69575.99 sec
+FPS          = 166
+actor loss   = -0.043267
+critic loss  = 0.244622
+mean return  = 21.679214
+mean length  = 353.96
+
+[11300 / 30000]
+----------------------------------
+Timesteps    = 11571200
+Elapsed time = 69674.07 sec
+FPS          = 166
+actor loss   = 0.071425
+critic loss  = 0.425779
+mean return  = 23.425623
+mean length  = 360.26
+
+Saving the model ... Done.
+
+[11320 / 30000]
+----------------------------------
+Timesteps    = 11591680
+Elapsed time = 69760.92 sec
+FPS          = 166
+actor loss   = 0.025028
+critic loss  = 6.569733
+mean return  = 19.593910
+mean length  = 357.62
+
+[11340 / 30000]
+----------------------------------
+Timesteps    = 11612160
+Elapsed time = 69849.66 sec
+FPS          = 166
+actor loss   = -0.097219
+critic loss  = 0.115705
+mean return  = 25.552830
+mean length  = 349.86
+
+[11360 / 30000]
+----------------------------------
+Timesteps    = 11632640
+Elapsed time = 69944.69 sec
+FPS          = 166
+actor loss   = -0.053131
+critic loss  = 0.567931
+mean return  = 23.963381
+mean length  = 354.29
+
+[11380 / 30000]
+----------------------------------
+Timesteps    = 11653120
+Elapsed time = 70035.01 sec
+FPS          = 166
+actor loss   = -0.081322
+critic loss  = 1.063790
+mean return  = 25.481684
+mean length  = 365.31
+
+[11400 / 30000]
+----------------------------------
+Timesteps    = 11673600
+Elapsed time = 70130.18 sec
+FPS          = 166
+actor loss   = -0.163909
+critic loss  = 0.914891
+mean return  = 25.360924
+mean length  = 347.53
+
+Saving the model ... Done.
+
+[11420 / 30000]
+----------------------------------
+Timesteps    = 11694080
+Elapsed time = 70232.14 sec
+FPS          = 166
+actor loss   = -0.073450
+critic loss  = 0.702188
+mean return  = 24.930964
+mean length  = 344.50
+
+[11440 / 30000]
+----------------------------------
+Timesteps    = 11714560
+Elapsed time = 70316.95 sec
+FPS          = 166
+actor loss   = -0.068007
+critic loss  = 0.600050
+mean return  = 31.574795
+mean length  = 335.63
+
+[11460 / 30000]
+----------------------------------
+Timesteps    = 11735040
+Elapsed time = 70396.07 sec
+FPS          = 166
+actor loss   = -0.194175
+critic loss  = 0.183328
+mean return  = 29.339005
+mean length  = 344.80
+
+[11480 / 30000]
+----------------------------------
+Timesteps    = 11755520
+Elapsed time = 70480.27 sec
+FPS          = 166
+actor loss   = 0.165573
+critic loss  = 2.816063
+mean return  = 31.888599
+mean length  = 340.32
+
+[11500 / 30000]
+----------------------------------
+Timesteps    = 11776000
+Elapsed time = 70574.65 sec
+FPS          = 166
+actor loss   = 0.104296
+critic loss  = 8.226805
+mean return  = 42.887798
+mean length  = 331.83
+
+Saving the model ... Done.
+
+Saving the checkpoint ... Done.
+
+[11520 / 30000]
+----------------------------------
+Timesteps    = 11796480
+Elapsed time = 70665.79 sec
+FPS          = 166
+actor loss   = 0.045347
+critic loss  = 0.512200
+mean return  = 39.364742
+mean length  = 330.46
+
+[11540 / 30000]
+----------------------------------
+Timesteps    = 11816960
+Elapsed time = 70752.47 sec
+FPS          = 167
+actor loss   = -0.152434
+critic loss  = 2.690372
+mean return  = 28.685284
+mean length  = 337.69
+
+[11560 / 30000]
+----------------------------------
+Timesteps    = 11837440
+Elapsed time = 70773.06 sec
+FPS          = 167
+actor loss   = -0.061509
+critic loss  = 7.771094
+mean return  = 35.912281
+mean length  = 350.53
+
+[11580 / 30000]
+----------------------------------
+Timesteps    = 11857920
+Elapsed time = 70785.93 sec
+FPS          = 167
+actor loss   = -0.147489
+critic loss  = 6.731247
+mean return  = 37.224068
+mean length  = 339.51
+
+[11600 / 30000]
+----------------------------------
+Timesteps    = 11878400
+Elapsed time = 70806.61 sec
+FPS          = 167
+actor loss   = 0.226342
+critic loss  = 0.398368
+mean return  = 33.853283
+mean length  = 336.04
+
+Saving the model ... Done.
+
+[11620 / 30000]
+----------------------------------
+Timesteps    = 11898880
+Elapsed time = 70825.81 sec
+FPS          = 168
+actor loss   = 0.017502
+critic loss  = 0.420050
+mean return  = 28.879406
+mean length  = 345.92
+
+[11640 / 30000]
+----------------------------------
+Timesteps    = 11919360
+Elapsed time = 70839.75 sec
+FPS          = 168
+actor loss   = -0.023251
+critic loss  = 0.296006
+mean return  = 26.392979
+mean length  = 343.75
+
+[11660 / 30000]
+----------------------------------
+Timesteps    = 11939840
+Elapsed time = 70858.29 sec
+FPS          = 168
+actor loss   = -0.059151
+critic loss  = 3.618791
+mean return  = 29.709517
+mean length  = 348.89
+
+[11680 / 30000]
+----------------------------------
+Timesteps    = 11960320
+Elapsed time = 70875.12 sec
+FPS          = 168
+actor loss   = 0.143845

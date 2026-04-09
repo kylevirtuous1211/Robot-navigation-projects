@@ -1,3 +1,4 @@
+import argparse
 import os
 import time
 
@@ -11,10 +12,20 @@ from multi_env import MultiEnv, make_env
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--seed", type=int, default=int(time.time()))
+    parser.add_argument("--save-dir", type=str, default="./save")
+    parser.add_argument("--n-env", type=int, default=8)
+    parser.add_argument("--n-iter", type=int, default=60000)
+    args = parser.parse_args()
+
+    torch.manual_seed(args.seed)
+    np.random.seed(args.seed)
+
     # TODO 5: Adjust these parameters if needed
     # Parameters that can be modified
     # ----------------------------
-    n_env = 8
+    n_env = args.n_env
     n_step = 128
     sample_mb_size = 64
     sample_n_epoch = 4
@@ -23,7 +34,7 @@ def main():
     gamma = 0.99
     clip_val = 0.2
     lr = 1e-4
-    n_iter = 30000
+    n_iter = args.n_iter
     device = "cpu"
 
     # Parameters that are fixed
@@ -35,7 +46,7 @@ def main():
     disp_step = 20
     save_step = 100
     check_step = 500
-    save_dir = "./save"
+    save_dir = args.save_dir
 
     # Create multiple environments
     # ----------------------------

@@ -14,7 +14,7 @@ def main():
     n_iter = 100
     s_dim = 14
     a_dim = 1
-    save_dir = "./save"
+    save_dir = "./save_gpu"
     device = "cpu"
 
     # Create environment & model
