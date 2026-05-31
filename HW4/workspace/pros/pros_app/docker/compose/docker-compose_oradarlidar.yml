@@ -1,0 +1,16 @@
+services:
+  oradarlidar:
+    image: registry.screamtrumpet.csie.ncku.edu.tw/alianlbj23/oradar_lidar_image:v1.0.2
+    env_file:
+      - .env
+    devices:
+      - "/dev/oradar:/dev/oradar"
+    volumes:
+      - ./demo:/workspace/demo:ro
+    networks:
+      - my_bridge_network
+    command: "ros2 launch /workspace/demo/oradarlidar.launch.py"
+
+networks:
+  my_bridge_network:
+    driver: bridge

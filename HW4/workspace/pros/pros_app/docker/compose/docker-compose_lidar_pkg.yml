@@ -1,0 +1,15 @@
+services:
+  lidar_pkg:
+    image: registry.screamtrumpet.csie.ncku.edu.tw/alianlbj23/pros_lidar_pkg_image:latest
+    env_file:
+      - .env
+    networks:
+      - my_bridge_network
+    command: "ros2 run lidar_pkg lidar_nan_value_filter_node"
+
+# This will create a docker bridge network
+# docker network create --driver bridge pros_app_my_bridge_network
+# You can see the network by docker network ls
+networks:
+  my_bridge_network:
+    driver: bridge

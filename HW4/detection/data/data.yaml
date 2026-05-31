@@ -1,0 +1,5 @@
+train: /home/kyle/Desktop/Robot-navigation-projects/HW4/detection/data/train/images
+val: /home/kyle/Desktop/Robot-navigation-projects/HW4/detection/data/valid/images
+
+nc: 2
+names: ['bear', 'knob']

@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 2
+names: ['bear', 'knob']
+
+roboflow:
+  workspace: kyles-workspace-abat6
+  project: 1273890ajkdlf-l32ou98pdet
+  version: 1
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/kyles-workspace-abat6/1273890ajkdlf-l32ou98pdet/dataset/1

@@ -1,0 +1,8 @@
+FROM registry.screamtrumpet.csie.ncku.edu.tw/screamlab/pros_cameraapi:0.0.2
+
+# Blackwell (sm_120) GPU support — base image ships torch 2.5.1+cu118 which has no sm_120 kernels
+RUN pip install --no-cache-dir --upgrade torch torchvision \
+    --index-url https://download.pytorch.org/whl/cu128
+
+# YOLO26-class models (Segment26 head) require ultralytics ≥ 8.4.x; base image ships 8.3.40
+RUN pip install --no-cache-dir --upgrade ultralytics
