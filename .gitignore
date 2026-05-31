@@ -6,6 +6,8 @@ __pycache__
 *.csv
 *.png
 *.pt
+*.jpg
+*.txt
 
 **__MACOSX**
 **Proly_Data**
@@ -19,3 +21,16 @@ __pycache__
 
 # Unity config
 HW3/HW3-2/Config/
+
+# Tooling / IDE
+.claude/
+
+# Unity pre-built simulator (regenerable binary)
+pros_twin_linux
+*.dll
+*.blob
+
+# Training / dataset artifacts
+*.cache
+*.log
+runs/
