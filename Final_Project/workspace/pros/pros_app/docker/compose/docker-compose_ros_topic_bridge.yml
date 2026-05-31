@@ -1,0 +1,15 @@
+services:
+  ros_topic_bridge:
+    image: ghcr.io/screamlab/pros_jetson_driver_image:0.1.1
+    env_file:
+      - .env
+    volumes:
+      - ./demo:/workspace/demo:ro
+    networks:
+      - my_bridge_network
+    command: "python3 /workspace/demo/ros_topic_bridge.py /workspace/demo/bridge_config.yaml"
+    restart: unless-stopped
+
+networks:
+  my_bridge_network:
+    driver: bridge

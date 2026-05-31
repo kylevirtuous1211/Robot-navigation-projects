@@ -1,0 +1,59 @@
+stages:
+  - build
+
+variables:
+  REGISTRY: $CI_REGISTRY  # GitLab provides this variable for the registry URL
+  IMAGE_NAME: $CI_PROJECT_PATH  # GitLab equivalent to GitHub's repository variable
+  GIT_SUBMODULE_STRATEGY: recursive
+  BUILDX_NAME: "buildx-$CI_JOB_ID"
+
+
+build_and_publish:
+  stage: build
+  image: docker:24.0  # Use the Docker image for building
+  services:
+    - docker:24.0-dind  # Docker-in-Docker service
+  variables:
+    DOCKER_TLS_CERTDIR: ""  # Disable TLS for communication with Docker daemon
+  before_script:
+    - echo "Logging in to registry" 
+    - echo "The CI registry is $CI_REGISTRY"
+    - echo "The CI registry user is $CI_REGISTRY_USER"
+    - echo $CI_REGISTRY_PASSWORD | docker login $CI_REGISTRY --username $CI_REGISTRY_USER --password-stdin
+    - THREADS=$(nproc)
+    # Check if THREADS is a valid integer, otherwise set to 4
+    - if ! [[ "$THREADS" =~ ^[0-9]+$ ]]; then THREADS=4; fi
+    - echo "Number of CPU threads is $THREADS"
+    - docker info  # Verify Docker client can connect to Docker daemon
+
+  script:
+    # Check out the repository (this happens automatically in GitLab)
+    - echo "Checking out the repository"
+
+    # Add support for QEMU (optional, similar to GitHub Actions setup-qemu)
+    - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+
+    # Set up Docker Buildx
+
+    - docker buildx create --name $BUILDX_NAME --use
+    - docker buildx inspect --bootstrap
+
+    # Extract metadata (this requires custom commands in GitLab)
+    - TAG=$(if [[ "$CI_COMMIT_TAG" != "" ]]; then echo "$CI_COMMIT_TAG"; else echo "latest-$(date +%Y%m%d)"; fi)
+    - echo "TAG=$TAG"
+
+    # Build and push Docker image
+    - echo "Building and pushing Docker image $REGISTRY/$IMAGE_NAME with tag $TAG"
+    - |
+      docker buildx build  --builder $BUILDX_NAME --provenance=false --platform linux/arm64,linux/amd64 \
+        --build-arg THREADS=$THREADS \
+        -t $REGISTRY/$IMAGE_NAME:$TAG \
+        -t $REGISTRY/$IMAGE_NAME:latest \
+        --push .
+
+  only:
+    - tags
+
+after_script:
+  - echo "Cleaning up buildx"
+  - docker buildx rm $BUILDX_NAME  

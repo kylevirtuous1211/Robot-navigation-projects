@@ -1,0 +1,37 @@
+global:
+  joints_count: 5.0
+  arm_topic: /robot_arm
+  imu_receive_topic: /imu/data_raw
+  yolo_object_offset_receive_topic: /yolo/object/offset
+  angle_step: 5.0  # Amount to increase/decrease angle by with keyboard input
+pybullet:
+  urdf_name: target.urdf
+  gui: false # true or false
+  view_world: false # true or false
+  initial_height : 0.195
+  controllable_joints : 5.0
+  end_eff_index: 4.0
+  time_step: 1e-3
+joints:
+  0:
+    min_angle: 0.0
+    max_angle: 240.0
+  1:
+    min_angle: 0.0
+    max_angle: 240.0
+  2:
+    min_angle: 0.0
+    max_angle: 150.0
+  3:
+    min_angle: 0.0
+    max_angle: 180.0
+  4:
+    min_angle: 0.0
+    max_angle: 70.0
+joints_reset:
+  0: 90.0
+  1: 30.0
+  2: 160.0
+  3: 180.0
+  4: 70.0
+

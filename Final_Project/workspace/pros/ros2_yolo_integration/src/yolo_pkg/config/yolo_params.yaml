@@ -1,0 +1,8 @@
+yolo:
+  conf: 0.8
+  # obb_model: "balldetect-11s.pt"
+  obb_model: "tennis_v2.pt"
+  seg_model: "segmentation_hw.pt"
+
+image:
+  use_compressed: false

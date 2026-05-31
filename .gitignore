@@ -34,3 +34,6 @@ pros_twin_linux
 *.cache
 *.log
 runs/
+
+# Oversized doc (exceeds GitHub 100MB limit)
+Final_Project/Unity_final_project_spec.pdf

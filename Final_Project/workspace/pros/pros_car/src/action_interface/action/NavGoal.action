@@ -1,0 +1,9 @@
+# Mode
+string mode
+---
+# Result
+bool success
+string message
+---
+# Feedback
+float32 distance_to_goal

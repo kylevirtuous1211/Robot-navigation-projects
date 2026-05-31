@@ -1,0 +1,29 @@
+services:
+  rplidar:
+    image: ghcr.io/screamlab/pros_jetson_driver_image:0.1.0
+    env_file:
+      - .env
+    devices:
+      - "/dev/usb_lidar:/dev/usb_lidar"
+    volumes:
+      - ./demo:/workspace/demo:ro
+    networks:
+      - my_bridge_network
+    command: "ros2 launch /workspace/demo/rplidar.xml"
+  
+  lidar_angle_filter:
+    image: registry.screamtrumpet.csie.ncku.edu.tw/alianlbj23/pros_lidar_pkg_image:latest
+    env_file:
+      - .env
+    networks:
+      - my_bridge_network
+    command: >
+      ros2 run lidar_pkg lidar_angle_value_filter_node
+      --ros-args
+      -p scan_topic:="/scan_tmp"
+      -p filtered_topic:="/scan"
+      -p threshold_distance:=0.3
+
+networks:
+  my_bridge_network:
+    driver: bridge
