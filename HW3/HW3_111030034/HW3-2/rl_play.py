@@ -26,6 +26,7 @@ class RewardManager:
         self.log_interval = 100
         self.position_history = []
         self.history_window = 50  # check every 50 steps
+        self._death_penalized = False
 
     def update(self, observation):
         self.prev_observation = self.observation
@@ -36,6 +37,7 @@ class RewardManager:
         self.observation = None
         self.step_count = 0
         self.position_history = []
+        self._death_penalized = False
 
     def calculate_flag_capture_reward(self):
         """
@@ -102,7 +104,7 @@ class RewardManager:
         current_distance = np.linalg.norm(curr_target_pos)
         prev_distance = np.linalg.norm(prev_target_pos)
 
-        reward = (prev_distance - current_distance) * 10.0
+        reward = (prev_distance - current_distance) * 15.0
         return reward
 
     def calculate_survival_reward(self):
@@ -115,7 +117,18 @@ class RewardManager:
         """
         health = self.observation.get("agent_health", 100)
         if health <= 0:
-            return -100.0
+            if not self._death_penalized:
+                self._death_penalized = True
+                return -100.0
+            return 0.0
+        self._death_penalized = False
+        return 0.0
+
+    def calculate_respawn_penalty(self):
+        """Penalize being in respawn state — dying costs time."""
+        is_respawning = self.observation.get("is_respawning", False)
+        if is_respawning:
+            return -5.0
         return 0.0
 
     def calculate_time_penalty(self):
@@ -136,9 +149,11 @@ class RewardManager:
         old_pos = self.position_history[-self.history_window]
         displacement = np.linalg.norm(np.array(pos[:3]) - old_pos)
 
-        # If agent moved less than 1.5 units in 50 steps, it's circling
+        # Tiered penalty: nearly stationary is much worse than slow circling
+        if displacement < 0.5:
+            return -8.0
         if displacement < 1.5:
-            return -1.0
+            return -3.0
         return 0.0
 
     def calculate_terrain_penalty(self):
@@ -168,8 +183,9 @@ class RewardManager:
         time_penalty = self.calculate_time_penalty()
         terrain_penalty = self.calculate_terrain_penalty()
         circling_penalty = self.calculate_circling_penalty()
+        respawn_penalty = self.calculate_respawn_penalty()
 
-        total_reward = checkpoint_score + distance_score + proximity_bonus + survival_score + time_penalty + terrain_penalty + circling_penalty
+        total_reward = checkpoint_score + distance_score + proximity_bonus + survival_score + time_penalty + terrain_penalty + circling_penalty + respawn_penalty
 
         self.step_count += 1
 
@@ -209,6 +225,7 @@ class RewardManager:
                 f"time={t:.1f}s | "
                 f"rew: cp={checkpoint_score:.1f} dist={distance_score:.1f} "
                 f"terr={terrain_penalty:.1f} circ={circling_penalty:.1f} "
+                f"resp={respawn_penalty:.1f} "
                 f"time={time_penalty:.1f} surv={survival_score:.1f} "
                 f"total={total_reward:.1f} | "
                 f"next_cps:{cp_info}"
@@ -222,13 +239,13 @@ class MLPlay:
         self.reward_manager = RewardManager()
 
         self.config = {
-            "learning_rate": 0.0003,
+            "learning_rate": 0.0001,
             "n_steps": 2048,
             "batch_size": 64,
             "n_epochs": 10,
-            "clip_range": 0.2,
+            "clip_range": 0.15,
             "gamma": 0.99,
-            "ent_coef": 0,
+            "ent_coef": 0.005,
             "vf_coef": 0.5,
             "max_grad_norm": 0.5,
             "device": "cpu",

@@ -4,49 +4,105 @@
 
 ### TODO 1 & 2 — Policy & Value Networks (`model.py`)
 
-**PolicyNet**: Two-layer MLP (14 → 64 → 64) with ReLU activations and orthogonal weight initialization. The output passes through a `DiagGaussian` head that maps the 64-dim feature to a 1D action mean, then wraps it in a `FixedNormal` distribution with fixed `std=0.5`. At inference the mode (mean) is used; during training, actions are sampled stochastically.
+**PolicyNet** $\pi_\theta(a \mid s)$: Two-layer MLP ($14 \to 64 \to 64$) with ReLU activations and orthogonal weight initialization. The output passes through a `DiagGaussian` head that produces a 1D action mean $\mu_\theta(s)$, wrapped in a `FixedNormal` distribution with fixed $\sigma = 0.5$:
 
-**ValueNet**: Three-layer MLP (14 → 64 → 64 → 1) with ReLU activations and orthogonal initialization. Outputs a scalar state-value estimate via `state[:, 0]` squeeze.
+$$
+a \sim \mathcal{N}(\mu_\theta(s),\ \sigma^2 I)
+$$
+
+At inference the mode (mean) is used; during training, actions are sampled stochastically.
+
+**ValueNet** $V_\omega(s)$: Three-layer MLP ($14 \to 64 \to 64 \to 64 \to 1$) with ReLU activations and orthogonal initialization. Outputs a scalar state-value estimate.
 
 Both networks use orthogonal initialization with `relu` gain to avoid vanishing/exploding gradients at training start.
 
 ### TODO 3 — Rollout Collection (`env_runner.py`)
 
-`EnvRunner.run` collects `n_step=128` steps across `n_env=8` parallel environments:
-1. At each step, the current states are fed to `policy_net` to sample actions and log-probabilities, and to `value_net` to get value estimates.
-2. Actions are applied to the environment via `env.step(actions)`.
-3. After collecting all steps, **Generalized Advantage Estimation (GAE)** is computed with `γ=0.99, λ=0.95` to produce advantage-augmented returns. Returns and advantages are flattened to `(n_step × n_env,)` batches for training.
+`EnvRunner.run` collects $T = 128$ steps across $N = 8$ parallel environments. At each step $t$:
+
+1. Sample action and log-probability: $a_t \sim \pi_\theta(\cdot \mid s_t)$, record $\log \pi_\theta(a_t \mid s_t)$
+2. Estimate value: $v_t = V_\omega(s_t)$
+3. Step environment: $s_{t+1}, r_t, d_t = \mathrm{env.step}(a_t)$
+
+After collecting all steps, **Generalized Advantage Estimation (GAE)** computes advantages:
+
+$$
+\delta_t = r_t + \gamma V(s_{t+1}) - V(s_t)
+$$
+
+$$
+\hat{A}_t = \sum_{l=0}^{T-t} (\gamma \lambda)^l \delta_{t+l}
+$$
+
+with $\gamma = 0.99$, $\lambda = 0.95$. Returns and advantages are flattened to $(T \times N)$ batches for training.
 
 ### TODO 4 — PPO Update (`agent.py`)
 
-The clipped surrogate objective is implemented as:
+The clipped surrogate objective:
 
-```
-ratio = exp(new_log_prob - old_log_prob)
-pg_loss = -min(ratio * A, clip(ratio, 1-ε, 1+ε) * A).mean()
-```
+$$
+r_t(\theta) = \frac{\pi_\theta(a_t \mid s_t)}{\pi_{\theta_{\text{old}}}(a_t \mid s_t)} = \exp(\log \pi_\theta - \log \pi_{\theta_{\text{old}}})
+$$
 
-The value loss uses clipped value predictions to limit large updates:
-```
-v_loss = max((returns - V)², (returns - clip(V, V_old±ε))²).mean()
-```
+$$
+L^{\text{CLIP}}(\theta) = -E\left[\min\left(r_t(\theta)\hat{A}_t,\ \mathrm{clip}(r_t(\theta),\ 1-\epsilon,\ 1+\epsilon)\hat{A}_t\right)\right]
+$$
 
-Each PPO update runs `4` epochs over the rollout, shuffling and sampling `64`-sample mini-batches. Both actor and critic use Adam optimizers with gradient clipping (`max_norm=0.5`).
+The value loss uses clipped value predictions:
+
+$$
+L^V(\omega) = E\left[\max\left((G_t - V_\omega)^2,\ (G_t - \mathrm{clip}(V_\omega,\ V_{\text{old}} \pm \epsilon))^2\right)\right]
+$$
+
+Each PPO update runs $K = 4$ epochs over the rollout, shuffling and sampling $M = 64$-sample mini-batches. Both actor and critic use Adam optimizers with gradient clipping (max norm $= 0.5$).
 
 ### TODO 5 — Training Parameters (`train.py`)
 
 | Parameter | Value |
 |-----------|-------|
-| n_env | 8 |
-| n_step | 128 |
-| batch_size | 64 |
-| epochs | 4 |
-| clip_val (ε) | 0.2 |
-| γ | 0.99 |
-| λ (GAE) | 0.95 |
-| learning rate | 1e-4 (linear decay) |
-| n_iter | 30000 |
+| $N$ (parallel envs) | 8 |
+| $T$ (rollout steps) | 128 |
+| $M$ (batch size) | 64 |
+| $K$ (epochs) | 4 |
+| $\epsilon$ (clip) | 0.2 |
+| $\gamma$ (discount) | 0.99 |
+| $\lambda$ (GAE) | 0.95 |
+| learning rate | $10^{-4}$ (linear decay) |
+| iterations | 30,000 |
+
+## CPU vs GPU Training
+
+The baseline `train.py` uses Python `multiprocessing` to run 8 parallel environments on CPU. We additionally wrote a GPU-accelerated pipeline (`train_gpu.py`, `gpu_env.py`, `gpu_runner.py`, `gpu_agent.py`) that vectorizes the entire environment and rollout collection on GPU tensors.
+
+### Architectural Differences
+
+| Aspect | CPU (`multi_env.py`) | GPU (`gpu_env.py`) |
+|--------|---------------------|-------------------|
+| Parallelism | Multiprocessing (IPC pipes) | Vectorized tensor ops |
+| Env count | 8 | 4096 |
+| Data location | NumPy arrays on CPU | PyTorch tensors on GPU |
+| Env-to-model transfer | `torch.from_numpy()` per step | Zero-copy (all GPU) |
+| Path generation | On-demand per reset | Pre-generated pool + background refresh |
+
+The PPO algorithm, network architecture, and loss functions are **identical** between CPU and GPU versions. The GPU version is a drop-in replacement that trades development simplicity for higher throughput via pure tensor parallelization.
+
+### Performance Comparison
+
+Measured at the same training iteration (iter 780, 20 iterations of training):
+
+| Metric | CPU | GPU |
+|--------|-----|-----|
+| **FPS** | **2,967** | **459,464** |
+| **Timesteps collected** | 20,480 | 10,485,760 |
+| **Wall time** | 6.90 s | 22.82 s |
+| **Timesteps / second** | ~3K | ~460K |
+| Mean return | 170.2 | 228.0 |
+
+The GPU version achieves **~155x higher throughput** (459K vs 3K FPS). Although each GPU iteration takes slightly longer in wall time (22.8s vs 6.9s) due to processing 4096 envs instead of 8, it collects **512x more timesteps per iteration** (10.5M vs 20K). This means the GPU version sees far more diverse training data per update, leading to faster convergence and higher mean return at the same iteration count.
 
 ## Results
 
-The agent learns to track random cubic spline paths using only angular velocity control. Training converges around iteration 15000 with mean episode reward reaching ~150–200 and average episode length ~290 steps (close to the 400-step limit), indicating the agent successfully completes most paths before timeout.
+The agent learns to track random cubic spline paths using angular velocity control. Training converges around iteration 15,000 with mean episode reward reaching ~150-200 and average episode length ~290 steps (close to the 400-step limit), indicating the agent successfully follows most paths to completion.
+
+## Thank you TA
+This homework continues HW2, but this time the agent the controlling by itself with real time action output. Compared to HW3-2, The most valuable takeaway is how value networks and policy networks are being constructed, especially the initialization methods. The GPU acceleration methods I created makes training finish under 3 minutes, which is more time efficient and I recommend next year's class could try doing it.
