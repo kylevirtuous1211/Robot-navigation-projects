@@ -69,8 +69,10 @@ class YoloDetectionNode(Node):
         # ===== Final Project Task 1: 自動抓取目標點 =====
         # 訂閱相機內參 (K 矩陣)，用來把像素 + 深度反投影成 3D 座標
         self.camera_info = None
+        # Unity 實際發布的是 /camera/color/camera_info (RGB 內參)，
+        # /camera/image/camera_info 沒有發布者。
         self.camera_info_sub = self.create_subscription(
-            CameraInfo, "/camera/image/camera_info", self.camera_info_callback, 1
+            CameraInfo, "/camera/color/camera_info", self.camera_info_callback, 1
         )
         # 發布 bear 的 3D 位置 Marker，取代 Foxglove 手動點擊 /clicked_point。
         # arm_controller_2D 訂閱 /yolo/target_marker 後即可自動夾取。
@@ -176,12 +178,16 @@ class YoloDetectionNode(Node):
         return image, points
 
     def draw_bounding_boxes(self, image, results):
-        """在影像上繪製 YOLO 檢測到的 Bounding Box"""
-        # 一開始預設沒找到目標
-        found_target = 0
-        target_distance = 0.0
-        delta_x = 0.0
+        """在影像上繪製 YOLO 檢測到的 Bounding Box。
+
+        場景中可能有多隻 bear，為避免目標在多隻之間跳動造成車身左右擺動，
+        這裡只鎖定「面積最大 (最近) 」的那一隻作為單一目標。
+        """
         image, points = self.draw_cross(image)
+        center_x = points[self.x_num_splits // 2][0]
+
+        # 先畫出所有符合標籤的框，同時挑出面積最大的目標
+        best = None  # (area, cx, cy, depth, class_name)
         for result in results:
             for box in result.boxes:
                 x1, y1, x2, y2 = map(int, box.xyxy[0])
@@ -189,43 +195,49 @@ class YoloDetectionNode(Node):
                 class_id = int(box.cls[0])
                 class_name = self.model.names[class_id]
 
-                # 只保留設定內的標籤
                 if self.allowed_labels and class_name not in self.allowed_labels:
                     continue
 
-                # 計算 Bounding Box 正中心點
                 cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
-
-                # 如果符合標籤，表示找到目標
-                found_target = 1
-
-                # 優先使用無壓縮的深度圖
+                area = (x2 - x1) * (y2 - y1)
                 depth_value = self.get_depth_at(cx, cy)
-                target_distance = depth_value
-                depth_text = f"{depth_value:.2f}m" if depth_value else "N/A"
 
-                # ------ 計算與影像中心的偏移量 ------
-                # points 有 x_num_splits+1 個點，正中心為索引 x_num_splits//2
-                delta_x = cx - points[self.x_num_splits // 2][0]
+                # 畫框 (非選中目標用灰色，選中後再以綠色覆蓋)
+                cv2.rectangle(image, (x1, y1), (x2, y2), (160, 160, 160), 1)
 
-                # ------ 發布自動抓取用的 3D Marker (取代手動 click_point) ------
-                if class_name in self.grasp_labels and depth_value > 0.0:
-                    self.publish_target_marker(cx, cy, depth_value)
+                if best is None or area > best[0]:
+                    best = (area, cx, cy, depth_value, class_name, (x1, y1, x2, y2))
 
-                # 繪製框和標籤
-                cv2.rectangle(image, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                label = f"{class_name} {conf:.2f} Depth: {depth_text}"
+        H, W = image.shape[:2]
+        if best is None:
+            # 沒找到任何目標
+            self.publish_target_info(0, 0.0, 0.0, 0.0, 0.0)
+            return image
 
-                cv2.putText(
-                    image,
-                    label,
-                    (x1, y1 - 10),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.5,
-                    (0, 255, 0),
-                    2,
-                )
-        self.publish_target_info(found_target, target_distance, delta_x)
+        _, cx, cy, depth_value, class_name, (x1, y1, x2, y2) = best
+        delta_x = cx - center_x
+        depth_text = f"{depth_value:.2f}m" if depth_value else "N/A"
+        # 目標框佔畫面比例 & 框底部的垂直位置比例 (越接近 1 代表 bear 越靠近車前)
+        area_frac = float((x2 - x1) * (y2 - y1)) / float(W * H)
+        bottom_frac = float(y2) / float(H)
+
+        # 突顯選中的目標 (綠色粗框)
+        cv2.rectangle(image, (x1, y1), (x2, y2), (0, 255, 0), 2)
+        cv2.putText(
+            image,
+            f"{class_name} D:{depth_text} dx:{delta_x}",
+            (x1, y1 - 10),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,
+            (0, 255, 0),
+            2,
+        )
+
+        # 發布抓取用 3D Marker (僅在深度有效時)
+        if class_name in self.grasp_labels and depth_value > 0.0:
+            self.publish_target_marker(cx, cy, depth_value)
+
+        self.publish_target_info(1, depth_value, float(delta_x), area_frac, bottom_frac)
         return image
 
     def get_depth_at(self, x, y):
@@ -311,10 +323,21 @@ class YoloDetectionNode(Node):
         except Exception as e:
             self.get_logger().error(f"Could not publish image: {e}")
 
-    def publish_target_info(self, found, distance, delta_x):
-        """發佈目標資訊 (找到目標, 距離)"""
+    def publish_target_info(self, found, distance, delta_x, area_frac=0.0, bottom_frac=0.0):
+        """發佈目標資訊。
+
+        data = [found, distance(m), delta_x(px),
+                area_frac(框佔畫面比例), bottom_frac(框底部 y 比例)]
+        後兩項供近距離夾取判斷 (深度 <0.45m 失效時用視覺大小/位置代替)。
+        """
         msg = Float32MultiArray()
-        msg.data = [float(found), float(distance), float(delta_x)]
+        msg.data = [
+            float(found),
+            float(distance),
+            float(delta_x),
+            float(area_frac),
+            float(bottom_frac),
+        ]
         self.target_pub.publish(msg)
 
     def publish_x_multi_depths(self, image):

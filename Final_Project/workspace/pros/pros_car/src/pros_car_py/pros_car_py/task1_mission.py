@@ -23,6 +23,9 @@ Task1Mission — Final Project Task 1 自動任務 (反應式視覺伺服 + Nav2
 
 import threading
 import time
+import math
+
+from pros_car_py.nav2_utils import calculate_angle_point, cal_distance
 
 
 class Task1Mission:
@@ -30,6 +33,7 @@ class Task1Mission:
     SEARCH = "SEARCH"
     APPROACH = "APPROACH"
     OBSERVE = "OBSERVE"
+    CREEP = "CREEP"
     GRIP = "GRIP"
     RETURN = "RETURN"
     DONE = "DONE"
@@ -50,12 +54,36 @@ class Task1Mission:
 
         # ---- 可調參數 (需依 Unity 場景的 "N units" 與夾爪幾何微調) ----
         self.TICK = 0.1                  # 控制週期 (s)
-        self.APPROACH_STOP_DIST = 0.6    # 距 bear 多近視為到位 (m)，對應 "within N units"
-        self.ALIGN_PX = 60.0             # delta_x 在此範圍內視為對準 (px, 以真實中心計)
+        # 深度感測在 ~0.45m 以下會失效(觸底)，而手臂可達範圍只有 ~0.19m。
+        # 因此：APPROACH 先停在「最近的有效深度 (~0.5m)」完成 Locate&Observe，
+        # 之後再 CREEP「盲推前進」一小段把 bear 推進手臂可達範圍才夾取。
+        self.APPROACH_STOP_DIST = 0.50   # 到最近可靠深度就停 (m) → Locate&Observe
+        self.ALIGN_PX = 35.0             # 置中要嚴格 (px)，確保 bear 在正前方 (夾爪在中軸)
+        self.LOST_CONFIRM = 6            # APPROACH 連續遺失 N 幀才退回 SEARCH (容忍 YOLO 短暫掉幀)
         self.OBSERVE_SECONDS = 5.5       # 靜止觀察時間 (>5s 才拿分，留 0.5s 餘裕)
+        # CREEP 改為「YOLO 導引」：前進直到 bear 的框底接近畫面底部 (= 到車前)。
+        self.BEAR_BOTTOM_FRAC = 0.85     # bbox 底部 y 比例達此值 → bear 已到車前可夾
+        self.CREEP_MAX_SECONDS = 4.0     # CREEP 安全逾時 (s)
+
+        # RETURN 用 Nav2 的 /cmd_vel (含避障) 換算成輪速，避免自寫航向跟隨撞牆。
+        self.LIN_GAIN = 600.0            # linear.x (m/s) → 輪速單位
+        self.ANG_GAIN = 250.0            # angular.z (rad/s) → 左右輪差速
+        self.RETURN_MAX_WHEEL = 350.0    # 輪速上限
         self.GRIP_WAIT = 15.0            # 等待手臂完成夾取排程的時間 (s)
         self.RETURN_ARRIVE_DIST = 0.5    # 回到起點的容許半徑 (m)
-        self.SEARCH_TIMEOUT = 120.0      # 找不到 bear 的保險上限 (s)
+
+        # ---- 搜尋強化 (避免假偵測 & 找不到就放棄) ----
+        self.SEARCH_TIMEOUT = 240.0      # 找不到 bear 的保險上限 (s)，加大以多轉幾圈
+        self.SEARCH_CONFIRM = 3          # 連續偵測到 N 幀才認定真的找到 (濾除單幀假偵測)
+        self.CLOSE_CONFIRM = 3           # 連續 N 幀都「夠近」才進 OBSERVE
+        self.SEARCH_NUDGE_SEC = 12.0     # 轉這麼久仍沒看到 → 前進一下換視角
+        self.SEARCH_NUDGE_TICKS = 8      # 前進的幀數 (約 0.8s)
+
+        # ---- 返航 (RETURN) ----
+        self.RETURN_PLAN_WAIT = 4.0      # 發出 goal 後等 Nav2 規劃的時間 (s)
+        self.RETURN_TIMEOUT = 90.0       # 返航保險上限 (s)
+        self.RETURN_ANGLE_OK = 20.0      # 航向誤差在此度數內就直行
+        self.RETURN_LOOKAHEAD = 0.4      # 沿全域路徑取前瞻點的最小距離 (m)
 
         # ---- 執行緒狀態 ----
         self._thread = None
@@ -64,6 +92,7 @@ class Task1Mission:
 
         self.state = self.SEARCH
         self.start_pose = None  # [x, y]，任務起點 (Nav2 返航目標)
+        self.start_yaw = 0.0    # 起始朝向 (rad)，返航目標朝向設為其相反 (yaw+pi)
 
     # ==========================================================
     # 對外介面 (給 Task1Mode 呼叫)
@@ -100,51 +129,116 @@ class Task1Mission:
 
         search_deadline = time.time() + self.SEARCH_TIMEOUT
         observe_start = None
-        return_started = False
+        creep_start = 0.0
+        found_streak = 0       # SEARCH: 連續偵測幀數
+        close_streak = 0       # (保留) APPROACH 計數
+        lost_streak = 0        # APPROACH: 連續遺失目標幀數
+        last_valid_dist = None # APPROACH: 最近一次有效深度
+        search_nudge_until = 0.0   # SEARCH: 前進換視角的截止時間
+        last_rotate_time = time.time()
+        return_entry_time = 0.0
+        last_goal_pub = 0.0
 
         while not stop_event.is_set():
-            info = self.data_processor.get_yolo_target_info()  # [found, dist, dx] or None
+            info = self.data_processor.get_yolo_target_info()  # [found,dist,dx,area,bottom] or None
             found = bool(info and info[0] == 1)
             dist = info[1] if info else 0.0
             dx = info[2] if info else 0.0
+            bottom_frac = info[4] if (info and len(info) >= 5) else 0.0
 
             # ---------------- SEARCH ----------------
             if self.state == self.SEARCH:
-                if found:
-                    print("[Task1] 偵測到 bear → APPROACH")
+                found_streak = found_streak + 1 if found else 0
+                if found_streak >= self.SEARCH_CONFIRM:
+                    print(f"[Task1] 穩定偵測到 bear (dist={dist:.2f}) → APPROACH")
                     self.state = self.APPROACH
+                    close_streak = 0
+                    last_valid_dist = None
                 elif time.time() > search_deadline:
                     print("[Task1] ⚠️ 搜尋逾時，結束任務。")
                     self.state = self.DONE
+                elif time.time() < search_nudge_until:
+                    # 換視角：前進一小段
+                    self._publish("FORWARD_SLOW")
                 else:
+                    # 持續原地旋轉掃描；每隔一段時間前進一下換視角
                     self._publish("CLOCKWISE_ROTATION_SLOW")
+                    if time.time() - last_rotate_time > self.SEARCH_NUDGE_SEC:
+                        search_nudge_until = time.time() + self.SEARCH_NUDGE_TICKS * self.TICK
+                        last_rotate_time = time.time()
 
             # ---------------- APPROACH ----------------
             elif self.state == self.APPROACH:
                 if not found:
-                    # 目標暫時消失，退回搜尋
-                    self._publish("CLOCKWISE_ROTATION_SLOW")
-                    self.state = self.SEARCH
-                    search_deadline = time.time() + self.SEARCH_TIMEOUT
-                elif dist == -1.0 or (0.0 < dist <= self.APPROACH_STOP_DIST):
-                    # dist == -1 表示過近(<~0.4m)，視為已到位
+                    # 容忍 YOLO 短暫掉幀：連續遺失夠多幀才退回 SEARCH
+                    lost_streak += 1
+                    close_streak = 0
+                    self._publish("STOP")
+                    if lost_streak >= self.LOST_CONFIRM:
+                        print("[Task1] 目標遺失 → 退回 SEARCH")
+                        self.state = self.SEARCH
+                        found_streak = 0
+                        search_deadline = time.time() + self.SEARCH_TIMEOUT
+                        last_rotate_time = time.time()
+                    time.sleep(self.TICK)
+                    continue
+
+                lost_streak = 0
+                if dist > 0.0:
+                    last_valid_dist = dist
+                # 是否「夠近」：有效深度 <= 門檻，或過近(-1)且先前確實已接近
+                is_close = (0.0 < dist <= self.APPROACH_STOP_DIST) or (
+                    dist == -1.0
+                    and last_valid_dist is not None
+                    and last_valid_dist < 1.0
+                )
+
+                if is_close and abs(dx) <= self.ALIGN_PX:
+                    # 夠近且對準 → 直接到位 (不需多幀確認，避免繞圈)
                     self._publish("STOP")
                     observe_start = time.time()
-                    print("[Task1] 已到位 → OBSERVE (保持靜止 5s)")
+                    print(f"[Task1] 已到位 (dist={dist:.2f}, dx={dx:.0f}) → OBSERVE")
                     self.state = self.OBSERVE
-                elif dx > self.ALIGN_PX:
-                    self._publish("CLOCKWISE_ROTATION_SLOW")
-                elif dx < -self.ALIGN_PX:
-                    self._publish("COUNTERCLOCKWISE_ROTATION_SLOW")
-                else:
+                elif abs(dx) > self.ALIGN_PX:
+                    # 先「原地轉向」對準，不前進 → 避免在熊周圍繞圈
+                    if dx > 0:
+                        self._publish("CLOCKWISE_ROTATION_SLOW")
+                    else:
+                        self._publish("COUNTERCLOCKWISE_ROTATION_SLOW")
+                elif not is_close:
+                    # 已對準但還不夠近 → 直行前進
                     self._publish("FORWARD_SLOW")
+                else:
+                    self._publish("STOP")
 
             # ---------------- OBSERVE ----------------
             elif self.state == self.OBSERVE:
                 self._publish("STOP")
                 if time.time() - observe_start >= self.OBSERVE_SECONDS:
-                    print("[Task1] 觀察完成 → GRIP")
+                    print("[Task1] 觀察完成 → CREEP (盲推靠近以利夾取)")
+                    creep_start = time.time()
+                    self.state = self.CREEP
+
+            # ---------------- CREEP (YOLO 導引最後靠近) ----------------
+            elif self.state == self.CREEP:
+                creep_elapsed = time.time() - creep_start
+                # 終止：bear 框底已到畫面底部(到車前) / 安全逾時
+                if (found and bottom_frac >= self.BEAR_BOTTOM_FRAC) or (
+                    creep_elapsed >= self.CREEP_MAX_SECONDS
+                ):
+                    self._publish("STOP")
+                    print(
+                        f"[Task1] CREEP 完成 (bottom={bottom_frac:.2f}, "
+                        f"t={creep_elapsed:.1f}s) → GRIP"
+                    )
                     self.state = self.GRIP
+                elif found and dx > self.ALIGN_PX:
+                    self._publish("CLOCKWISE_ROTATION_SLOW")
+                elif found and dx < -self.ALIGN_PX:
+                    self._publish("COUNTERCLOCKWISE_ROTATION_SLOW")
+                else:
+                    # 已對準(或暫時看不到)→ 緩慢前進貼到 bear
+                    self._publish("FORWARD_SLOW")
 
             # ---------------- GRIP ----------------
             elif self.state == self.GRIP:
@@ -152,8 +246,20 @@ class Task1Mission:
                 if self._do_grip(stop_event):
                     print("[Task1] 夾取完成 → RETURN")
                     self.state = self.RETURN
-                    self.nav_processing.reset_nav_process()
-                    return_started = False
+                    # 清掉舊路徑、發一次 goal (= 起點)，交給 Nav2 導航
+                    self.ros_communicator.reset_nav2()
+                    if self.start_pose is not None:
+                        # 返航目標朝向 = 起始朝向的相反 (車子是「回頭」回起點)
+                        goal_yaw = self.start_yaw + math.pi
+                        self.ros_communicator.publish_goal_pose(
+                            self.start_pose, yaw=goal_yaw
+                        )
+                        print(
+                            f"[Task1] RETURN 目標(起點) = {self.start_pose}, "
+                            f"yaw={math.degrees(goal_yaw):.0f}° (起始 {math.degrees(self.start_yaw):.0f}° 的相反)"
+                        )
+                    return_entry_time = time.time()
+                    last_goal_pub = time.time()
                 else:
                     print("[Task1] ⚠️ 夾取失敗 (無目標 Marker)，結束任務。")
                     self.state = self.DONE
@@ -164,14 +270,26 @@ class Task1Mission:
                     self._publish("STOP")
                     self.state = self.DONE
                 else:
-                    action = self.nav_processing.get_action_from_nav2_plan_no_dynamic_p_2_p(
-                        goal_coordinates=self.start_pose
-                    )
-                    self._publish(action if action else "STOP")
-                    return_started = True
-                    if self.nav_processing.get_finish_flag():
+                    elapsed = time.time() - return_entry_time
+                    # 只在 Nav2 尚未開始驅動 (還沒收到 /cmd_vel) 時重發 goal，
+                    # 避免反覆重發導致 Nav2 取消重規劃 → 一直轉/停。
+                    if (
+                        self.ros_communicator.get_latest_cmd_vel() is None
+                        and time.time() - last_goal_pub > 3.0
+                    ):
+                        self.ros_communicator.publish_goal_pose(
+                            self.start_pose, yaw=self.start_yaw + math.pi
+                        )
+                        last_goal_pub = time.time()
+
+                    arrived = self._drive_return()
+                    if arrived:
                         print("[Task1] 已回到起點 → DONE (Recovery 完成)")
-                        self.nav_processing.reset_nav_process()
+                        self.ros_communicator.publish_raw_car_control([0.0, 0.0, 0.0, 0.0])
+                        self.state = self.DONE
+                    elif elapsed > self.RETURN_TIMEOUT:
+                        print("[Task1] ⚠️ 返航逾時，停止。")
+                        self.ros_communicator.publish_raw_car_control([0.0, 0.0, 0.0, 0.0])
                         self.state = self.DONE
 
             # ---------------- DONE ----------------
@@ -201,12 +319,48 @@ class Task1Mission:
             waited += 0.2
         return True
 
+    def _drive_return(self):
+        """用 Nav2 的 /cmd_vel (含區域 costmap 避障) 驅動返航。
+
+        把 Twist(linear.x, angular.z) 換算成 4 輪速度直接發布。完成條件以
+        「實際距起點距離 < RETURN_ARRIVE_DIST」判定 (用 /amcl_pose)。
+        回傳 arrived(bool)。
+        """
+        pose_msg = self.ros_communicator.get_latest_amcl_pose()
+        if pose_msg is None:
+            self.ros_communicator.publish_raw_car_control([0.0, 0.0, 0.0, 0.0])
+            return False
+
+        p = pose_msg.pose.pose.position
+        if cal_distance([p.x, p.y], self.start_pose) < self.RETURN_ARRIVE_DIST:
+            return True
+
+        cmd = self.ros_communicator.get_latest_cmd_vel()
+        if cmd is None:
+            self.ros_communicator.publish_raw_car_control([0.0, 0.0, 0.0, 0.0])
+            return False
+
+        v = cmd.linear.x
+        w = cmd.angular.z
+        left = self.LIN_GAIN * v - self.ANG_GAIN * w
+        right = self.LIN_GAIN * v + self.ANG_GAIN * w
+        m = self.RETURN_MAX_WHEEL
+        left = max(-m, min(m, left))
+        right = max(-m, min(m, right))
+        # [rear_left, rear_right, front_left, front_right]
+        self.ros_communicator.publish_raw_car_control([left, right, left, right])
+        return False
+
     def _capture_start_pose(self, retries=30, delay=0.2):
-        """讀取目前的 /amcl_pose 作為任務起點 [x, y]。"""
+        """讀取目前的 /amcl_pose 作為任務起點，並記錄起始朝向 (self.start_yaw, rad)。
+        回傳 [x, y]。"""
         for _ in range(retries):
             pose_msg = self.ros_communicator.get_latest_amcl_pose()
             if pose_msg is not None:
                 p = pose_msg.pose.pose.position
+                o = pose_msg.pose.pose.orientation
+                # 只有 yaw 的四元數：yaw = 2*atan2(z, w)
+                self.start_yaw = 2.0 * math.atan2(o.z, o.w)
                 return [p.x, p.y]
             time.sleep(delay)
         return None
@@ -215,3 +369,54 @@ class Task1Mission:
         self.ros_communicator.publish_car_control(
             action_key, publish_rear=True, publish_front=True
         )
+
+
+def main(args=None):
+    """Headless 進入點：不開 urwid 選單，直接跑 Task 1 任務並等到結束。
+
+    用法 (容器內)：ros2 run pros_car_py task1_auto
+    """
+    import threading
+    import rclpy
+    from pros_car_py.ros_communicator import RosCommunicator
+    from pros_car_py.data_processor import DataProcessor
+    from pros_car_py.nav_processing import Nav2Processing
+    from pros_car_py.car_controller import CarController
+    from pros_car_py.arm_controller_2D import ArmController
+
+    rclpy.init(args=args)
+    ros_communicator = RosCommunicator()
+    spin_thread = threading.Thread(
+        target=rclpy.spin, args=(ros_communicator,), daemon=True
+    )
+    spin_thread.start()
+
+    data_processor = DataProcessor(ros_communicator)
+    nav_processing = Nav2Processing(ros_communicator, data_processor)
+    car_controller = CarController(ros_communicator, nav_processing)
+    arm_controller = ArmController(ros_communicator, data_processor)
+
+    mission = Task1Mission(
+        ros_communicator,
+        data_processor,
+        nav_processing,
+        car_controller,
+        arm_controller,
+    )
+
+    print("[task1_auto] 啟動 Task 1 任務 (headless)。Ctrl-C 可中止。")
+    mission.start()
+    try:
+        # 等任務執行緒自己跑到 DONE 結束
+        while mission._running and mission._thread.is_alive():
+            mission._thread.join(timeout=0.5)
+    except KeyboardInterrupt:
+        print("[task1_auto] 收到中止訊號。")
+    finally:
+        mission.stop()
+        ros_communicator.destroy_node()
+        rclpy.shutdown()
+
+
+if __name__ == "__main__":
+    main()

@@ -30,6 +30,7 @@ setup(
             "arm_test = pros_car_py.arm_test:main",
             "lidar_trans = pros_car_py.lidar_trans:main",
             "tf_to_amcl_pose = pros_car_py.tf_to_amcl_pose:main",
+            "task1_auto = pros_car_py.task1_mission:main",
         ],
     },
 )

@@ -15,6 +15,7 @@ from nav2_msgs.srv import ClearEntireCostmap
 from rclpy.action import ActionClient
 from nav2_msgs.action import NavigateToPose
 import rclpy
+import math
 from geometry_msgs.msg import Twist
 from cv_bridge import CvBridge
 
@@ -326,7 +327,8 @@ class RosCommunicator(Node):
             self.publisher_forward.publish(msg)
 
     # publish goal_pose
-    def publish_goal_pose(self, goal):
+    def publish_goal_pose(self, goal, yaw=None):
+        """發布導航目標。goal=[x,y]；yaw(rad) 指定目標朝向 (預設朝 +x)。"""
         goal_pose = PoseStamped()
         goal_pose.header = Header()
         goal_pose.header.stamp = self.get_clock().now().to_msg()
@@ -334,7 +336,11 @@ class RosCommunicator(Node):
         goal_pose.pose.position.x = goal[0]
         goal_pose.pose.position.y = goal[1]
         goal_pose.pose.position.z = 0.0
-        goal_pose.pose.orientation.w = 1.0
+        if yaw is None:
+            goal_pose.pose.orientation.w = 1.0
+        else:
+            goal_pose.pose.orientation.z = math.sin(yaw / 2.0)
+            goal_pose.pose.orientation.w = math.cos(yaw / 2.0)
         self.publisher_goal_pose.publish(goal_pose)
 
     # publish robot arm angle
