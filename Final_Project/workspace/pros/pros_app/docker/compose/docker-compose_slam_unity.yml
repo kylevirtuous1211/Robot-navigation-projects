@@ -26,7 +26,7 @@ services:
     networks:
       - my_bridge_network
     ports:
-      - 9090:9090
+      - 9091:9090
     command: "ros2 launch rosbridge_server rosbridge_websocket_launch.xml"
 
 # This will create a docker bridge network
