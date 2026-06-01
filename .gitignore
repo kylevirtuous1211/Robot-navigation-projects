@@ -25,8 +25,10 @@ HW3/HW3-2/Config/
 # Tooling / IDE
 .claude/
 
-# Unity pre-built simulator (regenerable binary)
+# Unity pre-built simulator (regenerable binary, ~1.4G per version)
 pros_twin_linux
+pros_twin_linux*/
+pros_twin_unity_linux/
 *.dll
 *.blob
 
