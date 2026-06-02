@@ -40,8 +40,16 @@ class ArmController:
         ]
         
         self.joint_angles = [joint["init"] for joint in self.joint_limits]
-        self.manual_step = 3.0   
-        
+        self.manual_step = 3.0
+
+        # 夾取時把目標 z 再往下壓，讓爪子叉得更深到地面的熊 (現場可微調)
+        self.grab_z_deepen = 0.08
+        # CREEP 前的預備姿勢 [shoulder, elbow, gripper]：抬高 + 開爪，
+        # 之後 GRIP 只需向下叉再夾，省時且軌跡更像「直接叉下去」。
+        self.ready_angles = [-110.0, -70.0, 90.0]
+        # 爪子是否已抬到預備姿勢 (供任務端在 CREEP 前推前確認爪子已升起)。
+        self._grab_pose_ready = threading.Event()
+
         print(f"🦾 Arm Controller Initialized: {len(self.joint_limits)} Joints Managed.")
 
     # ==========================================
@@ -123,9 +131,12 @@ class ArmController:
             target_base = tf2_geometry_msgs.do_transform_point(target_map, transform)
             
             x_target = target_base.point.x
-            z_target = target_base.point.z
-            
-            print(f"🎯 目標相對基座座標: X={x_target:.3f}, Z={z_target:.3f}")
+            z_target = target_base.point.z - self.grab_z_deepen  # 往下壓，叉更深
+
+            print(
+                f"🎯 目標相對基座座標: X={x_target:.3f}, Z={z_target:.3f} "
+                f"(已下壓 {self.grab_z_deepen:.2f})"
+            )
 
             # 🌟 4. 開啟背景執行緒，執行「抓取與緩慢歸位」的完整排程
             # 使用 daemon=True 確保程式關閉時執行緒會自動結束
@@ -138,6 +149,22 @@ class ArmController:
         except Exception as e:
             print(f"⚠️ 座標轉換或 TF 失敗: {e}")
     
+    def prepare_grab_pose(self):
+        """進 CREEP 前呼叫：開爪 + 把手臂抬到預備姿勢。背景執行不阻塞，
+        完成時 set self._grab_pose_ready，任務端可用 is_grab_pose_ready() 等爪子升起
+        後再開始前推，確保是「往下叉」進熊的位置而非用車身把熊推著走。"""
+        self._grab_pose_ready.clear()
+        def _go():
+            print("🙆 預備抓取：抬高手臂 + 開爪 ...")
+            self._smooth_move_to(list(self.ready_angles), step=5.0, delay=0.1)
+            self._grab_pose_ready.set()
+            print("🙆 預備姿勢就緒 (爪子已升起)。")
+        threading.Thread(target=_go, daemon=True).start()
+
+    def is_grab_pose_ready(self):
+        """爪子是否已抬到預備姿勢 (prepare_grab_pose 的背景移動已完成)。"""
+        return self._grab_pose_ready.is_set()
+
     def _execute_grab_sequence(self, x_target, z_target):
         """背景執行的完整抓取流程 (結合軌跡規劃)"""
         
