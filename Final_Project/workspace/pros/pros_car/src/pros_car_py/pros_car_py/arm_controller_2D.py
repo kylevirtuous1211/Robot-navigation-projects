@@ -42,13 +42,14 @@ class ArmController:
         self.joint_angles = [joint["init"] for joint in self.joint_limits]
         self.manual_step = 3.0
 
-        # 夾取時把目標 z 再往下壓，讓爪子叉得更深到地面的熊 (現場可微調)
-        self.grab_z_deepen = 0.08
-        # CREEP 前的預備姿勢 [shoulder, elbow, gripper]：抬高 + 開爪，
-        # 之後 GRIP 只需向下叉再夾，省時且軌跡更像「直接叉下去」。
-        self.ready_angles = [-110.0, -70.0, 90.0]
-        # 爪子是否已抬到預備姿勢 (供任務端在 CREEP 前推前確認爪子已升起)。
-        self._grab_pose_ready = threading.Event()
+        # ---- 推土機式鏟取夾取參數 (現場依 Unity 場景微調) ----
+        # 鏟取姿勢 [shoulder, elbow, gripper]：手臂下降貼地、爪面約與地面平行、開爪。
+        # 車身會把 bear 推進這個開著的低位爪中，所以這是「最重要」的待調姿勢。
+        self.SCOOP_POSE = [-150.0, -75.0, 90.0]
+        # 搬運姿勢 [shoulder, elbow]：夾住後抬起讓 bear 離地，返航時不拖地 (爪維持關閉)。
+        self.CARRY_POSE = [-180.0, 0.0]
+        # 關爪後等 Unity FixedJoint 把 bear 黏合的時間 (s)。
+        self.GRIP_CLOSE_WAIT = 1.0
 
         print(f"🦾 Arm Controller Initialized: {len(self.joint_limits)} Joints Managed.")
 
@@ -131,12 +132,9 @@ class ArmController:
             target_base = tf2_geometry_msgs.do_transform_point(target_map, transform)
             
             x_target = target_base.point.x
-            z_target = target_base.point.z - self.grab_z_deepen  # 往下壓，叉更深
+            z_target = target_base.point.z
 
-            print(
-                f"🎯 目標相對基座座標: X={x_target:.3f}, Z={z_target:.3f} "
-                f"(已下壓 {self.grab_z_deepen:.2f})"
-            )
+            print(f"🎯 目標相對基座座標: X={x_target:.3f}, Z={z_target:.3f}")
 
             # 🌟 4. 開啟背景執行緒，執行「抓取與緩慢歸位」的完整排程
             # 使用 daemon=True 確保程式關閉時執行緒會自動結束
@@ -149,21 +147,23 @@ class ArmController:
         except Exception as e:
             print(f"⚠️ 座標轉換或 TF 失敗: {e}")
     
-    def prepare_grab_pose(self):
-        """進 CREEP 前呼叫：開爪 + 把手臂抬到預備姿勢。背景執行不阻塞，
-        完成時 set self._grab_pose_ready，任務端可用 is_grab_pose_ready() 等爪子升起
-        後再開始前推，確保是「往下叉」進熊的位置而非用車身把熊推著走。"""
-        self._grab_pose_ready.clear()
-        def _go():
-            print("🙆 預備抓取：抬高手臂 + 開爪 ...")
-            self._smooth_move_to(list(self.ready_angles), step=5.0, delay=0.1)
-            self._grab_pose_ready.set()
-            print("🙆 預備姿勢就緒 (爪子已升起)。")
-        threading.Thread(target=_go, daemon=True).start()
+    def scoop_pose(self):
+        """推土機式鏟取的「預備」：手臂下降到貼地、爪面約與地面平行的鏟取姿勢並開爪。
+        阻塞執行直到到位 — 任務端在這之後才開始用車身前推，把 bear 推進開著的爪中。"""
+        print("🛹 鏟取預備：手臂下降貼地 + 開爪 ...")
+        self._smooth_move_to(list(self.SCOOP_POSE), step=5.0, delay=0.1)
+        print("🛹 鏟取姿勢就緒。")
 
-    def is_grab_pose_ready(self):
-        """爪子是否已抬到預備姿勢 (prepare_grab_pose 的背景移動已完成)。"""
-        return self._grab_pose_ready.is_set()
+    def scoop_grab(self):
+        """推土機式鏟取的「夾取」：車身已把 bear 推進開著的低位爪中 → 關爪夾住、
+        等 Unity FixedJoint 黏合、再抬到搬運姿勢 (爪維持關閉)。阻塞執行。"""
+        print("✊ 關爪夾住 ...")
+        self._smooth_move_to([None, None, self.joint_limits[2]["min_angle"]], step=5.0, delay=0.1)
+        time.sleep(self.GRIP_CLOSE_WAIT)  # 等 FixedJoint 黏合
+        print("🏠 抬起搬運 ...")
+        # 抬到搬運姿勢；gripper 傳 None → 不動，維持夾住狀態。
+        self._smooth_move_to([self.CARRY_POSE[0], self.CARRY_POSE[1], None], step=5.0, delay=0.1)
+        print("✅ 鏟取完成。")
 
     def _execute_grab_sequence(self, x_target, z_target):
         """背景執行的完整抓取流程 (結合軌跡規劃)"""

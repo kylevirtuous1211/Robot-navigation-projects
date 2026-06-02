@@ -8,13 +8,14 @@ Task1Mission — Final Project Task 1 自動任務 (反應式視覺伺服 + Nav2
   APPROACH → 依 /yolo/target_info 的 delta_x 對準、依 distance 前進靠近
              (Locate & Observe, 10 pts 的前置)
   OBSERVE  → 停在 bear 前方並保持靜止 >= 5 秒 (Locate & Observe, 10 pts)
-  GRIP     → 透過 arm_controller 自動夾取 (/yolo/target_marker 由 YOLO 節點自動產生)
+  CREEP    → 推土機式鏟取：手臂降到貼地鏟取姿勢(開爪)，再用車身固定前推把 bear 推進爪中
+  GRIP     → 關爪夾住 + 抬起搬運 (不靠 IK 構到目標，改用車身定位)
   RETURN   → 用 Nav2 導航回任務起點 (Recovery, 20 pts)
   DONE     → 停車結束
 
 設計上盡量「重用既有元件」：
   - 前進/旋轉指令     : ros_communicator.publish_car_control + ACTION_MAPPINGS
-  - 自動夾取          : arm_controller.auto_control(key='g')
+  - 鏟取/夾取         : arm_controller.scoop_pose() + scoop_grab()
   - Nav2 返航跟隨      : nav_processing.get_action_from_nav2_plan_no_dynamic_p_2_p
   - 起點/車身定位      : ros_communicator.get_latest_amcl_pose (由 tf_to_amcl_pose 提供)
 
@@ -62,14 +63,9 @@ class Task1Mission:
         self.LOST_CONFIRM = 5            # APPROACH 連續遺失 N 幀才判定 (容忍 YOLO 短暫掉幀)
         self.COMMIT_DOCK_DIST = 0.7      # 先前已靠近到此距離才遺失 → 視為被遮擋(到位)，直接夾取而非回 SEARCH
         self.OBSERVE_SECONDS = 5.5       # 靜止觀察時間 (>5s 才拿分，留 0.5s 餘裕)
-        # CREEP：固定時間前推。bbox 底部比例在 ~0.42m 就飽和(=1.0)，無法當「夠近」判據，
-        # 所以改成固定前進一小段 (~0.1m) 把 bear 從 ~0.22m 推進手臂 0.19m 可達範圍。
-        self.CREEP_DRIVE_SECONDS = 1.3   # CREEP 直線前推時間 (s) — 太遠就加大，開過頭就減小
-        # 註：不再因「目標被遮擋而消失」提早結束 CREEP — 那只代表 bear 在鏡頭死角，
-        # 不代表已到夾取位置，要繼續前推滿時間才停。
-
-        self.GRIP_WAIT = 15.0            # 等待手臂完成夾取排程的時間 (s)
-        self.MAX_GRIP_ATTEMPTS = 3       # 夾取重試上限：抓不到目標 Marker 就回 CREEP 再前推重試
+        # CREEP = 推土機式夾取：手臂先降到貼地「鏟取」姿勢(開爪)，再用車身固定前推，
+        # 把 bear 推進開著的低位爪中 → 不靠手臂去構到超出 0.19m 可達範圍的點。
+        self.BULLDOZER_PUSH_SEC = 1.3    # 鏟取姿勢就緒後直線前推時間 (s) — 主要微調旋鈕
 
         # RETURN：用 Nav2 導航回起點 (goal 朝向 = 起始朝向相反，車子回頭把熊放回原位)。
         # 把 Nav2 的 /cmd_vel 換算成輪速 (此環境沒有 cmd_vel→wheel 橋接)。
@@ -131,8 +127,7 @@ class Task1Mission:
         search_deadline = time.time() + self.SEARCH_TIMEOUT
         observe_start = None
         creep_start = 0.0
-        creep_arm_prepared = False  # 抬臂預備只在 CREEP 做一次 (重試回 CREEP 不重抬)
-        grip_attempts = 0
+        creep_arm_prepared = False  # 鏟取姿勢只在進 CREEP 時擺一次
         found_streak = 0       # SEARCH: 連續偵測幀數
         close_streak = 0       # (保留) APPROACH 計數
         lost_streak = 0        # APPROACH: 連續遺失目標幀數
@@ -233,31 +228,23 @@ class Task1Mission:
             elif self.state == self.OBSERVE:
                 self._publish("STOP")
                 if time.time() - observe_start >= self.OBSERVE_SECONDS:
-                    print("[Task1] 觀察完成 → CREEP (先抬臂升爪，到位後才前推)")
-                    # 抬臂預備在 CREEP 內做，且要「等爪子升起」才起算前推時間 (見下方)。
-                    creep_start = 0.0  # 0 = 爪子尚未就緒、還沒開始前推
+                    print("[Task1] 觀察完成 → CREEP (推土機式鏟取)")
                     self.state = self.CREEP
 
-            # ---------------- CREEP (固定前推靠近 bear) ----------------
+            # ---------------- CREEP (推土機式：降臂鏟取姿勢 + 車身前推) ----------------
             elif self.state == self.CREEP:
-                # 1) 進 CREEP 先抬臂開爪(只做一次)。
+                # 1) 進 CREEP 先把手臂降到貼地、爪面平行的鏟取姿勢並開爪 (阻塞到位)。
+                #    手臂維持不動，靠車身把 bear 推進開著的低位爪中。
                 if not creep_arm_prepared:
-                    self.arm_controller.prepare_grab_pose()
+                    self._publish("STOP")
+                    self.arm_controller.scoop_pose()   # 阻塞直到爪子降到鏟取姿勢
                     creep_arm_prepared = True
-                # 2) 等爪子確實升起再開始前推 — 這樣前推是把爪子「往下叉」進熊的位置，
-                #    而不是用車身把熊推著走。爪子還在抬就原地等。
-                if not self.arm_controller.is_grab_pose_ready():
-                    self._publish("STOP")
-                    time.sleep(self.TICK)
-                    continue
-                # 3) 爪子就緒後才起算前推時間。
-                if creep_start == 0.0:
-                    creep_start = time.time()
+                    creep_start = time.time()          # 鏟取姿勢就緒後才起算前推
                 creep_elapsed = time.time() - creep_start
-                # 只在「前推時間到」才結束；被遮擋遺失不提早結束 (要推滿距離)
-                if creep_elapsed >= self.CREEP_DRIVE_SECONDS:
+                # 2) 像推土機一樣固定前推，把 bear 推進爪中；前推中仍對準 (看得到時)。
+                if creep_elapsed >= self.BULLDOZER_PUSH_SEC:
                     self._publish("STOP")
-                    print(f"[Task1] CREEP 完成 (前推 {creep_elapsed:.1f}s) → GRIP")
+                    print(f"[Task1] 前推完成 (推土機 {creep_elapsed:.1f}s) → GRIP")
                     self.state = self.GRIP
                 elif found and dx > self.ALIGN_PX:
                     self._publish("CLOCKWISE_ROTATION_SLOW")
@@ -266,49 +253,30 @@ class Task1Mission:
                 else:
                     self._publish("FORWARD_SLOW")
 
-            # ---------------- GRIP ----------------
+            # ---------------- GRIP (關爪夾住 + 抬起) ----------------
             elif self.state == self.GRIP:
                 self._publish("STOP")
-                print(
-                    f"[Task1] GRIP 開始 (dist={dist:.2f}, dx={dx:.0f}, bottom={bottom_frac:.2f})"
-                )
-                grabbed = self._do_grip(stop_event)
-                # 重試機制：抓取失敗 (沒收到目標 Marker) 時不直接放棄，回 CREEP 再前推
-                # 一小段讓 YOLO 重新鎖定目標後重試，達上限才結束任務。
-                # (抬臂已在 CREEP 做過，重試回 CREEP 不會重抬。)
-                if not grabbed:
-                    grip_attempts += 1
-                    if grip_attempts < self.MAX_GRIP_ATTEMPTS:
-                        print(
-                            f"[Task1] ⚠️ 夾取失敗 (無目標 Marker)，重試 "
-                            f"{grip_attempts}/{self.MAX_GRIP_ATTEMPTS - 1} → 回 CREEP 再前推"
-                        )
-                        creep_start = 0.0  # 重新起算前推 (爪子已就緒，會立即前推)
-                        self.state = self.CREEP
-                    else:
-                        print(
-                            f"[Task1] ⚠️ 夾取失敗達上限 ({self.MAX_GRIP_ATTEMPTS} 次)，結束任務。"
-                        )
-                        self.state = self.DONE
-                else:
-                    print("[Task1] 夾取完成 → RETURN (Nav2 導航回起點)")
-                    # 用 Nav2 導航回起點：清掉舊路徑後發一次 goal。
-                    # 目標朝向 = 起始朝向的相反 (start_yaw + π) — 車子「回頭」開回起點，
-                    # 才能把熊放回原本擺放的方向。
-                    self.ros_communicator.reset_nav2()
-                    if self.start_pose is not None:
-                        goal_yaw = self.start_yaw + math.pi
-                        self.ros_communicator.publish_goal_pose(
-                            self.start_pose, yaw=goal_yaw
-                        )
-                        print(
-                            f"[Task1] RETURN 目標(起點) = {self.start_pose}, "
-                            f"yaw={math.degrees(goal_yaw):.0f}° "
-                            f"(起始 {math.degrees(self.start_yaw):.0f}° 的相反)"
-                        )
-                    return_entry_time = time.time()
-                    last_goal_pub = time.time()
-                    self.state = self.RETURN
+                print("[Task1] GRIP：關爪夾住 bear + 抬起搬運")
+                # bear 已被車身推進開著的低位爪中 → 直接關爪、等黏合、抬起 (阻塞)。
+                self.arm_controller.scoop_grab()
+                print("[Task1] 夾取完成 → RETURN (Nav2 導航回起點)")
+                # 用 Nav2 導航回起點：清掉舊路徑後發一次 goal。
+                # 目標朝向 = 起始朝向的相反 (start_yaw + π) — 車子「回頭」開回起點，
+                # 才能把熊放回原本擺放的方向。
+                self.ros_communicator.reset_nav2()
+                if self.start_pose is not None:
+                    goal_yaw = self.start_yaw + math.pi
+                    self.ros_communicator.publish_goal_pose(
+                        self.start_pose, yaw=goal_yaw
+                    )
+                    print(
+                        f"[Task1] RETURN 目標(起點) = {self.start_pose}, "
+                        f"yaw={math.degrees(goal_yaw):.0f}° "
+                        f"(起始 {math.degrees(self.start_yaw):.0f}° 的相反)"
+                    )
+                return_entry_time = time.time()
+                last_goal_pub = time.time()
+                self.state = self.RETURN
 
             # ---------------- RETURN (Nav2 導航回起點) ----------------
             elif self.state == self.RETURN:
@@ -351,20 +319,6 @@ class Task1Mission:
     # ==========================================================
     # 子流程
     # ==========================================================
-    def _do_grip(self, stop_event):
-        """觸發手臂自動夾取，並等待排程完成。"""
-        if self.ros_communicator.latest_yolo_marker is None:
-            return False
-        # arm_controller.auto_control 會讀 latest_yolo_marker，做 TF 轉換，
-        # 並在背景執行 _execute_grab_sequence (open→move→close→retract)。
-        self.arm_controller.auto_control(key="g", mode="auto_arm_human")
-        # 等待夾取排程跑完 (分段 sleep 以便能即時中止)
-        waited = 0.0
-        while waited < self.GRIP_WAIT and not stop_event.is_set():
-            time.sleep(0.2)
-            waited += 0.2
-        return True
-
     def _drive_return(self):
         """把 Nav2 的 /cmd_vel (含全域規劃 + 區域 costmap 避障) 換算成 4 輪速度。
         到站判定用 /amcl_pose 距起點距離。回傳 arrived(bool)。"""
