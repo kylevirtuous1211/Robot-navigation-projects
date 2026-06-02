@@ -16,6 +16,7 @@ from rclpy.action import ActionClient
 from nav2_msgs.action import NavigateToPose
 import rclpy
 import math
+import subprocess
 from geometry_msgs.msg import Twist
 from cv_bridge import CvBridge
 
@@ -342,6 +343,42 @@ class RosCommunicator(Node):
             goal_pose.pose.orientation.z = math.sin(yaw / 2.0)
             goal_pose.pose.orientation.w = math.cos(yaw / 2.0)
         self.publisher_goal_pose.publish(goal_pose)
+
+    def send_navigate_to_pose(self, x, y, yaw=None):
+        """觸發 Nav2 導航到 (x,y[,yaw])。
+
+        用 `ros2 action send_goal` 子行程送 NavigateToPose goal — 因為從非 executor
+        執行緒直接呼叫 action client 的 send_goal_async 不可靠 (rclpy 非執行緒安全)，
+        CLI 子行程則穩定有效。子行程會持有 goal 直到 Nav2 完成。
+        """
+        if yaw is None:
+            qz, qw = 0.0, 1.0
+        else:
+            qz, qw = math.sin(yaw / 2.0), math.cos(yaw / 2.0)
+        goal = (
+            "{pose: {header: {frame_id: map}, pose: {position: "
+            "{x: %f, y: %f, z: 0.0}, orientation: {z: %f, w: %f}}}}"
+            % (float(x), float(y), qz, qw)
+        )
+        # 先結束上一個導航子行程
+        prev = getattr(self, "_nav_proc", None)
+        if prev is not None and prev.poll() is None:
+            prev.terminate()
+        self._nav_proc = subprocess.Popen(
+            [
+                "ros2", "action", "send_goal", "/navigate_to_pose",
+                "nav2_msgs/action/NavigateToPose", goal,
+            ],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        return True
+
+    def cancel_navigation(self):
+        """結束導航子行程 (到站後呼叫)。"""
+        prev = getattr(self, "_nav_proc", None)
+        if prev is not None and prev.poll() is None:
+            prev.terminate()
 
     # publish robot arm angle
     def publish_robot_arm_angle(self, angle):

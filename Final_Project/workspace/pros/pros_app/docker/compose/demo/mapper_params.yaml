@@ -311,7 +311,8 @@ planner_server:
       tolerance: 0.5                      # tolerance for planning if unable to reach exact pose, in meters
       downsample_costmap: false             # whether or not to downsample the map
       downsampling_factor: 1                # multiplier for the resolution of the costmap layer (e.g. 2 on a 5cm costmap would be 10cm)
-      allow_unknown: false                   # allow traveling in unknown space
+      allow_unknown: false                   # 禁止規劃穿越未知格 = 平台邊界(懸崖)不可走；
+                                             # 返航目標(起點)在已探索區，路徑沿已走過的安全走廊，避免開下懸崖
       max_iterations: 1000000               # maximum total iterations to search for before failing (in case unreachable), set to -1 to disable
       max_on_approach_iterations: 1000      # maximum number of iterations to attempt to reach goal once in tolerance
       max_planning_time: 2.0                # max time in s for planner to plan, smooth
