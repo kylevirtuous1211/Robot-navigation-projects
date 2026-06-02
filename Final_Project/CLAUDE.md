@@ -1,0 +1,136 @@
+# Final Project — Autonomous Unity Rover (CLAUDE.md)
+
+Operating spec for working on and running this project. Read this before touching the stack.
+
+## Goal
+
+Autonomous **Task 1** of the Unity rover challenge, fully hands-free (no Foxglove clicking, no
+keyboard driving):
+
+1. **SEARCH** — find a bear with YOLO.
+2. **APPROACH / OBSERVE** — drive up and hold still ≥5 s in front of it → **Locate & Observe (10 pts)**.
+3. **GRIP** — auto-grip with the arm.
+4. **RETURN** — Nav2 back to the recorded start pose → **Recovery (20 pts)**.
+
+Strategy: **reactive visual servoing** (YOLO `/yolo/target_info` + depth) for search→approach→grip,
+then **online SLAM + Nav2** to return. The map is **randomized each run**, so the costmap is built
+live — there is no map pre-pass.
+
+Tasks 2 (bridge) and 3 (door) are roadmap only — see the README. `detection.pt` already has
+`bear`/`knob` classes; `segmentation.pt` has a `bridge` mask.
+
+## TA rules that constrain how we demo (source: `docs/ta-qa.md`)
+
+- **No task ordering** — Task 1/2/3 in any order; only completion matters.
+- **All tasks in ONE session** — highest score is taken.
+- **Difficulty does not affect scoring** — always use **Easy** (gives LiDAR + Depth Map + RGB).
+- **Off-road is allowed** — the rover need not stay on the road.
+- **Scoring**: Canva slides p.108–109; pick one map to demo; each map has its own high score.
+  Scores are server-timestamped and ranking uses that time.
+- **Unity-pass but server-fail**: record video as proof, discuss with TA.
+
+## The stack (isolated — `kylefp`)
+
+Runs on its own ROS domain/network so it can coexist with another user on the shared GPU box.
+
+| Setting | Value | Why |
+|---|---|---|
+| Compose project | `kylefp` | isolates containers + network `kylefp_my_bridge_network` |
+| `ROS_DOMAIN_ID` | **7** | off the shared default `1` (set in all `.env` files) |
+| rosbridge | host **9091** → container 9090 | Unity connects here; set in `docker-compose_slam_unity.yml` |
+| Foxglove | `ws://localhost:8766` (host 8766 → 8765) | viewer |
+| Unity display | `:20` (Chrome Remote Desktop), `__NV_PRIME_RENDER_OFFLOAD=1` | NVIDIA offload |
+
+Containers brought up: compose stack (`kylefp-*-1`: robot_bringup, slam, navigation, lidar_trans,
+rosbridge) + `kylefp-yolo` + `kylefp-tfshim` + `kylefp-foxglove`, plus the Unity binary.
+
+## Running it
+
+**Bring the whole stack up (detached) — only if it's down** (after reboot / removed containers):
+```bash
+~/Desktop/Robot-navigation-projects/Final_Project/start_task1_stack.sh
+```
+Then **in Unity** (Chrome Remote Desktop): log in → **FINAL PROJECT** → **CAR & ARM Mode = AI** →
+**RosBridge PORT = 9091** → press **Reload** (must show "Connected").
+
+**Run the mission (every attempt):**
+```bash
+~/Desktop/Robot-navigation-projects/Final_Project/workspace/pros/pros_car/run_task1.sh
+```
+Runs `task1_auto` headless in your terminal — watch the live `[Task1]` state log. **Ctrl-C** stops;
+re-run to retry (new random map each time). If the stack is already up, skip the stack script.
+
+Manual per-piece `docker run` commands (for debugging individual containers) are in the README.
+
+## Build / edit / test loop
+
+- Source lives under `workspace/pros/<pkg>/src` and is **bind-mounted** into the containers at
+  `/workspaces/src`. Editing a `.py` on the host changes it in the container.
+- ROS packages must be **rebuilt + re-sourced** to take effect — the run scripts already do
+  `colcon build && source install/setup.bash && ros2 run ...` on each launch.
+  - YOLO node: `yolo_example_pkg` → `ros2 run yolo_example_pkg yolo_node`
+  - Car/mission: `pros_car_py` → entry points below.
+- After editing the YOLO or mission node, **restart that container** (or re-run `run_task1.sh` for
+  the mission) so the rebuild picks up changes.
+
+`pros_car_py` console entry points (`setup.py`):
+`robot_control` (menu UI), `task1_auto` (the autonomous mission), `tf_to_amcl_pose` (pose shim),
+`lidar_trans`, plus arm/serial helpers.
+
+## Code map
+
+| Path | Role |
+|---|---|
+| `workspace/pros/pros_car/src/pros_car_py/pros_car_py/task1_mission.py` | **`Task1Mission`** state machine (SEARCH→APPROACH→OBSERVE→CREEP→GRIP→RETURN→DONE). Tunables at top of `__init__`. |
+| `.../pros_car_py/tf_to_amcl_pose.py` | republishes `map→base_footprint` TF as `/amcl_pose` so Nav2 follower works without AMCL. |
+| `.../pros_car_py/ros_communicator.py` | pub/sub hub: `publish_car_control`, `get_latest_amcl_pose`, etc. |
+| `.../pros_car_py/nav_processing.py`, `nav2_utils.py` | Nav2 plan-following + geometry helpers. |
+| `.../pros_car_py/arm_controller_2D.py` | auto-grip (`auto_control(key='g')`). |
+| `workspace/pros/ros2_yolo_integration/.../object_detect.py` | YOLO node: `bear`-only; back-projects bbox-center + depth → `/yolo/target_marker`; publishes `/yolo/target_info`. Callback-driven by the camera image. |
+| `start_task1_stack.sh` | one-shot detached bring-up of the entire stack + Unity. |
+| `workspace/pros/pros_car/run_task1.sh` | build + run the mission headless. |
+| `tools/reset_map.sh`, `tools/click20.py` | hands-free map reset via synthetic clicks on `:20`. |
+
+## Key ROS topics
+
+- `/camera/image/compressed`, `/camera/depth/compressed`, `/camera/x_multi_depth_values` — sensor in.
+- `/yolo/detection/compressed` — annotated image (every frame). `/yolo/target_info`
+  (`Float32MultiArray`: found, distance, delta_x, area_frac, bottom_frac — every frame).
+  `/yolo/target_marker` (3D Marker — **only** when a graspable target has valid depth).
+- `/map` (SLAM), `/amcl_pose` (from the shim), `/tf` (~48 Hz), `/car_C_front_wheel`,
+  `/car_C_rear_wheel` (wheel speed commands).
+
+## Mission tuning (top of `Task1Mission.__init__`)
+
+Sensor/geometry reality drives these: depth saturates below ~0.45 m, arm reach ≈0.19 m.
+- `APPROACH_STOP_DIST = 0.50` — stop at nearest reliable depth to do Locate & Observe.
+- `ALIGN_PX = 35.0` — center tolerance so the bear sits on the gripper's center axis.
+- `OBSERVE_SECONDS = 5.5` — hold time (>5 s scores, with margin).
+- `CREEP_DRIVE_SECONDS = 1.3` — blind forward push to get the bear into arm reach after observing.
+- `GRIP_WAIT = 15.0`, `MAX_GRIP_ATTEMPTS = 3`.
+Tune these against the in-sim "N units" and the gripper geometry.
+
+## Operational gotchas (learned the hard way)
+
+- **Foxglove "no Hz" is usually normal.** `foxglove_bridge` only streams (and shows a rate for)
+  topics something is **subscribed** to. Foxglove auto-subscribes to `/tf` + `/tf_static`, so only
+  those show Hz in the Topics list by default. A blank Hz ≠ "not publishing." To check a topic, open
+  a panel on it (Image panel for cameras) or run `ros2 topic hz <topic>` inside a container.
+- **Camera not flowing → everything YOLO is silent.** The YOLO node is callback-driven by
+  `/camera/image/compressed`; if Unity isn't connected in AI mode on 9091, no `/yolo/*` publishes.
+  Canary topics: `/yolo/detection/compressed` and `/yolo/target_info` (publish every frame).
+- **Map reset for retries:** `tools/reset_map.sh` switches RACING2026↔FINAL PROJECT to force a fresh
+  scene (clicking FINAL PROJECT while already in it does NOT reload). For RETURN/Nav2 tests use
+  `reset_map.sh --slam` to also restart SLAM + navigation (SLAM restart de-syncs Nav2 costmaps).
+- **Nav2 `map` arg:** if `navigation_launch.py` rejects the `map` arg, remove the `<arg name="map">`
+  line in `pros_app/docker/compose/demo/navigation_unity.xml` — Nav2 only needs the `/map` topic.
+
+## Conventions
+
+- Don't change the domain/port/network values piecemeal — they must stay consistent across all
+  `.env` files, the slam compose, and the Unity RosBridge port (9091).
+- Don't commit the Unity binary (`pros_twin_linux*/`, `*.zip`) or the large PDFs — already gitignored.
+- Commit style: `type(Final_Project): summary` (e.g. `feat`, `fix`, `chore`, `docs`).
+- Reference docs: `docs/ta-qa.md` (rules), `docs/Unity_final_project_spec.pdf`,
+  `docs/5_29_update.pdf`. Demo videos in `TA_demo_videos/`.
+</content>
