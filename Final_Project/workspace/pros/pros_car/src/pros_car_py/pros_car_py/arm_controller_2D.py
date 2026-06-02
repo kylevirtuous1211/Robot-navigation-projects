@@ -165,6 +165,20 @@ class ArmController:
         self._smooth_move_to([self.CARRY_POSE[0], self.CARRY_POSE[1], None], step=5.0, delay=0.1)
         print("✅ 鏟取完成。")
 
+    def scoop_release(self):
+        """返航到起點後「放下 bear」：先把手臂(夾著)降到貼地，再開爪把 bear 放到地面，
+        最後把空爪抬回搬運姿勢，讓爪子離開 bear。阻塞執行。"""
+        print("🫳 放下 bear：降臂到地面 (維持夾住) ...")
+        # gripper 傳 None → 維持關閉，邊降邊抓著，避免半空掉落。
+        self._smooth_move_to([self.SCOOP_POSE[0], self.SCOOP_POSE[1], None], step=5.0, delay=0.1)
+        print("🖐 開爪放開 ...")
+        self._smooth_move_to([None, None, self.joint_limits[2]["max_angle"]], step=5.0, delay=0.1)
+        time.sleep(0.5)
+        print("🏠 抬起空爪 (離開 bear) ...")
+        # 抬回搬運姿勢，gripper 維持開啟 → 空爪上抬離開放好的 bear。
+        self._smooth_move_to([self.CARRY_POSE[0], self.CARRY_POSE[1], None], step=5.0, delay=0.1)
+        print("✅ 已放下 bear。")
+
     def _execute_grab_sequence(self, x_target, z_target):
         """背景執行的完整抓取流程 (結合軌跡規劃)"""
         

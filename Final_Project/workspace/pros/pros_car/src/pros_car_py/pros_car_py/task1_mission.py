@@ -10,7 +10,7 @@ Task1Mission — Final Project Task 1 自動任務 (反應式視覺伺服 + Nav2
   OBSERVE  → 停在 bear 前方並保持靜止 >= 5 秒 (Locate & Observe, 10 pts)
   CREEP    → 推土機式鏟取：手臂降到貼地鏟取姿勢(開爪)，再用車身固定前推把 bear 推進爪中
   GRIP     → 關爪夾住 + 抬起搬運 (不靠 IK 構到目標，改用車身定位)
-  RETURN   → 用 Nav2 導航回任務起點 (Recovery, 20 pts)
+  RETURN   → 位姿式直線返航回起點 (/amcl_pose 對準直行 + 最終轉向) → 放下 bear，不靠 Nav2 (Recovery, 20 pts)
   DONE     → 停車結束
 
 設計上盡量「重用既有元件」：
@@ -62,18 +62,18 @@ class Task1Mission:
         self.ALIGN_PX = 35.0             # 置中要嚴格 (px)，確保 bear 在正前方 (夾爪在中軸)
         self.LOST_CONFIRM = 5            # APPROACH 連續遺失 N 幀才判定 (容忍 YOLO 短暫掉幀)
         self.COMMIT_DOCK_DIST = 0.7      # 先前已靠近到此距離才遺失 → 視為被遮擋(到位)，直接夾取而非回 SEARCH
-        self.OBSERVE_SECONDS = 5.5       # 靜止觀察時間 (>5s 才拿分，留 0.5s 餘裕)
+        self.OBSERVE_SECONDS = 4.5       # 靜止觀察時間 (>5s 才拿分，留 0.5s 餘裕)
         # CREEP = 推土機式夾取：手臂先降到貼地「鏟取」姿勢(開爪)，再用車身固定前推，
         # 把 bear 推進開著的低位爪中 → 不靠手臂去構到超出 0.19m 可達範圍的點。
-        self.BULLDOZER_PUSH_SEC = 1.3    # 鏟取姿勢就緒後直線前推時間 (s) — 主要微調旋鈕
+        self.BULLDOZER_PUSH_SEC = 1.0    # 鏟取姿勢就緒後直線前推時間 (s) — 主要微調旋鈕
 
-        # RETURN：用 Nav2 導航回起點 (goal 朝向 = 起始朝向相反，車子回頭把熊放回原位)。
-        # 把 Nav2 的 /cmd_vel 換算成輪速 (此環境沒有 cmd_vel→wheel 橋接)。
-        self.RETURN_ARRIVE_DIST = 0.5    # 回到起點的容許半徑 (m)
+        # RETURN：位姿式直線返航 (不靠 Nav2/costmap)。用 /amcl_pose 算出朝起點的方位，
+        # 先轉向對準再直行，到站後原地轉到「起始朝向相反」把熊放回。全程用具名輪速指令
+        # (與去程相同，確定能動)，不經 cmd_vel→輪速 換算。
+        self.RETURN_ARRIVE_DIST = 0.15   # 到起點的容許半徑 (m) — 收緊以把 bear 準確放回起點
         self.RETURN_TIMEOUT = 120.0      # 返航保險上限 (s)
-        self.LIN_GAIN = 1000.0           # cmd_vel linear.x (m/s) → 輪速單位
-        self.ANG_GAIN = 400.0            # cmd_vel angular.z (rad/s) → 左右輪差速
-        self.RETURN_MAX_WHEEL = 400.0    # 輪速上限
+        self.GOTO_ALIGN_DEG = 15.0       # 航向誤差小於此值才直行，否則先原地轉向 (deg)
+        self.GOTO_FAR_DIST = 1.0         # 距起點 > 此值用快速前進，否則慢速 (m)
 
         # ---- 搜尋強化 (避免假偵測 & 找不到就放棄) ----
         self.SEARCH_TIMEOUT = 240.0      # 找不到 bear 的保險上限 (s)，加大以多轉幾圈
@@ -135,7 +135,6 @@ class Task1Mission:
         search_nudge_until = 0.0   # SEARCH: 前進換視角的截止時間
         last_rotate_time = time.time()
         return_entry_time = 0.0
-        last_goal_pub = 0.0
 
         while not stop_event.is_set():
             info = self.data_processor.get_yolo_target_info()  # [found,dist,dx,area,bottom] or None
@@ -259,52 +258,54 @@ class Task1Mission:
                 print("[Task1] GRIP：關爪夾住 bear + 抬起搬運")
                 # bear 已被車身推進開著的低位爪中 → 直接關爪、等黏合、抬起 (阻塞)。
                 self.arm_controller.scoop_grab()
-                print("[Task1] 夾取完成 → RETURN (Nav2 導航回起點)")
-                # 用 Nav2 導航回起點：清掉舊路徑後發一次 goal。
-                # 目標朝向 = 起始朝向的相反 (start_yaw + π) — 車子「回頭」開回起點，
-                # 才能把熊放回原本擺放的方向。
-                self.ros_communicator.reset_nav2()
+                print("[Task1] 夾取完成 → RETURN (位姿式直線返航回起點)")
                 if self.start_pose is not None:
-                    goal_yaw = self.start_yaw + math.pi
-                    self.ros_communicator.publish_goal_pose(
-                        self.start_pose, yaw=goal_yaw
-                    )
-                    print(
-                        f"[Task1] RETURN 目標(起點) = {self.start_pose}, "
-                        f"yaw={math.degrees(goal_yaw):.0f}° "
-                        f"(起始 {math.degrees(self.start_yaw):.0f}° 的相反)"
-                    )
+                    print(f"[Task1] RETURN 目標(起點) = {self.start_pose}")
                 return_entry_time = time.time()
-                last_goal_pub = time.time()
                 self.state = self.RETURN
 
-            # ---------------- RETURN (Nav2 導航回起點) ----------------
+            # ---------------- RETURN (位姿式直線返航：朝起點直行，到站放下 bear) ----------------
             elif self.state == self.RETURN:
-                if self.start_pose is None:
+                pose_msg = self.ros_communicator.get_latest_amcl_pose()
+                if self.start_pose is None or pose_msg is None:
+                    self._publish("STOP")
+                    if self.start_pose is None:
+                        self.state = self.DONE
+                    time.sleep(self.TICK)
+                    continue
+
+                if time.time() - return_entry_time > self.RETURN_TIMEOUT:
+                    print("[Task1] ⚠️ 返航逾時，停止。")
                     self._publish("STOP")
                     self.state = self.DONE
-                else:
-                    elapsed = time.time() - return_entry_time
-                    # 只在 Nav2 尚未開始驅動 (還沒收到 /cmd_vel) 時重發 goal，
-                    # 避免反覆重發導致 Nav2 取消重規劃 → 一直轉/停。
-                    if (
-                        self.ros_communicator.get_latest_cmd_vel() is None
-                        and time.time() - last_goal_pub > 3.0
-                    ):
-                        self.ros_communicator.publish_goal_pose(
-                            self.start_pose, yaw=self.start_yaw + math.pi
-                        )
-                        last_goal_pub = time.time()
+                    continue
 
-                    arrived = self._drive_return()
-                    if arrived:
-                        print("[Task1] 已回到起點 → DONE (Recovery 完成)")
-                        self.ros_communicator.publish_raw_car_control([0.0, 0.0, 0.0, 0.0])
-                        self.state = self.DONE
-                    elif elapsed > self.RETURN_TIMEOUT:
-                        print("[Task1] ⚠️ 返航逾時，停止。")
-                        self.ros_communicator.publish_raw_car_control([0.0, 0.0, 0.0, 0.0])
-                        self.state = self.DONE
+                p = pose_msg.pose.pose.position
+                o = pose_msg.pose.pose.orientation
+                car = [p.x, p.y]
+                dist = cal_distance(car, self.start_pose)
+
+                # 到起點 → 直接放下 bear → 完成 (不做最終轉向)。
+                if dist < self.RETURN_ARRIVE_DIST:
+                    print(f"[Task1] 已到起點 (dist={dist:.2f}) → 放下 bear")
+                    self._publish("STOP")
+                    self.arm_controller.scoop_release()  # 降臂→開爪→抬空爪
+                    print("[Task1] 已放下 bear → DONE (Recovery 完成)")
+                    self.state = self.DONE
+                    continue
+
+                # 朝起點直行：航向沒對準先原地轉，對準了才前進。
+                # calculate_angle_point 誤差，依 nav_processing 慣例 >0→逆時針、<0→順時針。
+                ang = calculate_angle_point(o.z, o.w, car, self.start_pose)
+                if abs(ang) > self.GOTO_ALIGN_DEG:
+                    self._publish(
+                        "COUNTERCLOCKWISE_ROTATION_SLOW" if ang > 0
+                        else "CLOCKWISE_ROTATION_SLOW"
+                    )
+                elif dist > self.GOTO_FAR_DIST:
+                    self._publish("FORWARD")
+                else:
+                    self._publish("FORWARD_SLOW")
 
             # ---------------- DONE ----------------
             elif self.state == self.DONE:
@@ -319,47 +320,6 @@ class Task1Mission:
     # ==========================================================
     # 子流程
     # ==========================================================
-    def _drive_return(self):
-        """把 Nav2 的 /cmd_vel (含全域規劃 + 區域 costmap 避障) 換算成 4 輪速度。
-        到站判定用 /amcl_pose 距起點距離。回傳 arrived(bool)。"""
-        pose_msg = self.ros_communicator.get_latest_amcl_pose()
-        if pose_msg is None:
-            self.ros_communicator.publish_raw_car_control([0.0, 0.0, 0.0, 0.0])
-            return False
-
-        p = pose_msg.pose.pose.position
-        car = [p.x, p.y]
-        d = cal_distance(car, self.start_pose)
-
-        if d < self.RETURN_ARRIVE_DIST:
-            return True
-
-        cmd = self.ros_communicator.get_latest_cmd_vel()
-        v = cmd.linear.x if cmd is not None else None
-        w = cmd.angular.z if cmd is not None else None
-
-        self._return_dbg = getattr(self, "_return_dbg", 0) + 1
-        if self._return_dbg % 10 == 1:
-            print(
-                f"[Task1] RETURN car=({car[0]:.2f},{car[1]:.2f}) "
-                f"start=({self.start_pose[0]:.2f},{self.start_pose[1]:.2f}) dist={d:.2f} "
-                f"cmd_vel=({'None' if v is None else f'{v:.2f}'},"
-                f"{'None' if w is None else f'{w:.2f}'})"
-            )
-
-        if cmd is None:
-            self.ros_communicator.publish_raw_car_control([0.0, 0.0, 0.0, 0.0])
-            return False
-
-        left = self.LIN_GAIN * v - self.ANG_GAIN * w
-        right = self.LIN_GAIN * v + self.ANG_GAIN * w
-        m = self.RETURN_MAX_WHEEL
-        left = max(-m, min(m, left))
-        right = max(-m, min(m, right))
-        # [rear_left, rear_right, front_left, front_right]
-        self.ros_communicator.publish_raw_car_control([left, right, left, right])
-        return False
-
     def _capture_start_pose(self, retries=30, delay=0.2):
         """讀取目前的 /amcl_pose 作為任務起點，並記錄起始朝向 (self.start_yaw, rad)。
         回傳 [x, y]。"""
