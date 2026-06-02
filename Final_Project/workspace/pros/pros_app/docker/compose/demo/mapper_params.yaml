@@ -134,8 +134,10 @@ controller_server:
     # Progress checker parameters
     progress_checker:
       plugin: "nav2_controller::SimpleProgressChecker"
-      required_movement_radius: 0.5
-      movement_time_allowance: 10.0
+      # 放寬「沒前進就放棄」門檻：返航目標常在車後方，RotationShimController 會先原地
+      # 轉向對準路徑，此時 XY 幾乎不動，原本 0.5m/10s 會誤判卡住而 abort 整個目標。
+      required_movement_radius: 0.1   # 只要 10s 內位移 > 0.1m 就算有進展
+      movement_time_allowance: 30.0   # 給原地轉向 + 慢速貼近更多時間
 
     general_goal_checker:
       stateful: True
@@ -224,8 +226,8 @@ local_costmap:
           obstacle_min_range: 0.0
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 0.5
-        inflation_radius: 0.55
+        cost_scaling_factor: 2.0   # 更陡的代價衰減，避免大範圍高代價把車包住
+        inflation_radius: 0.25     # robot_radius 0.22 → 留少量餘裕即可，原 0.55 會讓車陷在膨脹區
       voxel_layer:
         plugin: "nav2_costmap_2d::VoxelLayer"
         enabled: True
@@ -282,8 +284,8 @@ global_costmap:
         map_subscribe_transient_local: True
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 0.5
-        inflation_radius: 0.55
+        cost_scaling_factor: 2.0   # 更陡的代價衰減，避免大範圍高代價把車包住
+        inflation_radius: 0.25     # robot_radius 0.22 → 留少量餘裕即可，原 0.55 會讓車陷在膨脹區
       always_send_full_costmap: True
 
 map_server:
