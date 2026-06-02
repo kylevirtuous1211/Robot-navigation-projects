@@ -59,18 +59,25 @@ class Task1Mission:
         # 之後再 CREEP「盲推前進」一小段把 bear 推進手臂可達範圍才夾取。
         self.APPROACH_STOP_DIST = 0.50   # 到最近可靠深度就停 (m) → Locate&Observe
         self.ALIGN_PX = 35.0             # 置中要嚴格 (px)，確保 bear 在正前方 (夾爪在中軸)
-        self.LOST_CONFIRM = 6            # APPROACH 連續遺失 N 幀才退回 SEARCH (容忍 YOLO 短暫掉幀)
+        self.LOST_CONFIRM = 5            # APPROACH 連續遺失 N 幀才判定 (容忍 YOLO 短暫掉幀)
+        self.COMMIT_DOCK_DIST = 0.7      # 先前已靠近到此距離才遺失 → 視為被遮擋(到位)，直接夾取而非回 SEARCH
         self.OBSERVE_SECONDS = 5.5       # 靜止觀察時間 (>5s 才拿分，留 0.5s 餘裕)
-        # CREEP 改為「YOLO 導引」：前進直到 bear 的框底接近畫面底部 (= 到車前)。
-        self.BEAR_BOTTOM_FRAC = 0.85     # bbox 底部 y 比例達此值 → bear 已到車前可夾
-        self.CREEP_MAX_SECONDS = 4.0     # CREEP 安全逾時 (s)
+        # CREEP：固定時間前推。bbox 底部比例在 ~0.42m 就飽和(=1.0)，無法當「夠近」判據，
+        # 所以改成固定前進一小段 (~0.1m) 把 bear 從 ~0.22m 推進手臂 0.19m 可達範圍。
+        self.CREEP_DRIVE_SECONDS = 1.3   # CREEP 直線前推時間 (s) — 太遠就加大，開過頭就減小
+        # 註：不再因「目標被遮擋而消失」提早結束 CREEP — 那只代表 bear 在鏡頭死角，
+        # 不代表已到夾取位置，要繼續前推滿時間才停。
 
-        # RETURN 用 Nav2 的 /cmd_vel (含避障) 換算成輪速，避免自寫航向跟隨撞牆。
-        self.LIN_GAIN = 600.0            # linear.x (m/s) → 輪速單位
-        self.ANG_GAIN = 250.0            # angular.z (rad/s) → 左右輪差速
-        self.RETURN_MAX_WHEEL = 350.0    # 輪速上限
         self.GRIP_WAIT = 15.0            # 等待手臂完成夾取排程的時間 (s)
+        self.MAX_GRIP_ATTEMPTS = 3       # 夾取重試上限：抓不到目標 Marker 就回 CREEP 再前推重試
+
+        # RETURN：用 Nav2 導航回起點 (goal 朝向 = 起始朝向相反，車子回頭把熊放回原位)。
+        # 把 Nav2 的 /cmd_vel 換算成輪速 (此環境沒有 cmd_vel→wheel 橋接)。
         self.RETURN_ARRIVE_DIST = 0.5    # 回到起點的容許半徑 (m)
+        self.RETURN_TIMEOUT = 120.0      # 返航保險上限 (s)
+        self.LIN_GAIN = 1000.0           # cmd_vel linear.x (m/s) → 輪速單位
+        self.ANG_GAIN = 400.0            # cmd_vel angular.z (rad/s) → 左右輪差速
+        self.RETURN_MAX_WHEEL = 400.0    # 輪速上限
 
         # ---- 搜尋強化 (避免假偵測 & 找不到就放棄) ----
         self.SEARCH_TIMEOUT = 240.0      # 找不到 bear 的保險上限 (s)，加大以多轉幾圈
@@ -78,12 +85,6 @@ class Task1Mission:
         self.CLOSE_CONFIRM = 3           # 連續 N 幀都「夠近」才進 OBSERVE
         self.SEARCH_NUDGE_SEC = 12.0     # 轉這麼久仍沒看到 → 前進一下換視角
         self.SEARCH_NUDGE_TICKS = 8      # 前進的幀數 (約 0.8s)
-
-        # ---- 返航 (RETURN) ----
-        self.RETURN_PLAN_WAIT = 4.0      # 發出 goal 後等 Nav2 規劃的時間 (s)
-        self.RETURN_TIMEOUT = 90.0       # 返航保險上限 (s)
-        self.RETURN_ANGLE_OK = 20.0      # 航向誤差在此度數內就直行
-        self.RETURN_LOOKAHEAD = 0.4      # 沿全域路徑取前瞻點的最小距離 (m)
 
         # ---- 執行緒狀態 ----
         self._thread = None
@@ -130,6 +131,8 @@ class Task1Mission:
         search_deadline = time.time() + self.SEARCH_TIMEOUT
         observe_start = None
         creep_start = 0.0
+        creep_arm_prepared = False  # 抬臂預備只在 CREEP 做一次 (重試回 CREEP 不重抬)
+        grip_attempts = 0
         found_streak = 0       # SEARCH: 連續偵測幀數
         close_streak = 0       # (保留) APPROACH 計數
         lost_streak = 0        # APPROACH: 連續遺失目標幀數
@@ -170,16 +173,29 @@ class Task1Mission:
             # ---------------- APPROACH ----------------
             elif self.state == self.APPROACH:
                 if not found:
-                    # 容忍 YOLO 短暫掉幀：連續遺失夠多幀才退回 SEARCH
                     lost_streak += 1
                     close_streak = 0
                     self._publish("STOP")
                     if lost_streak >= self.LOST_CONFIRM:
-                        print("[Task1] 目標遺失 → 退回 SEARCH")
-                        self.state = self.SEARCH
-                        found_streak = 0
-                        search_deadline = time.time() + self.SEARCH_TIMEOUT
-                        last_rotate_time = time.time()
+                        # 關鍵：若「先前已很靠近」才遺失，代表 bear 被爪子/車身擋住
+                        # (= 已在正前方可夾位置) → 直接進 OBSERVE 開始夾取，不要回 SEARCH。
+                        if (
+                            last_valid_dist is not None
+                            and last_valid_dist <= self.COMMIT_DOCK_DIST
+                        ):
+                            print(
+                                f"[Task1] 近距離遺失(被遮擋, last={last_valid_dist:.2f}) "
+                                f"→ 視為到位 → OBSERVE"
+                            )
+                            self._publish("STOP")
+                            observe_start = time.time()
+                            self.state = self.OBSERVE
+                        else:
+                            print("[Task1] 目標遺失 (距離尚遠) → 退回 SEARCH")
+                            self.state = self.SEARCH
+                            found_streak = 0
+                            search_deadline = time.time() + self.SEARCH_TIMEOUT
+                            last_rotate_time = time.time()
                     time.sleep(self.TICK)
                     continue
 
@@ -198,6 +214,8 @@ class Task1Mission:
                     self._publish("STOP")
                     observe_start = time.time()
                     print(f"[Task1] 已到位 (dist={dist:.2f}, dx={dx:.0f}) → OBSERVE")
+                    # 注意：不在此抬手臂 — 抬起的爪子會擋住相機，害 CREEP 看不到 bear。
+                    # 手臂維持低姿(不擋鏡頭)直到 GRIP 取得目標後才動作。
                     self.state = self.OBSERVE
                 elif abs(dx) > self.ALIGN_PX:
                     # 先「原地轉向」對準，不前進 → 避免在熊周圍繞圈
@@ -215,56 +233,84 @@ class Task1Mission:
             elif self.state == self.OBSERVE:
                 self._publish("STOP")
                 if time.time() - observe_start >= self.OBSERVE_SECONDS:
-                    print("[Task1] 觀察完成 → CREEP (盲推靠近以利夾取)")
-                    creep_start = time.time()
+                    print("[Task1] 觀察完成 → CREEP (先抬臂升爪，到位後才前推)")
+                    # 抬臂預備在 CREEP 內做，且要「等爪子升起」才起算前推時間 (見下方)。
+                    creep_start = 0.0  # 0 = 爪子尚未就緒、還沒開始前推
                     self.state = self.CREEP
 
-            # ---------------- CREEP (YOLO 導引最後靠近) ----------------
+            # ---------------- CREEP (固定前推靠近 bear) ----------------
             elif self.state == self.CREEP:
-                creep_elapsed = time.time() - creep_start
-                # 終止：bear 框底已到畫面底部(到車前) / 安全逾時
-                if (found and bottom_frac >= self.BEAR_BOTTOM_FRAC) or (
-                    creep_elapsed >= self.CREEP_MAX_SECONDS
-                ):
+                # 1) 進 CREEP 先抬臂開爪(只做一次)。
+                if not creep_arm_prepared:
+                    self.arm_controller.prepare_grab_pose()
+                    creep_arm_prepared = True
+                # 2) 等爪子確實升起再開始前推 — 這樣前推是把爪子「往下叉」進熊的位置，
+                #    而不是用車身把熊推著走。爪子還在抬就原地等。
+                if not self.arm_controller.is_grab_pose_ready():
                     self._publish("STOP")
-                    print(
-                        f"[Task1] CREEP 完成 (bottom={bottom_frac:.2f}, "
-                        f"t={creep_elapsed:.1f}s) → GRIP"
-                    )
+                    time.sleep(self.TICK)
+                    continue
+                # 3) 爪子就緒後才起算前推時間。
+                if creep_start == 0.0:
+                    creep_start = time.time()
+                creep_elapsed = time.time() - creep_start
+                # 只在「前推時間到」才結束；被遮擋遺失不提早結束 (要推滿距離)
+                if creep_elapsed >= self.CREEP_DRIVE_SECONDS:
+                    self._publish("STOP")
+                    print(f"[Task1] CREEP 完成 (前推 {creep_elapsed:.1f}s) → GRIP")
                     self.state = self.GRIP
                 elif found and dx > self.ALIGN_PX:
                     self._publish("CLOCKWISE_ROTATION_SLOW")
                 elif found and dx < -self.ALIGN_PX:
                     self._publish("COUNTERCLOCKWISE_ROTATION_SLOW")
                 else:
-                    # 已對準(或暫時看不到)→ 緩慢前進貼到 bear
                     self._publish("FORWARD_SLOW")
 
             # ---------------- GRIP ----------------
             elif self.state == self.GRIP:
                 self._publish("STOP")
-                if self._do_grip(stop_event):
-                    print("[Task1] 夾取完成 → RETURN")
-                    self.state = self.RETURN
-                    # 清掉舊路徑、發一次 goal (= 起點)，交給 Nav2 導航
+                print(
+                    f"[Task1] GRIP 開始 (dist={dist:.2f}, dx={dx:.0f}, bottom={bottom_frac:.2f})"
+                )
+                grabbed = self._do_grip(stop_event)
+                # 重試機制：抓取失敗 (沒收到目標 Marker) 時不直接放棄，回 CREEP 再前推
+                # 一小段讓 YOLO 重新鎖定目標後重試，達上限才結束任務。
+                # (抬臂已在 CREEP 做過，重試回 CREEP 不會重抬。)
+                if not grabbed:
+                    grip_attempts += 1
+                    if grip_attempts < self.MAX_GRIP_ATTEMPTS:
+                        print(
+                            f"[Task1] ⚠️ 夾取失敗 (無目標 Marker)，重試 "
+                            f"{grip_attempts}/{self.MAX_GRIP_ATTEMPTS - 1} → 回 CREEP 再前推"
+                        )
+                        creep_start = 0.0  # 重新起算前推 (爪子已就緒，會立即前推)
+                        self.state = self.CREEP
+                    else:
+                        print(
+                            f"[Task1] ⚠️ 夾取失敗達上限 ({self.MAX_GRIP_ATTEMPTS} 次)，結束任務。"
+                        )
+                        self.state = self.DONE
+                else:
+                    print("[Task1] 夾取完成 → RETURN (Nav2 導航回起點)")
+                    # 用 Nav2 導航回起點：清掉舊路徑後發一次 goal。
+                    # 目標朝向 = 起始朝向的相反 (start_yaw + π) — 車子「回頭」開回起點，
+                    # 才能把熊放回原本擺放的方向。
                     self.ros_communicator.reset_nav2()
                     if self.start_pose is not None:
-                        # 返航目標朝向 = 起始朝向的相反 (車子是「回頭」回起點)
                         goal_yaw = self.start_yaw + math.pi
                         self.ros_communicator.publish_goal_pose(
                             self.start_pose, yaw=goal_yaw
                         )
                         print(
                             f"[Task1] RETURN 目標(起點) = {self.start_pose}, "
-                            f"yaw={math.degrees(goal_yaw):.0f}° (起始 {math.degrees(self.start_yaw):.0f}° 的相反)"
+                            f"yaw={math.degrees(goal_yaw):.0f}° "
+                            f"(起始 {math.degrees(self.start_yaw):.0f}° 的相反)"
                         )
                     return_entry_time = time.time()
                     last_goal_pub = time.time()
-                else:
-                    print("[Task1] ⚠️ 夾取失敗 (無目標 Marker)，結束任務。")
-                    self.state = self.DONE
+                    self.state = self.RETURN
 
-            # ---------------- RETURN ----------------
+            # ---------------- RETURN (Nav2 導航回起點) ----------------
             elif self.state == self.RETURN:
                 if self.start_pose is None:
                     self._publish("STOP")
@@ -320,28 +366,37 @@ class Task1Mission:
         return True
 
     def _drive_return(self):
-        """用 Nav2 的 /cmd_vel (含區域 costmap 避障) 驅動返航。
-
-        把 Twist(linear.x, angular.z) 換算成 4 輪速度直接發布。完成條件以
-        「實際距起點距離 < RETURN_ARRIVE_DIST」判定 (用 /amcl_pose)。
-        回傳 arrived(bool)。
-        """
+        """把 Nav2 的 /cmd_vel (含全域規劃 + 區域 costmap 避障) 換算成 4 輪速度。
+        到站判定用 /amcl_pose 距起點距離。回傳 arrived(bool)。"""
         pose_msg = self.ros_communicator.get_latest_amcl_pose()
         if pose_msg is None:
             self.ros_communicator.publish_raw_car_control([0.0, 0.0, 0.0, 0.0])
             return False
 
         p = pose_msg.pose.pose.position
-        if cal_distance([p.x, p.y], self.start_pose) < self.RETURN_ARRIVE_DIST:
+        car = [p.x, p.y]
+        d = cal_distance(car, self.start_pose)
+
+        if d < self.RETURN_ARRIVE_DIST:
             return True
 
         cmd = self.ros_communicator.get_latest_cmd_vel()
+        v = cmd.linear.x if cmd is not None else None
+        w = cmd.angular.z if cmd is not None else None
+
+        self._return_dbg = getattr(self, "_return_dbg", 0) + 1
+        if self._return_dbg % 10 == 1:
+            print(
+                f"[Task1] RETURN car=({car[0]:.2f},{car[1]:.2f}) "
+                f"start=({self.start_pose[0]:.2f},{self.start_pose[1]:.2f}) dist={d:.2f} "
+                f"cmd_vel=({'None' if v is None else f'{v:.2f}'},"
+                f"{'None' if w is None else f'{w:.2f}'})"
+            )
+
         if cmd is None:
             self.ros_communicator.publish_raw_car_control([0.0, 0.0, 0.0, 0.0])
             return False
 
-        v = cmd.linear.x
-        w = cmd.angular.z
         left = self.LIN_GAIN * v - self.ANG_GAIN * w
         right = self.LIN_GAIN * v + self.ANG_GAIN * w
         m = self.RETURN_MAX_WHEEL
