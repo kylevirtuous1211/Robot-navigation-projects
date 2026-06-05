@@ -59,21 +59,29 @@ class Task1Mission:
         # 因此：APPROACH 先停在「最近的有效深度 (~0.5m)」完成 Locate&Observe，
         # 之後再 CREEP「盲推前進」一小段把 bear 推進手臂可達範圍才夾取。
         self.APPROACH_STOP_DIST = 0.50   # 到最近可靠深度就停 (m) → Locate&Observe
-        self.ALIGN_PX = 35.0             # 置中要嚴格 (px)，確保 bear 在正前方 (夾爪在中軸)
+        self.ALIGN_PX = 70.0             # 置中容差 (px)：放寬以免原地轉向過衝、左右來回獵擺；
+                                         # 推土機夾取較寬容，CREEP 前推時仍會再依 dx 修正置中
         self.LOST_CONFIRM = 5            # APPROACH 連續遺失 N 幀才判定 (容忍 YOLO 短暫掉幀)
         self.COMMIT_DOCK_DIST = 0.7      # 先前已靠近到此距離才遺失 → 視為被遮擋(到位)，直接夾取而非回 SEARCH
-        self.OBSERVE_SECONDS = 4.5       # 靜止觀察時間 (>5s 才拿分，留 0.5s 餘裕)
+        self.OBSERVE_SECONDS = 4.5       # 靜止觀察時間 (>5s 才拿分)
         # CREEP = 推土機式夾取：手臂先降到貼地「鏟取」姿勢(開爪)，再用車身固定前推，
         # 把 bear 推進開著的低位爪中 → 不靠手臂去構到超出 0.19m 可達範圍的點。
         self.BULLDOZER_PUSH_SEC = 1.0    # 鏟取姿勢就緒後直線前推時間 (s) — 主要微調旋鈕
+        self.CREEP_SPEED = 90.0          # CREEP 前推輪速 (比 FORWARD_SLOW=150 慢，更溫和地把
+                                         # bear 推進爪中)；速度變慢=同時間推得更短，要保持距離就加大上面的時間
 
         # RETURN：位姿式直線返航 (不靠 Nav2/costmap)。用 /amcl_pose 算出朝起點的方位，
         # 先轉向對準再直行，到站後原地轉到「起始朝向相反」把熊放回。全程用具名輪速指令
         # (與去程相同，確定能動)，不經 cmd_vel→輪速 換算。
-        self.RETURN_ARRIVE_DIST = 0.15   # 到起點的容許半徑 (m) — 收緊以把 bear 準確放回起點
+        self.RETURN_ARRIVE_DIST = 0.60   # 到起點的容許半徑 (m)：只要進到目標區就放下，不必硬塞到
+                                         # 圓心 (車會在最後幾 cm 卡住/原地打轉)；爪子再向前伸 ~0.2m
+        self.RETURN_ARRIVE_CONFIRM = 4   # 需「停在半徑內」連續這麼多幀才算真的到站 (擋高速衝過誤判)
         self.RETURN_TIMEOUT = 120.0      # 返航保險上限 (s)
-        self.GOTO_ALIGN_DEG = 15.0       # 航向誤差小於此值才直行，否則先原地轉向 (deg)
-        self.GOTO_FAR_DIST = 1.0         # 距起點 > 此值用快速前進，否則慢速 (m)
+        # 返航用「比例式 arc」控制：邊前進邊依航向誤差差速轉彎，避免原地轉/直行來回切換的頓挫。
+        self.RETURN_SPIN_DEG = 20.0      # 航向誤差 > 此值先原地轉 (大角度 arc 轉不過來)，以下邊開邊轉
+        self.RETURN_DRIVE_SPEED = 110.0  # arc 前進基礎輪速 (放慢 → 同差速下轉彎半徑更小)
+        self.RETURN_TURN_GAIN = 7     # 每 1° 航向誤差的左右輪差速 (調大 → 轉更急，不再大彎)
+        self.GOTO_FAR_DIST = 1.0         # 距起點 < 此值放慢前進，較好收尾 (m)
 
         # ---- 搜尋強化 (避免假偵測 & 找不到就放棄) ----
         self.SEARCH_TIMEOUT = 240.0      # 找不到 bear 的保險上限 (s)，加大以多轉幾圈
@@ -135,6 +143,8 @@ class Task1Mission:
         search_nudge_until = 0.0   # SEARCH: 前進換視角的截止時間
         last_rotate_time = time.time()
         return_entry_time = 0.0
+        return_dbg = 0         # RETURN: 診斷列印節流計數
+        arrive_streak = 0      # RETURN: 連續「停在到站半徑內」的幀數
 
         while not stop_event.is_set():
             info = self.data_processor.get_yolo_target_info()  # [found,dist,dx,area,bottom] or None
@@ -250,7 +260,11 @@ class Task1Mission:
                 elif found and dx < -self.ALIGN_PX:
                     self._publish("COUNTERCLOCKWISE_ROTATION_SLOW")
                 else:
-                    self._publish("FORWARD_SLOW")
+                    # 慢速前推 (直接發四輪等速，比 FORWARD_SLOW 更慢更溫和)。
+                    self.ros_communicator.publish_raw_car_control(
+                        [self.CREEP_SPEED, self.CREEP_SPEED,
+                         self.CREEP_SPEED, self.CREEP_SPEED]
+                    )
 
             # ---------------- GRIP (關爪夾住 + 抬起) ----------------
             elif self.state == self.GRIP:
@@ -285,27 +299,50 @@ class Task1Mission:
                 car = [p.x, p.y]
                 dist = cal_distance(car, self.start_pose)
 
-                # 到起點 → 直接放下 bear → 完成 (不做最終轉向)。
+                # 到站判定：必須「停在半徑內」連續 RETURN_ARRIVE_CONFIRM 幀才算真到站，
+                # 避免高速衝過起點時單幀 dist<半徑 就誤判完成、邊滑邊放掉 bear。
                 if dist < self.RETURN_ARRIVE_DIST:
-                    print(f"[Task1] 已到起點 (dist={dist:.2f}) → 放下 bear")
-                    self._publish("STOP")
-                    self.arm_controller.scoop_release()  # 降臂→開爪→抬空爪
-                    print("[Task1] 已放下 bear → DONE (Recovery 完成)")
-                    self.state = self.DONE
+                    arrive_streak += 1
+                    self._publish("STOP")   # 先煞停，讓它真的定在起點而非滑過
+                    if arrive_streak >= self.RETURN_ARRIVE_CONFIRM:
+                        print(f"[Task1] 已穩定到站 (dist={dist:.2f}) → 放下 bear")
+                        self.arm_controller.scoop_release()  # 降臂→開爪→抬空爪
+                        print("[Task1] 已放下 bear → DONE (Recovery 完成)")
+                        self.state = self.DONE
+                    time.sleep(self.TICK)
                     continue
+                arrive_streak = 0   # 滑出半徑 → 重新計數，繼續開回去
 
-                # 朝起點直行：航向沒對準先原地轉，對準了才前進。
-                # calculate_angle_point 誤差，依 nav_processing 慣例 >0→逆時針、<0→順時針。
+                # 航向誤差 (calculate_angle_point: >0→需逆時針/左轉、<0→順時針/右轉)。
                 ang = calculate_angle_point(o.z, o.w, car, self.start_pose)
-                if abs(ang) > self.GOTO_ALIGN_DEG:
-                    self._publish(
-                        "COUNTERCLOCKWISE_ROTATION_SLOW" if ang > 0
-                        else "CLOCKWISE_ROTATION_SLOW"
-                    )
-                elif dist > self.GOTO_FAR_DIST:
-                    self._publish("FORWARD")
+                if abs(ang) > self.RETURN_SPIN_DEG:
+                    # 角度太大 → 先原地轉對準 (arc 轉不過來)。
+                    action = ("COUNTERCLOCKWISE_ROTATION_SLOW" if ang > 0
+                              else "CLOCKWISE_ROTATION_SLOW")
+                    self._publish(action)
                 else:
-                    self._publish("FORWARD_SLOW")
+                    # 比例式 arc：邊前進邊差速轉彎，平順不停頓。
+                    base = self.RETURN_DRIVE_SPEED
+                    if dist < self.GOTO_FAR_DIST:
+                        base *= 0.7              # 接近起點放慢，較好收尾
+                    turn = self.RETURN_TURN_GAIN * ang
+                    turn = max(-base, min(base, turn))   # 夾住，內輪最多到 0 (不強烈反轉)
+                    # ang>0 需左轉(逆時針)：左輪慢、右輪快。
+                    left = base - turn
+                    right = base + turn
+                    self.ros_communicator.publish_raw_car_control(
+                        [left, right, left, right]
+                    )
+                    action = f"ARC(base={base:.0f},turn={turn:+.0f})"
+
+                # 診斷：每 ~1s 印一次車況，判斷是卡住/獵擺/繞圈/amcl 失更新。
+                return_dbg += 1
+                if return_dbg % 10 == 1:
+                    print(
+                        f"[Task1] RETURN car=({car[0]:.2f},{car[1]:.2f}) "
+                        f"start=({self.start_pose[0]:.2f},{self.start_pose[1]:.2f}) "
+                        f"dist={dist:.2f} ang={ang:+.0f}° → {action}"
+                    )
 
             # ---------------- DONE ----------------
             elif self.state == self.DONE:
