@@ -82,10 +82,16 @@ class YoloDetectionNode(Node):
         # 反投影出來的 3D 點所在的光學座標系 (Z 軸朝前)，須存在於 TF tree。
         self.optical_frame = "camera_optical_frame"
 
-        # 設定要過濾標籤 (如果為空，那就不過濾)。Task 1 只追 bear。
-        self.allowed_labels = {"bear"}
+        # 設定要過濾標籤 (如果為空，那就不過濾)。
+        # 目標類別由環境變數 YOLO_TARGET 決定 (預設 bear)：
+        #   Task 1 / Task 2 → YOLO_TARGET=bear (預設)
+        #   Task 3          → YOLO_TARGET=knob  (門把，detection.pt 已訓練的類別)
+        # 同一支節點 + 同一個 /yolo/target_info 介面，任務端不需改動。
+        target = os.environ.get("YOLO_TARGET", "bear")
+        print(f"[yolo_node] YOLO_TARGET = {target}")
+        self.allowed_labels = {target}
         # 只為這些標籤發布抓取用的 3D Marker。
-        self.grasp_labels = {"bear"}
+        self.grasp_labels = {target}
 
         # 設定 YOLO 可信度閾值
         self.conf_threshold = 0.5  # 可以修改這個值來調整可信度
