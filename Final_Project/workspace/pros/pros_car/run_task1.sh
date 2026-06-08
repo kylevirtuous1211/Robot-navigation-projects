@@ -3,7 +3,7 @@
 # isolated kylefp stack (ROS_DOMAIN_ID=7, network kylefp_my_bridge_network).
 #
 # Prereqs (already running):
-#   - kylefp stack up (final_project_unity: robot+slam+nav), kylefp-yolo, kylefp-tfshim
+#   - The full stack is up -> ../../../start_stack.sh  (one launcher for all 3 tasks)
 #   - Unity in FINAL PROJECT scene, CAR + ARM Mode = AI, RosBridge port 9091 (Connected)
 #
 # Ctrl-C stops the mission. Re-run this script to attempt again.
