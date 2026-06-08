@@ -16,8 +16,25 @@ Strategy: **reactive visual servoing** (YOLO `/yolo/target_info` + depth) for se
 then **online SLAM + Nav2** to return. The map is **randomized each run**, so the costmap is built
 live — there is no map pre-pass.
 
-Tasks 2 (bridge) and 3 (door) are roadmap only — see the README. `detection.pt` already has
-`bear`/`knob` classes; `segmentation.pt` has a `bridge` mask.
+**Tasks 2 (bridge) and 3 (door) are now implemented** as their own state machines, same hands-free
+pattern as Task 1:
+- **Task 2** — bridge (no IMU — Unity has none). A bear is **guaranteed at the top-middle** of the
+  bridge, so it's deterministic: **road-led** approach — follow `/yolo/road_info` `delta_x` to drive
+  along the road, and when the bridge is off to one side (at an intersection) add a fixed steer
+  toward the bridge side using only the **sign** of `/yolo/bridge_info` `delta_x` (bridge mask area /
+  symmetry / aspect / precise dx are all too noisy when close, so they're not used). When the road
+  disappears (we've reached the foot of the bridge), commit to CLIMB: **lower the open bulldozer claw
+  and drive straight up** — the claw scoops the top-middle bear as it arrives (distance gauged off
+  `/amcl_pose`) — **close the gripper**, and pose-**RETURN to start**. Claw-down the whole climb means
+  the bear can't roll out.
+- **Task 3** — door knob: Locate & Observe the knob (`detection.pt` `knob` class via
+  `YOLO_TARGET=knob` → `/yolo/target_info_knob`), **UNLOCK** with an arm poke
+  (`arm_controller.knob_poke`), then **CLEAR** by driving the body forward to push the door open.
+
+`detection.pt` has `bear`/`knob` classes; each detection node tracks one target (`YOLO_TARGET` env,
+default `bear`). The consolidated `start_stack.sh` runs two detection nodes — bear on
+`/yolo/target_info` and knob remapped to `/yolo/target_info_knob` — plus the `segmentation.pt`
+(`bridge`/`road`) node, so all three tasks' perception is live at once.
 
 ## TA rules that constrain how we demo (source: `docs/ta-qa.md`)
 
@@ -28,6 +45,8 @@ Tasks 2 (bridge) and 3 (door) are roadmap only — see the README. `detection.pt
 - **Scoring**: Canva slides p.108–109; pick one map to demo; each map has its own high score.
   Scores are server-timestamped and ranking uses that time.
 - **Unity-pass but server-fail**: record video as proof, discuss with TA.
+
+
 
 ## The stack (isolated — `kylefp`)
 
@@ -42,23 +61,30 @@ Runs on its own ROS domain/network so it can coexist with another user on the sh
 | Unity display | `:20` (Chrome Remote Desktop), `__NV_PRIME_RENDER_OFFLOAD=1` | NVIDIA offload |
 
 Containers brought up: compose stack (`kylefp-*-1`: robot_bringup, slam, navigation, lidar_trans,
-rosbridge) + `kylefp-yolo` + `kylefp-tfshim` + `kylefp-foxglove`, plus the Unity binary.
+rosbridge) + `kylefp-yolo` (bear) + `kylefp-yolo-knob` (knob, remapped) + `kylefp-yolo-seg` (bridge)
++ `kylefp-tfshim` + `kylefp-foxglove`, plus the Unity binary — all from one `start_stack.sh`.
 
 ## Running it
 
-**Bring the whole stack up (detached) — only if it's down** (after reboot / removed containers):
+**Bring the whole stack up (detached) — only if it's down** (after reboot / removed containers). One
+consolidated launcher brings up **everything for all three tasks at once** (bear + knob + bridge
+perception all live, on separate topics — see Key ROS topics):
 ```bash
-~/Desktop/Robot-navigation-projects/Final_Project/start_task1_stack.sh
+~/Desktop/Robot-navigation-projects/Final_Project/start_stack.sh
 ```
 Then **in Unity** (Chrome Remote Desktop): log in → **FINAL PROJECT** → **CAR & ARM Mode = AI** →
 **RosBridge PORT = 9091** → press **Reload** (must show "Connected").
 
-**Run the mission (every attempt):**
+**Run the mission (every attempt) — the stack stays up between tasks, no restarts:**
 ```bash
-~/Desktop/Robot-navigation-projects/Final_Project/workspace/pros/pros_car/run_task1.sh
+~/Desktop/Robot-navigation-projects/Final_Project/workspace/pros/pros_car/run_task1.sh   # task1_auto
+~/Desktop/Robot-navigation-projects/Final_Project/workspace/pros/pros_car/run_task2.sh   # task2_auto
+~/Desktop/Robot-navigation-projects/Final_Project/workspace/pros/pros_car/run_task3.sh   # task3_auto
 ```
-Runs `task1_auto` headless in your terminal — watch the live `[Task1]` state log. **Ctrl-C** stops;
-re-run to retry (new random map each time). If the stack is already up, skip the stack script.
+Runs `taskN_auto` headless in your terminal — watch the live `[TaskN]` state log (every state
+transition + a throttled per-tick sensor readout, tuned for fast knob calibration). **Ctrl-C** stops;
+re-run to retry (new random map each time). Because all perception runs at once, you can run Task 1 →
+Task 2 → Task 3 back-to-back in one session without touching containers.
 
 Manual per-piece `docker run` commands (for debugging individual containers) are in the README.
 
@@ -74,29 +100,46 @@ Manual per-piece `docker run` commands (for debugging individual containers) are
   the mission) so the rebuild picks up changes.
 
 `pros_car_py` console entry points (`setup.py`):
-`robot_control` (menu UI), `task1_auto` (the autonomous mission), `tf_to_amcl_pose` (pose shim),
-`lidar_trans`, plus arm/serial helpers.
+`robot_control` (menu UI), `task1_auto` / `task2_auto` / `task3_auto` (the autonomous missions),
+`tf_to_amcl_pose` (pose shim), `lidar_trans`, plus arm/serial helpers.
 
 ## Code map
 
 | Path | Role |
 |---|---|
 | `workspace/pros/pros_car/src/pros_car_py/pros_car_py/task1_mission.py` | **`Task1Mission`** state machine (SEARCH→APPROACH→OBSERVE→CREEP→GRIP→RETURN→DONE). Tunables at top of `__init__`. |
+| `.../pros_car_py/task2_mission.py` | **`Task2Mission`** (no IMU; bear guaranteed top-middle): BRIDGE_APPROACH (home on bridge dx + `symmetry` square-up) → CLIMB (lower open scoop claw, drive straight up centerline, `/amcl_pose` distance) → GRIP (press + `scoop_grab`) → RETURN-to-start. Tunables (`BRIDGE_ALIGN_PX`, `BRIDGE_SYM_TOL`, `BRIDGE_CLOSE_AREA`, `CLIMB_DISTANCE`, `GRIP_PRESS_SPEED`) at top of `__init__`. |
+| `.../pros_car_py/task3_mission.py` | **`Task3Mission`**: door knob (SEARCH→APPROACH→OBSERVE→UNLOCK→CLEAR). Knob via `YOLO_TARGET=knob`. Tunables at top of `__init__`. |
 | `.../pros_car_py/tf_to_amcl_pose.py` | republishes `map→base_footprint` TF as `/amcl_pose` so Nav2 follower works without AMCL. |
-| `.../pros_car_py/ros_communicator.py` | pub/sub hub: `publish_car_control`, `get_latest_amcl_pose`, etc. |
+| `.../pros_car_py/ros_communicator.py` | pub/sub hub: `publish_car_control`, `publish_raw_car_control`, `get_latest_amcl_pose`, `get_latest_bridge_info`, `get_latest_road_info`, `get_latest_knob_target_info`, etc. |
 | `.../pros_car_py/nav_processing.py`, `nav2_utils.py` | Nav2 plan-following + geometry helpers. |
-| `.../pros_car_py/arm_controller_2D.py` | auto-grip (`auto_control(key='g')`). |
-| `workspace/pros/ros2_yolo_integration/.../object_detect.py` | YOLO node: `bear`-only; back-projects bbox-center + depth → `/yolo/target_marker`; publishes `/yolo/target_info`. Callback-driven by the camera image. |
-| `start_task1_stack.sh` | one-shot detached bring-up of the entire stack + Unity. |
-| `workspace/pros/pros_car/run_task1.sh` | build + run the mission headless. |
+| `.../pros_car_py/arm_controller_2D.py` | scoop grab (`scoop_pose/grab/release`), auto-grip (`auto_control(key='g')`), door-knob poke (`knob_poke()`). |
+| `workspace/pros/ros2_yolo_integration/.../object_detect.py` | YOLO **detection** node: single target by `YOLO_TARGET` env (`bear` default / `knob`); back-projects bbox-center + depth → `/yolo/target_marker`; publishes `/yolo/target_info`. |
+| `workspace/pros/ros2_yolo_integration/.../segment_detect.py` | YOLO **segmentation** node (`yolo_seg_node`): `bridge`/`road` masks → `/yolo/segmentation/compressed`; publishes `/yolo/bridge_info` (bridge geometry: delta_x, area, bottom-edge dx, symmetry) + `/yolo/road_info` (road centroid) for Task 2. |
+| `start_stack.sh` | **single consolidated launcher**: one-shot detached bring-up of the entire stack + all three YOLO containers (bear / knob-remapped / bridge-seg) + Unity. Run any task against it, no restarts. |
+| `workspace/pros/pros_car/run_task1.sh` / `run_task2.sh` / `run_task3.sh` | build + run the mission headless. |
 | `tools/reset_map.sh`, `tools/click20.py` | hands-free map reset via synthetic clicks on `:20`. |
 
 ## Key ROS topics
 
 - `/camera/image/compressed`, `/camera/depth/compressed`, `/camera/x_multi_depth_values` — sensor in.
 - `/yolo/detection/compressed` — annotated image (every frame). `/yolo/target_info`
-  (`Float32MultiArray`: found, distance, delta_x, area_frac, bottom_frac — every frame).
-  `/yolo/target_marker` (3D Marker — **only** when a graspable target has valid depth).
+  (`Float32MultiArray`: found, distance, delta_x, area_frac, bottom_frac — every frame) = **bear**
+  (`kylefp-yolo`, `YOLO_TARGET=bear`). `/yolo/target_marker` (3D Marker — **only** when a graspable
+  target has valid depth).
+- `/yolo/target_info_knob` — same format, **knob** for Task 3 (`kylefp-yolo-knob`, `YOLO_TARGET=knob`,
+  outputs remapped off the bear topics so both detection nodes coexist). Read via
+  `data_processor.get_knob_target_info()`. Companion remaps: `/yolo/target_marker_knob`,
+  `/yolo/detection_knob/compressed`.
+- `/yolo/segmentation/compressed` — bridge/road mask overlay (Task 2). `/yolo/bridge_info`
+  (`Float32MultiArray`: found, delta_x, area_frac, centroid_y_frac, bottom_edge_dx, symmetry,
+  aspect_ratio — every frame) is published; Task 2 currently uses only `found` and `sign(delta_x)`
+  for a coarse "bridge-is-on-the-left/right" intersection-turn hint (the other fields proved too
+  noisy when close to the bridge and are not consulted by the mission). `/yolo/road_info` (found, delta_x, area_frac)
+  is the road-follow centroid. Read via `data_processor.get_bridge_info()` / `get_road_info()`.
+- **No IMU in the Unity sim.** `/imu/data` is a *hardware-only* topic (`docker-compose_imu.yml` →
+  `pros_imu` reading `/dev/imu_usb`), not launched and not simulated — so Task 2 is **road-led**, not
+  pitch-based, and judges "crossed" by `/amcl_pose` distance (`CLIMB_DISTANCE`).
 - `/map` (SLAM), `/amcl_pose` (from the shim), `/tf` (~48 Hz), `/car_C_front_wheel`,
   `/car_C_rear_wheel` (wheel speed commands).
 
