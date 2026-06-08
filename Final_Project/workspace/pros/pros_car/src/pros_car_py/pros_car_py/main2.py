@@ -16,6 +16,8 @@ from pros_car_py.custom_control import CustomControl
 from pros_car_py.ik_solver import PybulletRobotController
 from pros_car_py.mode_app import ModeApp
 from pros_car_py.task1_mission import Task1Mission
+from pros_car_py.task2_mission import Task2Mission
+from pros_car_py.task3_mission import Task3Mission
 
 
 def init_ros_node():
@@ -44,12 +46,28 @@ def main():
         car_controller,
         arm_controller,
     )
+    task2_mission = Task2Mission(
+        ros_communicator,
+        data_processor,
+        nav2_processing,
+        car_controller,
+        arm_controller,
+    )
+    task3_mission = Task3Mission(
+        ros_communicator,
+        data_processor,
+        nav2_processing,
+        car_controller,
+        arm_controller,
+    )
     app = ModeApp(
         car_controller,
         arm_controller,
         custom_control,
         crane_controller,
         task1_mission=task1_mission,
+        task2_mission=task2_mission,
+        task3_mission=task3_mission,
     )
 
     try:

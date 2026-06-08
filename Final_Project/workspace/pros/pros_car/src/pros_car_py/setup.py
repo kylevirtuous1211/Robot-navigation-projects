@@ -31,6 +31,8 @@ setup(
             "lidar_trans = pros_car_py.lidar_trans:main",
             "tf_to_amcl_pose = pros_car_py.tf_to_amcl_pose:main",
             "task1_auto = pros_car_py.task1_mission:main",
+            "task2_auto = pros_car_py.task2_mission:main",
+            "task3_auto = pros_car_py.task3_mission:main",
         ],
     },
 )

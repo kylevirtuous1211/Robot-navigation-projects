@@ -109,3 +109,50 @@ class Task1Mode(BaseMode):
     def exit(self):
         # 切換到其他模式時也確保任務停止
         self.app.task1_mission.stop()
+
+
+class Task2Mode(BaseMode):
+    """Final Project Task 2 全自動任務：過橋 → 取熊 → 位姿式返航。"""
+
+    def enter(self):
+        self.app.task2_mission.start()
+        self.show_submode_screen(
+            message=(
+                "Task 2 Mission running...\n"
+                "(BRIDGE_SEARCH -> ALIGN -> ASCENT/CREST/DESCENT -> CROSSED ->\n"
+                " APPROACH -> OBSERVE -> CREEP -> GRIP -> RETURN)\n"
+                "See the terminal log for live state.\n\n"
+                "Press 'q' to stop the mission and return to the main menu."
+            ),
+            on_quit=self.on_quit,
+        )
+
+    def on_quit(self):
+        self.app.task2_mission.stop()
+        self.app.main_menu()
+
+    def exit(self):
+        self.app.task2_mission.stop()
+
+
+class Task3Mode(BaseMode):
+    """Final Project Task 3 全自動任務：門把定位觀察 → 解鎖 → 推開門。"""
+
+    def enter(self):
+        self.app.task3_mission.start()
+        self.show_submode_screen(
+            message=(
+                "Task 3 Mission running...\n"
+                "(SEARCH -> APPROACH -> OBSERVE -> UNLOCK -> CLEAR)\n"
+                "See the terminal log for live state.\n\n"
+                "Press 'q' to stop the mission and return to the main menu."
+            ),
+            on_quit=self.on_quit,
+        )
+
+    def on_quit(self):
+        self.app.task3_mission.stop()
+        self.app.main_menu()
+
+    def exit(self):
+        self.app.task3_mission.stop()
