@@ -88,6 +88,26 @@ class RosCommunicator(Node):
             Float32MultiArray, "/yolo/target_info", self.yolo_target_info_callback, 1
         )
 
+        # Task 2 橋面置中訊號 (segment_detect 發布)：[found, delta_x, area_frac, centroid_y_frac]
+        self.latest_bridge_info = None
+        self.bridge_info_sub = self.create_subscription(
+            Float32MultiArray, "/yolo/bridge_info", self.bridge_info_callback, 1
+        )
+
+        # Task 2 道路置中訊號 (segment_detect 發布)：[found, delta_x, area_frac]
+        self.latest_road_info = None
+        self.road_info_sub = self.create_subscription(
+            Float32MultiArray, "/yolo/road_info", self.road_info_callback, 1
+        )
+
+        # Task 3 門把目標 (統一 pipeline 中，knob 偵測容器 remap 到此 topic)：
+        # 與 /yolo/target_info 同格式 [found,dist,dx,area,bottom]，但只追 knob，
+        # 不與 bear 的 /yolo/target_info 互相干擾，所以三個任務可同時上線。
+        self.latest_knob_target_info = None
+        self.knob_target_info_sub = self.create_subscription(
+            Float32MultiArray, "/yolo/target_info_knob", self.knob_target_info_callback, 1
+        )
+
         self.latest_camera_x_multi_depth = None
         self.camera_x_multi_depth_sub = self.create_subscription(
             Float32MultiArray,
@@ -412,6 +432,30 @@ class RosCommunicator(Node):
         if self.latest_yolo_target_info is None:
             return None
         return self.latest_yolo_target_info
+
+    def bridge_info_callback(self, msg):
+        self.latest_bridge_info = msg
+
+    def get_latest_bridge_info(self):
+        if self.latest_bridge_info is None:
+            return None
+        return self.latest_bridge_info
+
+    def road_info_callback(self, msg):
+        self.latest_road_info = msg
+
+    def get_latest_road_info(self):
+        if self.latest_road_info is None:
+            return None
+        return self.latest_road_info
+
+    def knob_target_info_callback(self, msg):
+        self.latest_knob_target_info = msg
+
+    def get_latest_knob_target_info(self):
+        if self.latest_knob_target_info is None:
+            return None
+        return self.latest_knob_target_info
 
     def camera_x_multi_depth_callback(self, msg):
         self.latest_camera_x_multi_depth = msg

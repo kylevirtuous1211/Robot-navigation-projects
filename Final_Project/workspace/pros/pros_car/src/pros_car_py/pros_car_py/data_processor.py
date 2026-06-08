@@ -28,6 +28,29 @@ class DataProcessor:
         else:
             return None
 
+    def get_bridge_info(self):
+        """Task 2 橋面導引訊號:
+        [found, delta_x, area_frac, centroid_y_frac, bottom_edge_dx, symmetry] 或 None。"""
+        if self.ros_communicator.get_latest_bridge_info() is not None:
+            return list(self.ros_communicator.get_latest_bridge_info().data)
+        else:
+            return None
+
+    def get_road_info(self):
+        """Task 2 道路置中訊號: [found, delta_x(px), area_frac] 或 None。"""
+        if self.ros_communicator.get_latest_road_info() is not None:
+            return list(self.ros_communicator.get_latest_road_info().data)
+        else:
+            return None
+
+    def get_knob_target_info(self):
+        """Task 3 門把目標: [found, dist, delta_x, area_frac, bottom_frac] 或 None。
+        來自統一 pipeline 中 knob 偵測容器 remap 的 /yolo/target_info_knob。"""
+        if self.ros_communicator.get_latest_knob_target_info() is not None:
+            return list(self.ros_communicator.get_latest_knob_target_info().data)
+        else:
+            return None
+
     def get_camera_x_multi_depth(self):
         if self.ros_communicator.get_latest_camera_x_multi_depth() is not None:
             return list(self.ros_communicator.get_latest_camera_x_multi_depth().data)

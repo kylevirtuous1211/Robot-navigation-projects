@@ -51,6 +51,15 @@ class ArmController:
         # 關爪後等 Unity FixedJoint 把 bear 黏合的時間 (s)。
         self.GRIP_CLOSE_WAIT = 1.0
 
+        # ---- Task 3 門把互動 (knob_poke) 參數 (現場依 Unity 門/把手幾何微調) ----
+        # 伸臂去碰/壓門把的姿勢 [shoulder, elbow, gripper]：把爪伸到門把高度往前頂。
+        # 預設給一個「比鏟取略高、往前伸」的姿勢，務必在 sim 內對著門把實調。
+        self.KNOB_REACH_POSE = [-120.0, -40.0, 90.0]
+        # 互動後收回的姿勢 [shoulder, elbow]：把手臂收回避免擋住車身前推/相機。
+        self.KNOB_RETRACT_POSE = [-180.0, 0.0]
+        # 伸到位後停留 (s)，讓 Unity 的門把互動 (壓下/觸發) 生效。
+        self.KNOB_HOLD_WAIT = 1.0
+
         print(f"🦾 Arm Controller Initialized: {len(self.joint_limits)} Joints Managed.")
 
     # ==========================================
@@ -178,6 +187,25 @@ class ArmController:
         # 抬回搬運姿勢，gripper 維持開啟 → 空爪上抬離開放好的 bear。
         self._smooth_move_to([self.CARRY_POSE[0], self.CARRY_POSE[1], None], step=5.0, delay=0.1)
         print("✅ 已放下 bear。")
+
+    def knob_poke(self, close_gripper=True):
+        """Task 3「解鎖」門把：手臂伸到門把高度往前頂 (KNOB_REACH_POSE)，停留讓互動生效，
+        (可選) 關爪做「轉/抓」動作，最後收回手臂 (KNOB_RETRACT_POSE) 以免擋住車身前推。
+        阻塞執行。實際門把互動方式依 Unity 場景，姿勢/開關爪都需現場微調。
+
+        備援：若門把的 3D marker 可靠，也可改用 auto_control(key='g') 以 IK 對準 marker 觸碰。
+        """
+        print("🚪 解鎖門把：伸臂往前頂 ...")
+        self._smooth_move_to(list(self.KNOB_REACH_POSE), step=5.0, delay=0.1)
+        time.sleep(self.KNOB_HOLD_WAIT)
+        if close_gripper:
+            print("🚪 關爪 (轉/抓門把) ...")
+            self._smooth_move_to([None, None, self.joint_limits[2]["min_angle"]], step=5.0, delay=0.1)
+            time.sleep(self.KNOB_HOLD_WAIT)
+        print("🚪 收回手臂 ...")
+        self._smooth_move_to([self.KNOB_RETRACT_POSE[0], self.KNOB_RETRACT_POSE[1], None],
+                             step=5.0, delay=0.1)
+        print("✅ 門把互動完成。")
 
     def _execute_grab_sequence(self, x_target, z_target):
         """背景執行的完整抓取流程 (結合軌跡規劃)"""
