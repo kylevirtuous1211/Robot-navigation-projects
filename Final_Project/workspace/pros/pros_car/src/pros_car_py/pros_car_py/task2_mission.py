@@ -6,17 +6,21 @@ Task2Mission — Final Project Task 2 自動任務 (對準上橋 + 推土機鏟�
   **橋頂正中央一定有一隻熊。** 所以不需要視覺搜尋/觀察熊 —— 只要「對準橋面正中、把開著的
   推土機鏟爪降下、直直開上橋」，熊就會被鏟進爪中，到頂後關爪夾起即可。
 
-策略 (無 IMU；Unity sim 無 /imu/data)：
-  道路導航 (road-led)：用 /yolo/road_info 沿路前進；在路口用 /yolo/bridge_info 的「左/右」
-  哪一側做轉彎提示。橋面遮罩的 area/sym/aspect/精準 dx 在貼近時太不穩,完全棄用。
-  走到路盡頭 (road 連續遺失) = 走到橋頭 → 直接切 CLIMB,不再做幾何對準。
+策略 (無 IMU；地圖種子固定)：
+  視覺伺服 (road+bridge segmentation) 在貼近坡腳時 area/sym/aspect/dx 都太不穩,且地面其他
+  熊無法與「橋上的目標熊」分辨 → 棄用視覺伺服。改用「位姿式直接導航」：場景的最佳 docking
+  pose 已在 sim 內實測,直接以 /amcl_pose 駕到該點並對齊 yaw,然後降爪直開上橋 (兩隻熊都會
+  被籠住)。
 
 完整流程 (對應計分項目)：
 
-  BRIDGE_APPROACH → 沿路 (road_dx 置中) 前進；若 bridge 偏在某一側 (路口),加固定 steer
-                    朝那邊靠。road 連續遺失達門檻 + 近期看過 bridge → 走到橋頭 → CLIMB。
+  BRIDGE_APPROACH → 兩階段:
+                    DRIVE     — 用 RETURN-style controller 開到 (DOCK_X, DOCK_Y),計算方位
+                                角差,大則原地轉、小則 arc 前進。dist < DOCK_ARRIVE_DIST 連續
+                                N 幀 → YAW_ALIGN。
+                    YAW_ALIGN — 原地轉到 yaw = DOCK_YAW_RAD (10° 容差) → CLIMB。
   CLIMB         → 先把開著的推土機鏟爪降下 (scoop_pose, 等於把熊「關」在爪裡的籠子)，
-                  再固定前推、依 bridge dx 微修置中、直直開上橋；用 /amcl_pose 量行進距離到頂。
+                  固定前推、依 bridge dx (若有) 微修置中、直直開上橋；用 /amcl_pose 量行進距離。
   GRIP          → 到橋頂：小幅前頂(抗坡面後滑、把熊壓在爪中) + 關爪夾起 (scoop_grab)。
   RETURN        → 位姿式直線返航回起點 → 放下 bear (Recovery)。
   DONE          → 停車結束。
@@ -68,30 +72,55 @@ class Task2Mission:
         self.DEBUG = True                # 是否印每幀狀態列 (調參時開著)
         self.DBG_EVERY = 5               # 每幾幀印一次狀態列 (~0.5s)
 
-        # ---- BRIDGE_APPROACH：道路導航 + 路口「朝橋轉」(三段式) ----
-        # 三段強度,依 bridge 在畫面的偏離程度切換模式 (橋面遮罩只用 found + sign(dx),不用其他幾何):
-        #   |b_dx| >= BRIDGE_TURN_PX     → **原地轉**朝向 bridge (橋偏太遠 = 該轉的路口)。
-        #                                  road 此時被忽略 — 先把車頭朝橋,再回去走路。
-        #   BRIDGE_HINT_PX <= |b_dx|     → 跟道路 + 加固定 steer 朝 bridge 側 (中等強度偏轉)。
-        #     < BRIDGE_TURN_PX
-        #   |b_dx| <  BRIDGE_HINT_PX     → 純依 road_dx 走 (橋大致在前方/路上,不需偏轉)。
-        # 另外: 如果上一個看到 bridge 是「far off 一側」狀態,然後突然 found=0 (我們剛經過/丟失),
-        # 在 TURN_HOLD_TICKS 內持續往那一側「原地轉」,直到 re-acquire bridge 或時間到。
-        # 這是處理「bridge 在左 -> 1 變 0 -> 我們應該左轉」的關鍵 (使用者口述邏輯)。
-        self.APPROACH_SPEED = 110.0          # 沿路前進輪速
-        self.ROAD_GAIN = 0.25                # steer = ROAD_GAIN * road_dx (沿路置中項)
-        self.BRIDGE_HINT_PX = 60.0           # |bridge dx| > 此值 → 加 hint steer (中等偏轉)
-        self.BRIDGE_HINT_STEER = 35.0        # 中等偏轉強度 (加在 steer 上、用 bridge dx 的 sign)
-        self.BRIDGE_TURN_PX = 150.0          # |bridge dx| > 此值 → 原地轉 (路口必須轉的訊號)
-        # 「橋剛從 far-off 變不見」的轉向延續：bridge 是 (>= BRIDGE_TURN_PX) 那一側,然後變 found=0,
-        # 仍用該方向原地轉，最多 TURN_HOLD_TICKS 幀,讓車頭真的轉到能再看到橋的方位。
-        self.TURN_HOLD_TICKS = 25            # ~2.5s
-        # road 持續看不到時的「上橋切換」判定：表示我們走到路盡頭 (= 橋頭)。
-        self.ROAD_LOST_COMMIT = 8            # road 連續遺失 N 幀 → 切 CLIMB (需近期看過 bridge)
-        self.ROAD_FLICKER_TOL = 3            # road 短暫遺失 (<=此幀) 仍前進
-        self.BRIDGE_APPROACH_TIMEOUT = 120.0
-        # 雙雙不見時的最後手段搜尋方向
-        self.SEARCH_SPIN = "CLOCKWISE_ROTATION_SLOW"
+        # ---- BRIDGE_APPROACH：位姿式直接導航 (pose-based) ----
+        # 簡化策略:不再做視覺伺服。場景的坡腳位置固定 (per 地圖種子),手動實測一個 docking pose
+        # (in front of bridge ramp, 面向坡口),用 Task 1 RETURN 同款 controller 開到那點再對齊 yaw,
+        # 然後 CLIMB → 兩隻熊都會被籠住 (一隻在坡腳、一隻在橋頂中央)。
+        #
+        # 流程:
+        #   1) Drive 到 (DOCK_X, DOCK_Y) — 計算方位角差,大則原地轉,小則直行/arc。
+        #   2) 到位 (dist < DOCK_ARRIVE_DIST) → align yaw 到 DOCK_YAW_RAD。
+        #   3) yaw 對準 (|Δyaw| < DOCK_YAW_TOL) → CLIMB。
+        #
+        # ── Waypoints 路徑 (順序執行,場景實測;地圖種子固定) ──
+        # 從 /amcl_pose 截下的 pose 列表,task 會依序經過每一個 waypoint,最後一個為精準 dock。
+        # 中間 waypoint: 只判斷「到位置 < arrive_dist」就切到下一個,不對齊 yaw (避免不必要停留)。
+        # 最後 waypoint: 精準對位 (< DOCK_ARRIVE_DIST) + yaw 對齊 (< DOCK_YAW_TOL) → CLIMB。
+        #
+        # 若 controller 把車開到撞牆,代表 waypoint 之間的直線跨越了不可行地形 — 加新的中繼
+        # waypoint (手動把車開到安全的路徑點,echo /amcl_pose,把座標填進這個 list) 即可路由。
+        #
+        # 格式: (x, y, arrive_dist)  — 最後一個額外含 yaw 對齊
+        # 不使用中繼 waypoints — 直接開往實測 dock pose (清空即進 DRIVE_DOCK)。
+        self.WAYPOINTS = []
+        # 實測最終 docking pose —— 在「釘住的 (0,0,0) spawn frame」量測 (from /amcl_pose;
+        # quat z=0.7115656192, w=0.7026196479)。此 frame 由 reset ritual 維持:Unity restart →
+        # 重啟 robot_bringup (重置 scan_matcher odom→0) → 重啟 slam (map 重錨到 odom=0),車在 spawn。
+        # 跑過 ritual 後此座標跨 session 可重現,不需每次重量。若沒跑 ritual 就直接用,map frame 會浮動、
+        # 座標失效 (見 docs/superpowers/specs/2026-06-11-task2-localization-pin-spawn-design.md)。
+        self.DOCK_X = 0.9022             # 最終 dock x (含 yaw 對齊)
+        self.DOCK_Y = 0.4282             # 最終 dock y
+        # yaw = 2*atan2(z, w) = 2*atan2(0.71157, 0.70262) ≈ 1.5834 rad (90.7°)。不在 ±180° 邊界。
+        self.DOCK_YAW_RAD = 1.5834           # rad ≈ 90.7°
+        # Controller knobs — 三段速度 (FAR / MID / NEAR) 讓終點精準對齊不衝過頭
+        self.APPROACH_DRIVE_SPEED = 110.0    # 全速 (dist >= APPROACH_FAR_DIST 時)
+        self.APPROACH_TURN_GAIN = 7.0        # 角度 → wheel-diff 比例 (deg → speed)
+        self.APPROACH_SPIN_DEG = 15.0        # 方位角差 > 此值 → 原地轉 (略嚴,讓接近時更端正)
+        self.APPROACH_FAR_DIST = 1.0         # < 此距離降到 70% (避免衝過頭)
+        self.APPROACH_NEAR_DIST = 0.40       # < 此距離再降到 35% (crawl,精準對位)
+        self.DOCK_ARRIVE_DIST = 0.20         # 到位距離容差 (m). 0.10 在此幾何下達不到 (go-to-point 近目標時
+                                             # bearing 病態,車會畫圈/卡死);位置不需極精準 —— YAW_ALIGN 會精對
+                                             # 朝向、CLIMB 期間再依 bridge dx 置中,故 0.20 足矣。
+        self.DOCK_ARRIVE_CONFIRM = 4         # 連續 N 幀達標才視為到位 (略增,濾抖動)
+        # 卡死偵測 (near-goal stuck guard): 在 STUCK_NEAR_DIST 範圍內,若位置 N 幀內幾乎沒動
+        # → 視為實際到位 (可能被小階差/curb 卡住,前進不了那剩下幾公分)。
+        self.STUCK_NEAR_DIST = 0.35          # 此距離內才啟動 stuck 偵測。需 > DOCK_ARRIVE_DIST,涵蓋近目標的
+                                             #   stall 帶 (實測車會在 ~0.24m 卡住),卡住即視為到位 → YAW_ALIGN。
+        self.STUCK_MOVE_TOL = 0.03           # N 幀內位移 < 此值 (m) 視為沒動
+        self.STUCK_TICKS = 15                # ~1.5s 沒動 → 觸發
+        self.DOCK_YAW_TOL = math.radians(4)  # yaw 對準容差 (~4°,從 10° → 4°)
+        self.DOCK_YAW_CONFIRM = 3            # 連續 N 幀達標才切 CLIMB (濾抖動)
+        self.BRIDGE_APPROACH_TIMEOUT = 90.0  # 全程逾時保險
 
         # ---- CLIMB：降鏟爪 + committed 直開上橋 (用 /amcl_pose 量距離) ----
         self.CLIMB_SPEED = 120.0          # 上橋前推輪速
@@ -157,13 +186,17 @@ class Task2Mission:
         approach_deadline = time.time() + self.BRIDGE_APPROACH_TIMEOUT
         climb_start_pose = None
         climb_entry_time = 0.0
-        scoop_prepared = False         # CLIMB: 鏟爪只在進 CLIMB 時降一次
-        road_lost_streak = 0           # BRIDGE_APPROACH: road 連續遺失幀 (達門檻 → 走到路盡頭 = CLIMB)
-        last_bridge_dx = 0.0           # BRIDGE_APPROACH: 最後看到 bridge 的 dx
-        last_bridge_seen_tick = -10000 # BRIDGE_APPROACH: 最後一次看到 bridge 的 tick
-        # 「far-off bridge 剛丟失 → 持續往該方向原地轉」的狀態：
-        turn_hold_side = 0             # -1=左、+1=右、0=無 (last time bridge was far off, this side)
-        turn_hold_remaining = 0        # 剩餘原地轉的 tick 數 (bridge re-acquire 或歸 0 即止)
+        scoop_prepared = False               # CLIMB: 鏟爪只在進 CLIMB 時降一次
+        # BRIDGE_APPROACH (pose-based, waypoints) 狀態
+        dock_target = [self.DOCK_X, self.DOCK_Y]
+        wp_idx = 0                           # 當前 intermediate waypoint index (進 list 之後變 ≥ len → DOCK)
+        dock_arrived_streak = 0              # 連續到位幀數 (final dock)
+        yaw_aligned_streak = 0               # 連續 yaw 達標幀數
+        # near-goal stuck guard
+        stuck_anchor_xy = None               # 進入近區後的「卡死」基準位置
+        stuck_anchor_tick = -10000           # anchor 設置的 tick (用以計時)
+        approach_phase = "DRIVE_WP" if self.WAYPOINTS else "DRIVE_DOCK"
+        dock_dbg = 0
         dbg_tick = 0
 
         while not stop_event.is_set():
@@ -176,84 +209,153 @@ class Task2Mission:
             binfo = self.data_processor.get_bridge_info()          # [found,dx,area,...] or None
             b_found = bool(binfo and binfo[0] == 1)
             b_dx = binfo[1] if binfo else 0.0
-            # 註：area/sym/aspect 在貼近時雜訊太大,road-led 版本不再使用,只用 b_found + sign(b_dx)。
+            # bear: 只給 debug 印出,不參與導航/commit (image 空間無法分辨「橋頂的」vs「地面其他」)
+            tinfo = self.data_processor.get_yolo_target_info()
+            t_found = bool(tinfo and tinfo[0] == 1)
+            t_dist = tinfo[1] if tinfo else 0.0
+            t_dx = tinfo[2] if tinfo else 0.0
 
-            # ---------------- BRIDGE_APPROACH (道路導航 + 路口朝橋轉) ----------------
+            # ---------------- BRIDGE_APPROACH (pose-based: drive to dock pose, align yaw) ----------------
             if self.state == self.BRIDGE_APPROACH:
-                # 記住最後看到 bridge 的方位 (用 sign 做轉向決策)
-                if b_found:
-                    last_bridge_dx = b_dx
-                    last_bridge_seen_tick = dbg_tick
-                    # 若 bridge 在 far-off 一側 → 設定 turn-hold (給「丟失後仍持續轉」用)
-                    if abs(b_dx) >= self.BRIDGE_TURN_PX:
-                        turn_hold_side = -1 if b_dx < 0 else 1
-                        turn_hold_remaining = self.TURN_HOLD_TICKS
+                pose_msg = self.ros_communicator.get_latest_amcl_pose()
+                if pose_msg is None:
+                    self._publish("STOP")
+                    if time.time() > approach_deadline:
+                        self._transition(self.DONE, "BRIDGE_APPROACH 逾時 (無 /amcl_pose)")
+                    time.sleep(self.TICK)
+                    continue
+
+                p = pose_msg.pose.pose.position
+                o = pose_msg.pose.pose.orientation
+                car_xy = [p.x, p.y]
+                cur_yaw = self._norm_angle(2.0 * math.atan2(o.z, o.w))
+
+                # ---- Phase 1a: DRIVE_WP → 經過中繼 waypoints (依序,不對齊 yaw) ----
+                if approach_phase == "DRIVE_WP":
+                    wp_x, wp_y, wp_arrive_dist = self.WAYPOINTS[wp_idx]
+                    wp_target = [wp_x, wp_y]
+                    dist_wp = cal_distance(car_xy, wp_target)
+                    if dist_wp < wp_arrive_dist:
+                        wp_idx += 1
+                        if wp_idx >= len(self.WAYPOINTS):
+                            approach_phase = "DRIVE_DOCK"
+                            print(f"[Task2] 通過最後中繼點 (dist={dist_wp:.2f}m) → 開往 dock")
+                        else:
+                            print(f"[Task2] 通過 WP {wp_idx}/{len(self.WAYPOINTS)} "
+                                  f"(dist={dist_wp:.2f}m) → WP {wp_idx + 1}")
                     else:
-                        # bridge 在「相對前方」(non-far-off) → 不需 turn-hold,清掉
-                        turn_hold_side = 0
-                        turn_hold_remaining = 0
-                else:
-                    # bridge 看不到時, turn-hold 倒數 (是 far-off 剛丟才會啟動的計數)
-                    if turn_hold_remaining > 0:
-                        turn_hold_remaining -= 1
+                        ang = calculate_angle_point(o.z, o.w, car_xy, wp_target)
+                        if abs(ang) > self.APPROACH_SPIN_DEG:
+                            self._publish("COUNTERCLOCKWISE_ROTATION_SLOW" if ang > 0
+                                          else "CLOCKWISE_ROTATION_SLOW")
+                            action = f"SPIN({ang:+.0f}°)"
+                        else:
+                            # 中繼段不需降到 crawl,只用 FAR/MID 兩段
+                            base = self.APPROACH_DRIVE_SPEED
+                            if dist_wp < self.APPROACH_FAR_DIST:
+                                base *= 0.70
+                            turn = self.APPROACH_TURN_GAIN * ang
+                            turn = max(-base, min(base, turn))
+                            left = base - turn
+                            right = base + turn
+                            self.ros_communicator.publish_raw_car_control([left, right, left, right])
+                            action = f"ARC(base={base:.0f},turn={turn:+.0f})"
+                        dock_dbg += 1
+                        if dock_dbg % 10 == 1:
+                            print(f"[Task2] WP {wp_idx + 1}/{len(self.WAYPOINTS)} "
+                                  f"car=({car_xy[0]:.2f},{car_xy[1]:.2f}) "
+                                  f"dist={dist_wp:.2f} ang={ang:+.0f}° → {action}")
+
+                # ---- Phase 1b: DRIVE_DOCK → 到最終 dock 位置 (精準對位) ----
+                elif approach_phase == "DRIVE_DOCK":
+                    dist = cal_distance(car_xy, dock_target)
+                    if dist < self.DOCK_ARRIVE_DIST:
+                        dock_arrived_streak += 1
+                        self._publish("STOP")
+                        if dock_arrived_streak >= self.DOCK_ARRIVE_CONFIRM:
+                            approach_phase = "YAW_ALIGN"
+                            yaw_aligned_streak = 0
+                            print(f"[Task2] 已到 dock 位置 (dist={dist:.2f}m) → 對準 yaw")
                     else:
-                        turn_hold_side = 0
+                        dock_arrived_streak = 0
+                        # near-goal stuck guard: 進近區後若 STUCK_TICKS 幀內位移 < STUCK_MOVE_TOL,
+                        # 視為實際到位 (被 curb / 小階差卡住,前進不了那剩下幾公分)
+                        if dist < self.STUCK_NEAR_DIST:
+                            if stuck_anchor_xy is None:
+                                stuck_anchor_xy = list(car_xy)
+                                stuck_anchor_tick = dbg_tick
+                            else:
+                                move = cal_distance(car_xy, stuck_anchor_xy)
+                                if move > self.STUCK_MOVE_TOL:
+                                    # 有在動,重置 anchor
+                                    stuck_anchor_xy = list(car_xy)
+                                    stuck_anchor_tick = dbg_tick
+                                elif (dbg_tick - stuck_anchor_tick) >= self.STUCK_TICKS:
+                                    print(f"[Task2] ⚠ DOCK 卡死偵測 (dist={dist:.2f}m, "
+                                          f"{self.STUCK_TICKS}f 沒動) → 視為到位 → 對準 yaw")
+                                    approach_phase = "YAW_ALIGN"
+                                    yaw_aligned_streak = 0
+                                    self._publish("STOP")
+                                    continue
+                        else:
+                            stuck_anchor_xy = None
+                        ang = calculate_angle_point(o.z, o.w, car_xy, dock_target)
+                        near = dist < self.APPROACH_NEAR_DIST
+                        # 近區 (< NEAR_DIST):方位角對微小側偏極敏感 (dist→0 時 bearing 會暴衝),
+                        # 此時「原地轉」只空轉、不縮短距離 → 一律改為「直行 + 弱轉向」爬進去。
+                        if (not near) and abs(ang) > self.APPROACH_SPIN_DEG:
+                            self._publish("COUNTERCLOCKWISE_ROTATION_SLOW" if ang > 0
+                                          else "CLOCKWISE_ROTATION_SLOW")
+                            action = f"SPIN({ang:+.0f}°)"
+                        else:
+                            # 三段速度: 遠 → 全速; 中 → 70%; 近 → 35% (crawl 精準對位)
+                            base = self.APPROACH_DRIVE_SPEED
+                            turn = self.APPROACH_TURN_GAIN * ang
+                            if near:
+                                base *= 0.35
+                                turn *= 0.4          # 近區弱化轉向,讓車直直爬進,而非原地畫圈卡住
+                                # 再把 turn 夾在 ±0.5*base:確保兩輪都保有前進分量,某輪不會歸零 → 不會原地
+                                # 空轉卡死 (實測 ang≈-18° 時 turn 會飽和到 -base、right 輪=0 → 凍住)。
+                                turn = max(-0.5 * base, min(0.5 * base, turn))
+                            elif dist < self.APPROACH_FAR_DIST:
+                                base *= 0.70
+                            turn = max(-base, min(base, turn))
+                            left = base - turn
+                            right = base + turn
+                            self.ros_communicator.publish_raw_car_control([left, right, left, right])
+                            action = f"ARC(base={base:.0f},turn={turn:+.0f})"
+                        dock_dbg += 1
+                        if dock_dbg % 10 == 1:
+                            print(f"[Task2] DOCK car=({car_xy[0]:.2f},{car_xy[1]:.2f}) "
+                                  f"dist={dist:.2f} ang={ang:+.0f}° → {action}")
 
-                # ===== 決策優先序：路口大轉 > turn-hold > 道路置中 + 中等偏轉 > road lost commit =====
-
-                # (1) bridge 看到且偏太遠 → 原地轉 (90° 路口必須直接轉)
-                if b_found and abs(b_dx) >= self.BRIDGE_TURN_PX:
-                    if b_dx > 0:
-                        self._publish("CLOCKWISE_ROTATION_SLOW")
-                    else:
-                        self._publish("COUNTERCLOCKWISE_ROTATION_SLOW")
-                    # 路口轉中 → road 計數不算 lost
-                    if r_found:
-                        road_lost_streak = 0
-
-                # (2) bridge 看不到但剛剛還是 far-off (turn_hold 仍有效) → 繼續往該方向轉
-                #     這是「bridge 從 1 變 0,該側」場景的關鍵 — 持續轉直到 re-acquire 或 hold 結束
-                elif (not b_found) and turn_hold_remaining > 0 and turn_hold_side != 0:
-                    if turn_hold_side > 0:
-                        self._publish("CLOCKWISE_ROTATION_SLOW")
-                    else:
-                        self._publish("COUNTERCLOCKWISE_ROTATION_SLOW")
-                    if r_found:
-                        road_lost_streak = 0
-
-                # (3) road 有看到 → 沿路前進 (中等偏轉或純置中)
-                elif r_found:
-                    road_lost_streak = 0
-                    steer = self.ROAD_GAIN * r_dx
-                    if b_found and abs(b_dx) >= self.BRIDGE_HINT_PX:
-                        steer += self.BRIDGE_HINT_STEER * (1.0 if b_dx > 0 else -1.0)
-                    self._arc(self.APPROACH_SPEED, steer)
-
-                # (4) road 不見 → flicker 容忍 / commit / 搜尋
-                else:
-                    road_lost_streak += 1
-                    if road_lost_streak <= self.ROAD_FLICKER_TOL:
-                        # 短暫遺失,繼續直行
-                        self._arc(self.APPROACH_SPEED, 0.0)
-                    elif road_lost_streak >= self.ROAD_LOST_COMMIT:
-                        # 持續遺失 → 走到路盡頭。只要近期看過 bridge,commit 上橋。
-                        recently_saw_bridge = (dbg_tick - last_bridge_seen_tick) <= 30  # ~3s
-                        if recently_saw_bridge or b_found:
-                            self._publish("STOP")
-                            climb_start_pose = self._current_xy()
+                # ---- Phase 2: YAW_ALIGN → 對準目標方向 ----
+                elif approach_phase == "YAW_ALIGN":
+                    # 角度正規化到 [-π,π]:在 ±180° 邊界連續,不會正負跳動 → 防 wiggle。
+                    yaw_err = self._norm_angle(self.DOCK_YAW_RAD - cur_yaw)
+                    if abs(yaw_err) < self.DOCK_YAW_TOL:
+                        yaw_aligned_streak += 1
+                        self._publish("STOP")
+                        if yaw_aligned_streak >= self.DOCK_YAW_CONFIRM:
+                            climb_start_pose = car_xy
                             climb_entry_time = time.time()
                             scoop_prepared = False
                             self._transition(
                                 self.CLIMB,
-                                f"道路盡頭 (road lost {road_lost_streak}f, "
-                                f"last bridge dx={last_bridge_dx:+.0f}) → 上橋")
+                                f"已對準 yaw (current={math.degrees(cur_yaw):.1f}°, "
+                                f"target={math.degrees(self.DOCK_YAW_RAD):.1f}°, "
+                                f"err={math.degrees(yaw_err):+.1f}°) → 上橋")
                             continue
-                        else:
-                            # 沒 road + 近期沒 bridge → 原地搜尋
-                            self._publish(self.SEARCH_SPIN)
                     else:
-                        # 中段遺失,慢慢直行
-                        self._publish("FORWARD_SLOW")
+                        yaw_aligned_streak = 0
+                        # yaw_err > 0 = 需逆時針轉 (CCW),< 0 = 順時針 (CW)
+                        self._publish("COUNTERCLOCKWISE_ROTATION_SLOW" if yaw_err > 0
+                                      else "CLOCKWISE_ROTATION_SLOW")
+                    dock_dbg += 1
+                    if dock_dbg % 10 == 1:
+                        print(f"[Task2] YAW_ALIGN cur={math.degrees(cur_yaw):.1f}° "
+                              f"target={math.degrees(self.DOCK_YAW_RAD):.1f}° "
+                              f"err={math.degrees(yaw_err):+.1f}°")
 
                 if time.time() > approach_deadline:
                     self._transition(self.DONE, "BRIDGE_APPROACH 逾時")
@@ -358,7 +460,7 @@ class Task2Mission:
                 self._publish("STOP")
                 break
 
-            self._dbg_line(dbg_tick, r_found, r_dx, b_found, b_dx)
+            self._dbg_line(dbg_tick, r_found, r_dx, b_found, b_dx, t_found, t_dist, t_dx)
             time.sleep(self.TICK)
 
         self._publish("STOP")
@@ -375,6 +477,13 @@ class Task2Mission:
         right = base - steer
         self.ros_communicator.publish_raw_car_control([left, right, left, right])
 
+    @staticmethod
+    def _norm_angle(a):
+        """把角度正規化到 [-π, π] — 等價於 atan2(sin,cos),在 ±180° 邊界連續。
+        目標 yaw 接近 ±π 時,用此函式算誤差才不會因雜訊正負跳動造成原地抖動 (wiggle)。
+        (注意:2*atan2(z,w) 的值域是 (-2π, 2π],也需先正規化才能和 DOCK_YAW_RAD 一致比較。)"""
+        return math.atan2(math.sin(a), math.cos(a))
+
     def _current_xy(self):
         pose_msg = self.ros_communicator.get_latest_amcl_pose()
         if pose_msg is None:
@@ -388,7 +497,7 @@ class Task2Mission:
             if pose_msg is not None:
                 p = pose_msg.pose.pose.position
                 o = pose_msg.pose.pose.orientation
-                self.start_yaw = 2.0 * math.atan2(o.z, o.w)
+                self.start_yaw = self._norm_angle(2.0 * math.atan2(o.z, o.w))
                 return [p.x, p.y]
             time.sleep(delay)
         return None
@@ -398,11 +507,12 @@ class Task2Mission:
         self.state = new_state
         print(f"[Task2] {old} → {new_state}  ({reason})")
 
-    def _dbg_line(self, tick, r_found, r_dx, b_found, b_dx):
+    def _dbg_line(self, tick, r_found, r_dx, b_found, b_dx, t_found, t_dist, t_dx):
         if not self.DEBUG or tick % self.DBG_EVERY != 0:
             return
-        print(f"[Task2][{self.state}] road(found={int(r_found)} dx={r_dx:+.0f}) | "
-              f"bridge(found={int(b_found)} dx={b_dx:+.0f})")
+        print(f"[Task2][{self.state}] road(F={int(r_found)} dx={r_dx:+.0f}) | "
+              f"bridge(F={int(b_found)} dx={b_dx:+.0f}) | "
+              f"bear(F={int(t_found)} dist={t_dist:.2f} dx={t_dx:+.0f})")
 
     def _publish(self, action_key):
         self.ros_communicator.publish_car_control(
