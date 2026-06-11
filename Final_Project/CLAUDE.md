@@ -18,15 +18,17 @@ live — there is no map pre-pass.
 
 **Tasks 2 (bridge) and 3 (door) are now implemented** as their own state machines, same hands-free
 pattern as Task 1:
-- **Task 2** — bridge (no IMU — Unity has none). A bear is **guaranteed at the top-middle** of the
-  bridge, so it's deterministic: **road-led** approach — follow `/yolo/road_info` `delta_x` to drive
-  along the road, and when the bridge is off to one side (at an intersection) add a fixed steer
-  toward the bridge side using only the **sign** of `/yolo/bridge_info` `delta_x` (bridge mask area /
-  symmetry / aspect / precise dx are all too noisy when close, so they're not used). When the road
-  disappears (we've reached the foot of the bridge), commit to CLIMB: **lower the open bulldozer claw
-  and drive straight up** — the claw scoops the top-middle bear as it arrives (distance gauged off
-  `/amcl_pose`) — **close the gripper**, and pose-**RETURN to start**. Claw-down the whole climb means
-  the bear can't roll out.
+- **Task 2** — bridge (no IMU — Unity has none; deterministic scene + spawn). Two bears on the path:
+  one at the ramp foot, one on the bridge top. **Pose-based** approach (visual servoing on bridge/road
+  masks was too brittle near the bridge; ground bears confused bear-as-target): hand-measured
+  `DOCK_POSE = (0.90, 0.43) yaw=90.7°` in the **pinned `/amcl_pose` (0,0,0)-spawn frame** (see the
+  localization-pin gotcha below — the dock constants are only valid after `reset_map.sh --pin`), the
+  rover drives to it with Task 1's RETURN-style controller (rotate to face, then arc/drive; near the
+  goal it keeps both wheels driving so it doesn't pivot-stall), aligns yaw, then commits to CLIMB:
+  **lower the open bulldozer claw and drive straight up** — the claw scoops both bears as it traverses
+  (distance gauged off `/amcl_pose`) — **close the gripper**, and pose-**RETURN to start**. Claw-down
+  the whole climb means the bears can't roll out. *(Next: a visual-dock phase to align heading to the
+  bridge via `/yolo/bridge_info` instead of trusting the hand-measured yaw — see specs.)*
 - **Task 3** — door knob: Locate & Observe the knob (`detection.pt` `knob` class via
   `YOLO_TARGET=knob` → `/yolo/target_info_knob`), **UNLOCK** with an arm poke
   (`arm_controller.knob_poke`), then **CLEAR** by driving the body forward to push the door open.
@@ -165,6 +167,18 @@ Tune these against the in-sim "N units" and the gripper geometry.
 - **Map reset for retries:** `tools/reset_map.sh` switches RACING2026↔FINAL PROJECT to force a fresh
   scene (clicking FINAL PROJECT while already in it does NOT reload). For RETURN/Nav2 tests use
   `reset_map.sh --slam` to also restart SLAM + navigation (SLAM restart de-syncs Nav2 costmaps).
+- **`/amcl_pose` map frame floats every session → pin it for pose-based nav (Task 2).** Odometry
+  comes from a laser scan-matcher (`scan_matcher`, `ros2_laser_scan_matcher`, in `robot_bringup`)
+  that integrates forever and never resets; `slam_toolbox` (`mode: mapping`, no loaded map) anchors
+  `map` to that odom on its first scan. So the *same physical spawn* reads wildly different
+  coordinates each session (observed: `(2.87,-3.46)`, `(-3.1,-4.3)`, `(-4.21,-4.24)`), and any
+  hard-coded absolute pose (e.g. Task 2's `DOCK_X/Y/YAW`) silently goes stale. **Fix / ritual:** with
+  the car at spawn, run **`reset_map.sh --pin`** — it re-origins the scan_matcher odom (restart
+  `robot_bringup`) → re-anchors SLAM → resyncs Nav2, *in that order*, so spawn ≡ `map (0,0,0)` and the
+  whole deterministic scene gets reproducible coordinates. Verify: `/amcl_pose` at spawn ≈ `(0,0,0)`.
+  Note `slam_toolbox`'s `map_start_pose` does **not** pin a fresh map (verified) — the odom reset is
+  the actual lever. Task 2's dock constants were measured in this pinned frame. Full rationale:
+  `docs/superpowers/specs/2026-06-11-task2-localization-pin-spawn-design.md`.
 - **Nav2 `map` arg:** if `navigation_launch.py` rejects the `map` arg, remove the `<arg name="map">`
   line in `pros_app/docker/compose/demo/navigation_unity.xml` — Nav2 only needs the `/map` topic.
 
