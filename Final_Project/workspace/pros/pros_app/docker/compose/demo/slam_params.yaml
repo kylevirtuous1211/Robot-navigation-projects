@@ -21,7 +21,14 @@ slam_toolbox:
     # or at the dock, but they are mutually exclusive, if pose is given
     # will use pose
     #map_file_name: test_steve
-    # map_start_pose: [0.0, 0.0, 0.0]
+    # ⚠ 實測 (2026-06-11):mode:mapping 無載入地圖時,slam_toolbox 會「忽略」map_start_pose ——
+    #   第一幀位姿仍取自 odom (laser scan_matcher 的累積值),故單設此參數無法把 spawn 釘成 (0,0,0)
+    #   (重啟 SLAM 後 /amcl_pose 仍是舊的污染值)。真正讓 spawn ≡ (0,0,0) 的做法:車在 spawn 時先
+    #   「重啟 robot_bringup」(重置 scan_matcher 的 odom 原點 → /odom=0),再「重啟 slam」(map 重新
+    #   錨定到 odom=0)。已驗證 /amcl_pose=(0,0,0) 且靜止穩定。見 reset 腳本與
+    #   docs/superpowers/specs/2026-06-11-task2-localization-pin-spawn-design.md。
+    #   (保留此行為 no-op:日後改用 map_file_name 載入存檔地圖 + mode:localization 時才會生效。)
+    map_start_pose: [0.0, 0.0, 0.0]
     #map_start_at_dock: true
     # lifelong params
     lifelong_search_use_tree: false
