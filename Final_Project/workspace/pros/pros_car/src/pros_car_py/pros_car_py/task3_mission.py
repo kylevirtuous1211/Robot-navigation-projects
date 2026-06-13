@@ -315,10 +315,8 @@ class Task3Mission:
             # ---------------- UNLOCK (抬手 → 前進到門把 → 下壓 lever 開門) ----------------
             elif self.state == self.UNLOCK:
                 self._publish("STOP")
-                print("[Task3] UNLOCK：抬手臂 → 前進到門把 → 下壓 lever 開門")
-                # 1. 抬手臂到最高 (爪移到門把上方,前進不撞把手)
-                self.arm_controller.knob_raise()
-                # 2. 往門把再前進一小段,讓爪落在 lever 正上方
+                print("[Task3] UNLOCK：前進到門把 → 抬手臂 → 下壓 lever 開門")
+                # 1. 先往門把再前進一小段 (手臂維持收起 → 相機不被擋,還看得到門把/路)
                 nudge_start = time.time()
                 while time.time() - nudge_start < self.UNLOCK_NUDGE_SEC:
                     if stop_event.is_set():
@@ -326,6 +324,8 @@ class Task3Mission:
                     self._publish("FORWARD_SLOW")
                     time.sleep(self.TICK)
                 self._publish("STOP")
+                # 2. 到位後才抬手臂到 READY (設定 Wrist 177/Finger 閉合/Elbow 8) — 此時擋到相機沒關係
+                self.arm_controller.knob_raise()
                 # 3. 下壓 lever → 解門閂 (壓下後「不收回」,維持壓著直接穿門,避免門閂彈回)
                 self.arm_controller.knob_press_down()
                 clear_start = time.time()
