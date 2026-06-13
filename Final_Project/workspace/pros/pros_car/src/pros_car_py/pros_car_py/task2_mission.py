@@ -112,7 +112,9 @@ class Task2Mission:
             [0.899, 0.0, 0.12],   # 對到橋口 (= dock 位置)
             [0.899, 0.2, 0.12],   # 沿橋軸 (+y) 上橋口
             [0.899, 0.4, 0.12],   # 沿橋軸 (+y) 上橋口
+            [0.899, 0.500, 0.12],   # 沿橋軸 (+y) 上橋口 (細間距,順順爬)
             [0.899, 0.616, 0.12],   # 沿橋軸 (+y) 上橋口
+            [0.899, 0.700, 0.12],   # 沿橋軸 (+y) 上橋口 (細間距,順順爬)
             [0.899, 0.800, 0.18],   # 開一點上橋 (置中) → VISUAL_CLIMB
         ]
         # 實測最終 docking pose —— 在「釘住的 (0,0,0) spawn frame」量測 (from /amcl_pose;
@@ -125,7 +127,7 @@ class Task2Mission:
         # yaw = 2*atan2(z, w) = 2*atan2(0.71157, 0.70262) ≈ 1.5834 rad (90.7°)。不在 ±180° 邊界。
         self.DOCK_YAW_RAD = 1.5834           # rad ≈ 90.7°
         # Controller knobs — 三段速度 (FAR / MID / NEAR) 讓終點精準對齊不衝過頭
-        self.APPROACH_DRIVE_SPEED = 150.0    # 全速 (dist >= APPROACH_FAR_DIST 時)
+        self.APPROACH_DRIVE_SPEED = 200.0    # 全速 (dist >= APPROACH_FAR_DIST 時) — 上橋斜坡需要動量,太慢會卡在坡面爬不上
         self.APPROACH_TURN_GAIN = 7.0        # 角度 → wheel-diff 比例 (deg → speed)
         self.APPROACH_SPIN_DEG = 15.0        # 方位角差 > 此值 → 原地轉 (略嚴,讓接近時更端正)
         self.APPROACH_FAR_DIST = 1.0         # < 此距離降到 70% (避免衝過頭)
@@ -140,7 +142,7 @@ class Task2Mission:
                                              #   stall 帶 (實測車會在 ~0.24m 卡住),卡住即視為到位 → VISUAL_CLIMB。
         self.STUCK_MOVE_TOL = 0.03           # N 幀內位移 < 此值 (m) 視為沒動
         self.STUCK_TICKS = 15                # ~1.5s 沒動 → 觸發
-        self.BRIDGE_APPROACH_TIMEOUT = 120.0  # 位姿粗對位全程逾時保險
+        self.BRIDGE_APPROACH_TIMEOUT = 200.0  # 位姿粗對位全程逾時保險
 
         # ---- SNAP_90：到 dock 後原地轉到橋軸 (~DOCK_YAW_RAD≈90.7°,pinned frame) ----
         # 為何需要 (實測):dock 處車朝向不定,橋面常落在畫面邊緣 (bridge_dx≈-290),橋外的誘餌熊反而置中/較近,
@@ -156,7 +158,7 @@ class Task2Mission:
         self.SNAP_90_TIMEOUT = 25.0           # 對準逾時保險 (s) → 仍前進一段再入 VISUAL_CLIMB
         # 對準後、進 VISUAL_CLIMB 前,先沿橋軸直行一小段「貼上橋口」(修正平移/docking),再交給視覺。
         self.SNAP_FWD_SEC = 1.2               # 對準後直行前進的時間 (s);0=不前進
-        self.SNAP_FWD_SPEED = 120.0           # 此段前進輪速 (比上橋慢,溫和貼進坡口)
+        self.SNAP_FWD_SPEED = 150.0           # 此段前進輪速 (比上橋慢,溫和貼進坡口)
 
         # ---- VISUAL_CLIMB：降爪 + 沿「橋面 segmentation 中線」全速過橋,走近橋上的熊並鏟入 ----
         # 轉向用穩定的 bridge_info delta_x (b_dx) 維持在橋中線、全速直行過橋 (不用 bear 深度轉向——太抖)。
