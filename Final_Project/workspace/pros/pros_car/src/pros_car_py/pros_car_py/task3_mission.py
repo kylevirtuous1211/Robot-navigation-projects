@@ -83,8 +83,9 @@ class Task3Mission:
         # DRIVE_WP 行進參數 (沿用 Task2 BRIDGE_APPROACH 調好的值)
         self.APPROACH_DRIVE_SPEED = 200.0   # 全速 (dist >= APPROACH_FAR_DIST)
         self.APPROACH_TURN_GAIN = 7.0       # 角度 → wheel-diff 比例 (deg → speed)
-        self.APPROACH_SPIN_DEG = 15.0       # 方位角差 > 此值 → 原地轉
+        self.APPROACH_SPIN_DEG = 15.0       # 方位角差 > 此值 → 原地轉 (僅遠區)
         self.APPROACH_FAR_DIST = 1.0        # < 此距離降到 70%
+        self.APPROACH_NEAR_DIST = 0.35      # < 此距離「不原地轉」,改直行+弱轉向爬進 (防近目標 pivot-stall)
         self.STUCK_MOVE_TOL = 0.03          # N 幀內位移 < 此值 (m) 視為沒動
         self.STUCK_TICKS = 15               # ~1.5s 沒動 → 末點 stuck guard 觸發
         self.WP_TIMEOUT = 60.0              # DRIVE_WP 總逾時保險 (s)
@@ -194,36 +195,49 @@ class Task3Mission:
                     else:
                         print(f"[Task3] 通過 WP {wp_idx}/{len(self.WAYPOINTS)} (dist={dist_wp:.2f}m)")
                 else:
-                    # 末點卡住 guard:連 STUCK_TICKS 幀沒動 → 視為到位 → 交給視覺
-                    if last_wp:
-                        if (stuck_anchor_xy is None
-                                or cal_distance(car_xy, stuck_anchor_xy) > self.STUCK_MOVE_TOL):
-                            stuck_anchor_xy = list(car_xy)
-                            stuck_anchor_tick = dbg_tick
-                        elif dbg_tick - stuck_anchor_tick >= self.STUCK_TICKS:
-                            self._publish("STOP")
+                    # 卡死 guard (所有 waypoint,不只末點):連 STUCK_TICKS 幀位移 < STUCK_MOVE_TOL,
+                    # 視為到位 → 末點交給視覺,中繼點直接跳下一點 (避免近目標 pivot-stall 卡到 WP_TIMEOUT)。
+                    if (stuck_anchor_xy is None
+                            or cal_distance(car_xy, stuck_anchor_xy) > self.STUCK_MOVE_TOL):
+                        stuck_anchor_xy = list(car_xy)
+                        stuck_anchor_tick = dbg_tick
+                    elif dbg_tick - stuck_anchor_tick >= self.STUCK_TICKS:
+                        self._publish("STOP")
+                        if last_wp:
                             self._transition(self.SEARCH,
                                              f"末 WP 卡住 ({self.STUCK_TICKS}f 沒動) → 視覺取得門把")
                             search_deadline = time.time() + self.SEARCH_TIMEOUT
                             found_streak = 0
-                            time.sleep(self.TICK)
-                            continue
+                        else:
+                            wp_idx += 1
+                            print(f"[Task3] WP {wp_idx}/{len(self.WAYPOINTS)} 卡住 "
+                                  f"({self.STUCK_TICKS}f 沒動,dist={dist_wp:.2f}) → 跳下一點")
+                        stuck_anchor_xy = None
+                        time.sleep(self.TICK)
+                        continue
+                    # 近目標 (dist < NEAR_DIST) 不原地轉 (dist→0 時 bearing 會暴衝 → pivot-stall);
+                    # 改「直行 + 弱轉向」爬進去,turn 夾在 ±0.5*base 確保兩輪都保有前進分量,不會原地空轉。
                     ang = calculate_angle_point(o.z, o.w, car_xy, wp_target)
-                    if abs(ang) > self.APPROACH_SPIN_DEG:
+                    near = dist_wp < self.APPROACH_NEAR_DIST
+                    if (not near) and abs(ang) > self.APPROACH_SPIN_DEG:
                         self._publish("COUNTERCLOCKWISE_ROTATION_SLOW" if ang > 0
                                       else "CLOCKWISE_ROTATION_SLOW")
                     else:
                         base = self.APPROACH_DRIVE_SPEED
-                        if dist_wp < self.APPROACH_FAR_DIST:
-                            base *= 0.70
                         turn = self.APPROACH_TURN_GAIN * ang
+                        if near:
+                            base *= 0.40
+                            turn *= 0.4
+                            turn = max(-0.5 * base, min(0.5 * base, turn))
+                        elif dist_wp < self.APPROACH_FAR_DIST:
+                            base *= 0.70
                         turn = max(-base, min(base, turn))
                         left = base - turn
                         right = base + turn
                         self.ros_communicator.publish_raw_car_control([left, right, left, right])
                     if dbg_tick % self.DBG_EVERY == 0:
                         print(f"[Task3][DRIVE_WP] WP {wp_idx + 1}/{len(self.WAYPOINTS)} "
-                              f"car=({car_xy[0]:.2f},{car_xy[1]:.2f}) dist={dist_wp:.2f}")
+                              f"car=({car_xy[0]:.2f},{car_xy[1]:.2f}) dist={dist_wp:.2f} ang={ang:+.0f}")
 
                 if time.time() > wp_deadline:
                     self._publish("STOP")
