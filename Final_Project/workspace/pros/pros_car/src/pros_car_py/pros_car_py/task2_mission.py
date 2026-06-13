@@ -112,9 +112,7 @@ class Task2Mission:
             [0.899, 0.0, 0.12],   # 對到橋口 (= dock 位置)
             [0.899, 0.2, 0.12],   # 沿橋軸 (+y) 上橋口
             [0.899, 0.4, 0.12],   # 沿橋軸 (+y) 上橋口
-            [0.899, 0.500, 0.12],   # 沿橋軸 (+y) 上橋口 (細間距,順順爬)
             [0.899, 0.616, 0.12],   # 沿橋軸 (+y) 上橋口
-            [0.899, 0.700, 0.12],   # 沿橋軸 (+y) 上橋口 (細間距,順順爬)
             [0.899, 0.800, 0.18],   # 開一點上橋 (置中) → VISUAL_CLIMB
         ]
         # 實測最終 docking pose —— 在「釘住的 (0,0,0) spawn frame」量測 (from /amcl_pose;
@@ -127,7 +125,7 @@ class Task2Mission:
         # yaw = 2*atan2(z, w) = 2*atan2(0.71157, 0.70262) ≈ 1.5834 rad (90.7°)。不在 ±180° 邊界。
         self.DOCK_YAW_RAD = 1.5834           # rad ≈ 90.7°
         # Controller knobs — 三段速度 (FAR / MID / NEAR) 讓終點精準對齊不衝過頭
-        self.APPROACH_DRIVE_SPEED = 200.0    # 全速 (dist >= APPROACH_FAR_DIST 時) — 上橋斜坡需要動量,太慢會卡在坡面爬不上
+        self.APPROACH_DRIVE_SPEED = 150.0    # 全速 (dist >= APPROACH_FAR_DIST 時)
         self.APPROACH_TURN_GAIN = 7.0        # 角度 → wheel-diff 比例 (deg → speed)
         self.APPROACH_SPIN_DEG = 15.0        # 方位角差 > 此值 → 原地轉 (略嚴,讓接近時更端正)
         self.APPROACH_FAR_DIST = 1.0         # < 此距離降到 70% (避免衝過頭)
@@ -142,7 +140,7 @@ class Task2Mission:
                                              #   stall 帶 (實測車會在 ~0.24m 卡住),卡住即視為到位 → VISUAL_CLIMB。
         self.STUCK_MOVE_TOL = 0.03           # N 幀內位移 < 此值 (m) 視為沒動
         self.STUCK_TICKS = 15                # ~1.5s 沒動 → 觸發
-        self.BRIDGE_APPROACH_TIMEOUT = 200.0  # 位姿粗對位全程逾時保險
+        self.BRIDGE_APPROACH_TIMEOUT = 120.0  # 位姿粗對位全程逾時保險
 
         # ---- SNAP_90：到 dock 後原地轉到橋軸 (~DOCK_YAW_RAD≈90.7°,pinned frame) ----
         # 為何需要 (實測):dock 處車朝向不定,橋面常落在畫面邊緣 (bridge_dx≈-290),橋外的誘餌熊反而置中/較近,
@@ -158,18 +156,18 @@ class Task2Mission:
         self.SNAP_90_TIMEOUT = 25.0           # 對準逾時保險 (s) → 仍前進一段再入 VISUAL_CLIMB
         # 對準後、進 VISUAL_CLIMB 前,先沿橋軸直行一小段「貼上橋口」(修正平移/docking),再交給視覺。
         self.SNAP_FWD_SEC = 1.2               # 對準後直行前進的時間 (s);0=不前進
-        self.SNAP_FWD_SPEED = 150.0           # 此段前進輪速 (比上橋慢,溫和貼進坡口)
+        self.SNAP_FWD_SPEED = 120.0           # 此段前進輪速 (比上橋慢,溫和貼進坡口)
 
         # ---- VISUAL_CLIMB：降爪 + 沿「橋面 segmentation 中線」全速過橋,走近橋上的熊並鏟入 ----
         # 轉向用穩定的 bridge_info delta_x (b_dx) 維持在橋中線、全速直行過橋 (不用 bear 深度轉向——太抖)。
         # bear 只用來判夾取時機:走近到 GRIP_DIST,或「曾靠近 (<=COMMIT_DIST) 後持續看不到=已鏟入爪中」→ GRIP;
         # 都沒觸發就一路過橋到 VCLIMB_TIMEOUT (視為已過橋/到頂) 再夾。不靠 /amcl_pose (橋上 pose 會凍)。
         self.VCLIMB_SPEED = 200.0         # 上橋前進輪速 (full thrust;太慢會卡在坡面)
-        self.VCLIMB_STEER_GAIN = 0.50     # 置中差速增益:steer = GAIN * (扣 deadband 後的 bridge_dx)。
-                                          #   調大 (0.35→0.50):實測爬偏出橋側,加強置中修正 (仍 < 舊版 0.6 撞牆值)。
-        self.VCLIMB_STEER_CLAMP = 0.4     # steer 夾在 ±此比例*base (調大→偏掉時容許更大回正彎度)
+        self.VCLIMB_STEER_GAIN = 0.35     # 置中差速增益:steer = GAIN * (扣 deadband 後的 bridge_dx)。
+                                          #   調小 (0.6→0.35):增益太大會一路把車帶去撞側牆 (低增益→修正溫和,不硬轉)。
+        self.VCLIMB_STEER_CLAMP = 0.3     # steer 夾在 ±此比例*base (調小,限制最大彎度,避免硬轉撞牆)
         self.BRIDGE_DX_DEADBAND = 70.0    # b_dx 在 ±此值內不轉向 (DESCEND 用;吸收下坡時橋面質心的穩態偏移)。
-        self.VCLIMB_STEER_DEADBAND = 20.0 # VISUAL_CLIMB 專用、更緊的 deadband (35→20):上橋要更貼橋中線。
+        self.VCLIMB_STEER_DEADBAND = 35.0 # VISUAL_CLIMB 專用、較緊的 deadband:上橋要更貼著橋中線校正朝向。
                                           #   實測上橋常停在 bridge_dx≈+55 (熊 dx≈+131=車偏左,是真偏移不是 camera 偏置),
                                           #   70 太寬會把這真偏移當雜訊不修 → 車爬偏。設 35 讓它把朝向校回橋中線;
                                           #   增益仍低 (0.35) 故修正溫和、不會像舊版 (gain 0.6) 一路撞牆。爬偏才調大。
@@ -180,17 +178,16 @@ class Task2Mission:
         self.VCLIMB_GRIP_CONFIRM = 3      # 連續 N 幀夠近才 GRIP (濾抖動)
         self.VCLIMB_COMMIT_DIST = 0.70    # 曾靠近到此距離 (m) 後持續看不到 = 已鏟入爪中 → GRIP。
                                           #   設嚴一點 (0.7),避免在 ~1m「熊掉出鏡頭」就誤判到位 (爪只構得到 ~0.2m)。
-        self.VCLIMB_REACH_LOST = 6        # 靠近後連續看不到熊這麼多幀 (~0.6s) → OBSERVE (爪一遮就快交棒,過渡更順)
-        self.VCLIMB_TIMEOUT = 15.0        # 過橋時間 (s):全速沿橋中線爬到熊的概估時間 → 到頂後交給 OBSERVE+GRIP。
-                                          #   這是主要的「爬橋→交棒」旋鈕:沒爬到熊/夾到空氣就調大;爬太久/衝過頭就調小。
+        self.VCLIMB_REACH_LOST = 10       # 靠近後連續看不到熊這麼多幀 (~1.0s) → GRIP
+        self.VCLIMB_TIMEOUT = 25.0        # 過橋時間 (s):全速沿橋中線過完整座橋的概估時間 → 到頂/過橋後 GRIP。
+                                          #   這是主要的「過橋→夾」旋鈕:沒爬到頂/沒過完就調大;衝過頭/衝下對側才夾就調小。
         # (移除 bear 深度卡死偵測:橋上 bear 深度常凍在 ~1m 不隨車前進而變,會誤判卡死、亂倒退浪費過橋時間。
         #  改靠 full thrust + bridge 中線轉向 open-loop 過橋;真的物理卡死就靠 VCLIMB_TIMEOUT 兜底。)
 
         # ---- OBSERVE：停下面向橋上的熊 + 持住觀察 (Locate & Observe 計分),再進 GRIP ----
         # VISUAL_CLIMB 走近熊 (<= VCLIMB_OBSERVE_DIST) 或曾靠近後看不到 → 進 OBSERVE。先原地轉把熊置中 (面向它),
-        # 再停住「不夾」持住 OBSERVE_SECONDS 秒對正,然後才 GRIP。熊看不到 (被爪遮/掉鏡頭) 時不轉,直接持住。
-        # Task 2 無 Locate&Observe 計分,OBSERVE 只為對正方向;3.0s 夠對正、又不會在坡面停太久滑下去。
-        self.OBSERVE_SECONDS = 3.0        # 觀察(對正)持住秒數,持住完才 GRIP
+        # 再停住持住 OBSERVE_SECONDS 秒 (>5s 給分餘裕),然後 GRIP。熊看不到 (被爪遮/掉鏡頭) 時不轉,直接持住。
+        self.OBSERVE_SECONDS = 5.5        # 觀察持住秒數 (>5s 給分餘裕)
         self.OBSERVE_ALIGN_PX = 60.0      # 面向熊的置中容差 (|bear dx| <= 此值算面向)
         self.OBSERVE_FACE_TIMEOUT = 6.0   # 對中熊逾時保險 (s):轉不到位也進持住,避免在坡頂一直空轉
 
@@ -242,7 +239,7 @@ class Task2Mission:
         self.RETURN_ARRIVE_CONFIRM = 4
         self.RETURN_TIMEOUT = 150.0      # 繞行較長,逾時放寬
         self.RETURN_SPIN_DEG = 20.0
-        self.RETURN_DRIVE_SPEED = 300.0  # 平地返航全速 (300,更快更有效率;近起點仍有減速 crawl)。base 大於 GAIN*ang 才不會被 clamp 成「單輪歸零」原地頂、
+        self.RETURN_DRIVE_SPEED = 200.0  # 提高 (110→200):base 大於 GAIN*ang 才不會被 clamp 成「單輪歸零」原地頂、
                                          #   卡在繞行點 (實測 ang=14° 時 7*14=98,base 太小→turn 夾到 base→內輪=0 卡死)。
         self.RETURN_TURN_GAIN = 7
         self.GOTO_FAR_DIST = 1.0
