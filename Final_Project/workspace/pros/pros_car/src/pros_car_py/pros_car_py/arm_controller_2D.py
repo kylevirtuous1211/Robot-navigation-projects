@@ -73,6 +73,9 @@ class ArmController:
         self.KNOB_ELBOW_PRESS = -75.0
         # 下壓到底後停留 (s),讓 Unity 的門閂觸發。
         self.KNOB_PRESS_HOLD = 1.0
+        # 任務行進/搜尋/接近時把手臂收到鏡頭視野外的姿勢 [J0, J1, J2] = Unity [Elbow, Wrist, Finger]:
+        # Elbow 收到最大 (J0=-180 → Unity Elbow 180°,折回車體上方) → 不擋前視相機,knob 偵測才穩。
+        self.KNOB_STOW_POSE = [-180.0, 0.0, 20.0]
 
         print(f"🦾 Arm Controller Initialized: {len(self.joint_limits)} Joints Managed.")
 
@@ -220,6 +223,11 @@ class ArmController:
         self._smooth_move_to([self.KNOB_RETRACT_POSE[0], self.KNOB_RETRACT_POSE[1], None],
                              step=5.0, delay=0.1)
         print("✅ 門把互動完成。")
+
+    def knob_stow(self):
+        """Task 3：把手臂收到鏡頭視野外 (任務行進/搜尋/接近時用,避免爪擋住相機 → knob 偵測不穩)。阻塞。"""
+        print(f"🦾 收手臂出鏡頭 (行進姿勢) {self.KNOB_STOW_POSE} ...")
+        self._smooth_move_to(list(self.KNOB_STOW_POSE), step=5.0, delay=0.1)
 
     def knob_raise(self):
         """Task 3 lever press 步驟 1：抬到待命姿勢 (Unity Elbow 8°/Wrist 177°/Finger 閉合)。阻塞。"""

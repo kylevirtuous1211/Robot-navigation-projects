@@ -69,6 +69,7 @@ class Task3Mission:
         # ---- 位姿式上門 waypoint (pinned (0,0,0) spawn frame; reset_map.sh --pin 後量測) ----
         # 依序開過這些點到門把前,再交給 SEARCH→APPROACH 視覺 dock。格式 [x, y, arrive_dist]。
         # 空 list → 退回舊行為 (原地 SEARCH 旋轉找門把)。
+        # 門把 (lever) 實測位置 ≈ (3.3, 1.69)。末點停在門把前 ~0.4m 當 dock,再交給視覺/壓桿。
         self.WAYPOINTS = [
             [0.5,  0.0,  0.20],
             [1.0,  0.0,  0.20],
@@ -77,8 +78,9 @@ class Task3Mission:
             [2.0,  0.5,  0.20],
             [2.0,  1.0,  0.20],
             [2.0,  1.5,  0.20],
-            [2.0,  1.67, 0.15],
-            [2.43, 1.66, 0.10],   # 門把正前方 → 交給視覺 dock
+            [2.0,  1.69, 0.15],
+            [2.5,  1.69, 0.15],
+            [2.9,  1.69, 0.12],   # 門把 (3.3,1.69) 前 ~0.4m → 交給視覺 dock / 壓桿
         ]
         # DRIVE_WP 行進參數 (沿用 Task2 BRIDGE_APPROACH 調好的值)
         self.APPROACH_DRIVE_SPEED = 200.0   # 全速 (dist >= APPROACH_FAR_DIST)
@@ -142,6 +144,8 @@ class Task3Mission:
     # ==========================================================
     def _run(self, stop_event):
         print("[Task3] 任務開始 (門把：定位觀察 → 解鎖 → 推開門)。")
+        # 先把手臂收到鏡頭視野外,避免爪擋住相機 → DRIVE_WP/SEARCH/APPROACH 的 knob 偵測才穩。
+        self.arm_controller.knob_stow()
         search_deadline = time.time() + self.SEARCH_TIMEOUT
         observe_start = None
         clear_start = 0.0
@@ -195,9 +199,17 @@ class Task3Mission:
                     else:
                         print(f"[Task3] 通過 WP {wp_idx}/{len(self.WAYPOINTS)} (dist={dist_wp:.2f}m)")
                 else:
-                    # 卡死 guard (所有 waypoint,不只末點):連 STUCK_TICKS 幀位移 < STUCK_MOVE_TOL,
-                    # 視為到位 → 末點交給視覺,中繼點直接跳下一點 (避免近目標 pivot-stall 卡到 WP_TIMEOUT)。
-                    if (stuck_anchor_xy is None
+                    # 先決定要「原地轉」還是「前進」。近目標 (dist < NEAR_DIST) 不原地轉
+                    # (dist→0 時 bearing 會暴衝 → pivot-stall),改直行 + 弱轉向爬進。
+                    ang = calculate_angle_point(o.z, o.w, car_xy, wp_target)
+                    near = dist_wp < self.APPROACH_NEAR_DIST
+                    spinning = (not near) and abs(ang) > self.APPROACH_SPIN_DEG
+
+                    # 卡死 guard:只在「想前進但沒動」時計時;轉彎 (原地轉) 不算卡死,否則
+                    # 90° 轉角會被誤判成卡住而提早跳點 (實測 WP5/6/9 被亂跳)。
+                    if spinning:
+                        stuck_anchor_xy = None
+                    elif (stuck_anchor_xy is None
                             or cal_distance(car_xy, stuck_anchor_xy) > self.STUCK_MOVE_TOL):
                         stuck_anchor_xy = list(car_xy)
                         stuck_anchor_tick = dbg_tick
@@ -215,14 +227,12 @@ class Task3Mission:
                         stuck_anchor_xy = None
                         time.sleep(self.TICK)
                         continue
-                    # 近目標 (dist < NEAR_DIST) 不原地轉 (dist→0 時 bearing 會暴衝 → pivot-stall);
-                    # 改「直行 + 弱轉向」爬進去,turn 夾在 ±0.5*base 確保兩輪都保有前進分量,不會原地空轉。
-                    ang = calculate_angle_point(o.z, o.w, car_xy, wp_target)
-                    near = dist_wp < self.APPROACH_NEAR_DIST
-                    if (not near) and abs(ang) > self.APPROACH_SPIN_DEG:
+
+                    if spinning:
                         self._publish("COUNTERCLOCKWISE_ROTATION_SLOW" if ang > 0
                                       else "CLOCKWISE_ROTATION_SLOW")
                     else:
+                        # 直行 + 弱轉向,turn 夾在 ±0.5*base 確保兩輪都保有前進分量,不會原地空轉。
                         base = self.APPROACH_DRIVE_SPEED
                         turn = self.APPROACH_TURN_GAIN * ang
                         if near:
