@@ -41,16 +41,24 @@ from pros_car_py.task2_mission import Task2Mission
 from pros_car_py.task3_mission import Task3Mission
 
 
-def _run_to_done(mission, label):
-    """啟動一個任務 state machine 並阻塞等到它跑完 (DONE → _running=False)。"""
+def _run_to_done(mission, label, watchdog_sec=None):
+    """啟動一個任務 state machine 並阻塞等到它跑完 (DONE → _running=False)。
+
+    watchdog_sec: 真‧卡死兜底 (秒)。各任務自己已有狀態逾時 (e.g. Task2 RETURN 150s),此處
+    只在「整個任務怎樣都不結束」時強制停止、往下走 (避免連跑時無限掛住)。設大一點,不要切到正常慢跑。
+    """
     print(f"[combined] ▶ {label} 開始")
+    start = time.time()
     mission.start()
     try:
         while mission._running and mission._thread.is_alive():
             mission._thread.join(timeout=0.5)
+            if watchdog_sec is not None and time.time() - start > watchdog_sec:
+                print(f"[combined] ⏱ {label} 超過 {watchdog_sec:.0f}s watchdog → 強制停止,往下走")
+                break
     finally:
         mission.stop()
-    print(f"[combined] ✔ {label} 結束")
+    print(f"[combined] ✔ {label} 結束 ({time.time() - start:.0f}s)")
 
 
 def main(args=None):
@@ -75,12 +83,16 @@ def main(args=None):
         arm_controller,
     )
 
+    # watchdog 只是「真卡死」兜底 (各任務內部已有狀態逾時);設大,不切正常慢跑。
+    TASK2_WATCHDOG_SEC = 360.0
+    TASK3_WATCHDOG_SEC = 240.0
+
     print("[task23_auto] 啟動 Task 2 → Task 3 連跑 (headless)。Ctrl-C 可中止。")
     try:
-        _run_to_done(Task2Mission(*deps), "TASK2 (bridge)")
+        _run_to_done(Task2Mission(*deps), "TASK2 (bridge)", TASK2_WATCHDOG_SEC)
         # 兩任務間稍微 settle:Task2 放完熊、車停穩、/amcl_pose 解凍穩定後再進 Task3。
         time.sleep(2.0)
-        _run_to_done(Task3Mission(*deps), "TASK3 (door knob)")
+        _run_to_done(Task3Mission(*deps), "TASK3 (door knob)", TASK3_WATCHDOG_SEC)
         print("[combined] 🎉 Task 2 + Task 3 全部完成。")
     except KeyboardInterrupt:
         print("[combined] 收到中止訊號。")
