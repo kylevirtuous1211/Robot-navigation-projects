@@ -179,7 +179,7 @@ class Task2Mission:
         self.VCLIMB_COMMIT_DIST = 0.70    # 曾靠近到此距離 (m) 後持續看不到 = 已鏟入爪中 → GRIP。
                                           #   設嚴一點 (0.7),避免在 ~1m「熊掉出鏡頭」就誤判到位 (爪只構得到 ~0.2m)。
         self.VCLIMB_REACH_LOST = 10       # 靠近後連續看不到熊這麼多幀 (~1.0s) → GRIP
-        self.VCLIMB_TIMEOUT = 25.0        # 過橋時間 (s):全速沿橋中線過完整座橋的概估時間 → 到頂/過橋後 GRIP。
+        self.VCLIMB_TIMEOUT = 15.0        # 過橋時間 (s):全速沿橋中線過完整座橋的概估時間 → 到頂/過橋後 GRIP。
                                           #   這是主要的「過橋→夾」旋鈕:沒爬到頂/沒過完就調大;衝過頭/衝下對側才夾就調小。
         # (移除 bear 深度卡死偵測:橋上 bear 深度常凍在 ~1m 不隨車前進而變,會誤判卡死、亂倒退浪費過橋時間。
         #  改靠 full thrust + bridge 中線轉向 open-loop 過橋;真的物理卡死就靠 VCLIMB_TIMEOUT 兜底。)
