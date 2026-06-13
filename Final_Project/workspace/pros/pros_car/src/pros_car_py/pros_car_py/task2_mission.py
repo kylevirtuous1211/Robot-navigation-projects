@@ -125,7 +125,7 @@ class Task2Mission:
         # yaw = 2*atan2(z, w) = 2*atan2(0.71157, 0.70262) ≈ 1.5834 rad (90.7°)。不在 ±180° 邊界。
         self.DOCK_YAW_RAD = 1.5834           # rad ≈ 90.7°
         # Controller knobs — 三段速度 (FAR / MID / NEAR) 讓終點精準對齊不衝過頭
-        self.APPROACH_DRIVE_SPEED = 150.0    # 全速 (dist >= APPROACH_FAR_DIST 時)
+        self.APPROACH_DRIVE_SPEED = 300.0    # 平地全速 (dist >= APPROACH_FAR_DIST 時) — 近 waypoint 仍自動降速
         self.APPROACH_TURN_GAIN = 7.0        # 角度 → wheel-diff 比例 (deg → speed)
         self.APPROACH_SPIN_DEG = 15.0        # 方位角差 > 此值 → 原地轉 (略嚴,讓接近時更端正)
         self.APPROACH_FAR_DIST = 1.0         # < 此距離降到 70% (避免衝過頭)
@@ -179,7 +179,7 @@ class Task2Mission:
         self.VCLIMB_COMMIT_DIST = 0.70    # 曾靠近到此距離 (m) 後持續看不到 = 已鏟入爪中 → GRIP。
                                           #   設嚴一點 (0.7),避免在 ~1m「熊掉出鏡頭」就誤判到位 (爪只構得到 ~0.2m)。
         self.VCLIMB_REACH_LOST = 10       # 靠近後連續看不到熊這麼多幀 (~1.0s) → GRIP
-        self.VCLIMB_TIMEOUT = 15.0        # 過橋時間 (s):全速沿橋中線過完整座橋的概估時間 → 到頂/過橋後 GRIP。
+        self.VCLIMB_TIMEOUT = 6.0        # 過橋時間 (s):全速沿橋中線過完整座橋的概估時間 → 到頂/過橋後 GRIP。
                                           #   這是主要的「過橋→夾」旋鈕:沒爬到頂/沒過完就調大;衝過頭/衝下對側才夾就調小。
         # (移除 bear 深度卡死偵測:橋上 bear 深度常凍在 ~1m 不隨車前進而變,會誤判卡死、亂倒退浪費過橋時間。
         #  改靠 full thrust + bridge 中線轉向 open-loop 過橋;真的物理卡死就靠 VCLIMB_TIMEOUT 兜底。)
@@ -239,7 +239,7 @@ class Task2Mission:
         self.RETURN_ARRIVE_CONFIRM = 4
         self.RETURN_TIMEOUT = 150.0      # 繞行較長,逾時放寬
         self.RETURN_SPIN_DEG = 20.0
-        self.RETURN_DRIVE_SPEED = 200.0  # 提高 (110→200):base 大於 GAIN*ang 才不會被 clamp 成「單輪歸零」原地頂、
+        self.RETURN_DRIVE_SPEED = 300.0  # 平地返航全速 (300,更快更有效率;近起點仍有減速 crawl)。base 大於 GAIN*ang 才不會被 clamp 成「單輪歸零」原地頂、
                                          #   卡在繞行點 (實測 ang=14° 時 7*14=98,base 太小→turn 夾到 base→內輪=0 卡死)。
         self.RETURN_TURN_GAIN = 7
         self.GOTO_FAR_DIST = 1.0

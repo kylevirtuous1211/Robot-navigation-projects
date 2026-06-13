@@ -90,7 +90,7 @@ class Task3Mission:
         self.APPROACH_NEAR_DIST = 0.35      # < 此距離「不原地轉」,改直行+弱轉向爬進 (防近目標 pivot-stall)
         self.STUCK_MOVE_TOL = 0.03          # N 幀內位移 < 此值 (m) 視為沒動
         self.STUCK_TICKS = 15               # ~1.5s 沒動 → 末點 stuck guard 觸發
-        self.WP_TIMEOUT = 60.0              # DRIVE_WP 總逾時保險 (s)
+        self.WP_TIMEOUT = 240.0             # DRIVE_WP 總逾時保險 (s) — 設大,真卡死才兜底 (逾時=放棄,不亂解鎖)
 
         # ---- 靠近 (= Task 1 APPROACH 風格) ----
         # 門把比 bear 高、且要「停在伸臂可碰到」的距離。深度 <0.45m 會觸底失效，
@@ -172,7 +172,7 @@ class Task3Mission:
                 if pose_msg is None:
                     self._publish("STOP")
                     if time.time() > wp_deadline:
-                        self._transition(self.UNLOCK, "DRIVE_WP 無 /amcl_pose 逾時 → 直接解鎖+穿門")
+                        self._transition(self.DONE, "DRIVE_WP 無 /amcl_pose 逾時 → 放棄 (沒到門口,不亂解鎖)")
                     self._dbg_line(dbg_tick, found, dist, dx)
                     time.sleep(self.TICK)
                     continue
@@ -245,7 +245,7 @@ class Task3Mission:
 
                 if time.time() > wp_deadline:
                     self._publish("STOP")
-                    self._transition(self.UNLOCK, "DRIVE_WP 逾時 → 直接解鎖+穿門")
+                    self._transition(self.DONE, "DRIVE_WP 逾時 (沒走完 waypoints) → 放棄,不亂解鎖")
 
             # ---------------- SEARCH (備援:WAYPOINTS 為空時才會用到) ----------------
             elif self.state == self.SEARCH:
