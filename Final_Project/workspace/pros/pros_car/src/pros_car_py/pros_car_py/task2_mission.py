@@ -186,8 +186,9 @@ class Task2Mission:
 
         # ---- OBSERVE：停下面向橋上的熊 + 持住觀察 (Locate & Observe 計分),再進 GRIP ----
         # VISUAL_CLIMB 走近熊 (<= VCLIMB_OBSERVE_DIST) 或曾靠近後看不到 → 進 OBSERVE。先原地轉把熊置中 (面向它),
-        # 再停住持住 OBSERVE_SECONDS 秒 (>5s 給分餘裕),然後 GRIP。熊看不到 (被爪遮/掉鏡頭) 時不轉,直接持住。
-        self.OBSERVE_SECONDS = 5.5        # 觀察持住秒數 (>5s 給分餘裕)
+        # 再停住「不夾」持住 OBSERVE_SECONDS 秒對正,然後才 GRIP。熊看不到 (被爪遮/掉鏡頭) 時不轉,直接持住。
+        # Task 2 無 Locate&Observe 計分,OBSERVE 只為對正方向;3.0s 夠對正、又不會在坡面停太久滑下去。
+        self.OBSERVE_SECONDS = 3.0        # 觀察(對正)持住秒數,持住完才 GRIP
         self.OBSERVE_ALIGN_PX = 60.0      # 面向熊的置中容差 (|bear dx| <= 此值算面向)
         self.OBSERVE_FACE_TIMEOUT = 6.0   # 對中熊逾時保險 (s):轉不到位也進持住,避免在坡頂一直空轉
 
