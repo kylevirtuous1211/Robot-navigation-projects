@@ -101,6 +101,22 @@ Rejected alternatives for the overall strategy:
   project's self-contained per-task convention) is decided in the implementation
   plan.
 
+## Start pose: standalone, not chained
+
+Task 3 runs **standalone from a fresh spawn**, not chained off the end of Task 2.
+Each run does its own `reset_map.sh --pin`, so the car starts at spawn `(0,0,0)`
+and `WAYPOINTS` are measured from spawn. This keeps Task 3 independent and
+repeatable (no dependence on Task 2 succeeding or its accumulated odom drift) and
+matches the TA rules (tasks in any order, highest score taken).
+
+Note: seeding the car's pose by publishing `/initialpose` is **not supported by
+this stack** — there is no AMCL. `tf_to_amcl_pose` simply republishes the
+`map → base_footprint` TF as `/amcl_pose`, and nothing consumes `/initialpose`
+to relocalize. The frame origin is set only by `reset_map.sh --pin` (the odom
+re-origin). Chaining Task 3 onto Task 2's end pose (e.g. `(0.315, -0.088,
+yaw ≈ -176°)`) would instead require running Task 3 in the same pinned session
+without re-pinning — explicitly out of scope here.
+
 ## Standard per-run loop
 
 `reset_map.sh --pin` is **required** before every run (the waypoints are in the
