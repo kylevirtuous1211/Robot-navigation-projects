@@ -20,25 +20,34 @@ live — there is no map pre-pass.
 pattern as Task 1:
 - **Task 2** — bridge (no IMU — Unity has none; deterministic scene + spawn). **One bear on the
   bridge.** Pose-based coarse dock to the ramp foot, then bear vision climbs to it (bear detection is
-  far more stable near the ramp than the bridge/road masks). Flow: **BRIDGE_APPROACH** — drive to
-  hand-measured `DOCK_POSE = (0.90, 0.38) yaw≈90.7°` in the **pinned `/amcl_pose` (0,0,0)-spawn frame**
-  (see the localization-pin gotcha below — only valid after `reset_map.sh --pin`) with Task 1's
-  RETURN-style controller → **SNAP_90** — rotate to the bridge axis (~`DOCK_YAW_RAD` 90.7°) so the
-  bridge centers and the off-bridge decoy rotates out of frame, then creep straight forward
-  `SNAP_FWD_SEC` to fix translation / dock onto the ramp → **VISUAL_CLIMB** — lower the open bulldozer
-  claw, then **align-then-go**: if `|delta_x| > VCLIMB_ALIGN_PX` rotate in place to center the bear,
-  else drive full-thrust straight up the bridge (re-checked every frame). Two defenses keep it on the
-  bridge bear, not the decoy: (1) `YOLO_TARGET_PICK=onbridge` — the detection node subscribes to
-  `/yolo/bridge_info` and reports only the bear horizontally aligned with the bridge (latched through
-  segmentation dropouts; falls back to nearest when no bridge in view); (2) SNAP_90 having rotated the
-  decoy out of frame. Commit to GRIP when depth ≤ `VCLIMB_GRIP_DIST` for N frames, seen-then-lost-at-
-  close (scooped), or on `VCLIMB_TIMEOUT`; a stuck-guard reverses briefly if bear depth stops
-  decreasing → **GRIP** — press forward + `scoop_grab` (close + lift) → **DESCEND** — keep driving
-  down the far side: full-thrust over the crest for `DESCEND_MIN_SEC`, then controlled, ending on a
-  **vision stop** (far-side road mask `area_frac ≥ DESCEND_ROAD_AREA`, or bridge mask
-  `area_frac ≤ DESCEND_BRIDGE_AREA`, held `DESCEND_DONE_CONFIRM` frames) with `DESCEND_MAX_SEC` as a
-  fallback — not a blind timer → pose-**RETURN to start** and release. On-bridge `/amcl_pose` freezes,
-  so VISUAL_CLIMB/DESCEND use vision only, no pose.
+  far more stable near the ramp than the bridge/road masks). Flow: **BRIDGE_APPROACH** — pose-based
+  `DRIVE_WP` through the measured `WAYPOINTS` ascent path (lined up with the bridge mouth → straight up
+  the bridge axis `+y` a little onto the bridge, so the car mounts **centred** and doesn't catch the
+  side), in the **pinned `/amcl_pose` (0,0,0)-spawn frame** (only valid after `reset_map.sh --pin`);
+  last waypoint reached (or pose freezes on the bridge — a stuck-guard handles it) → **VISUAL_CLIMB**.
+  (Empty `WAYPOINTS` falls back to the old path: pose dock to `DOCK_POSE = (0.90, 0.38) yaw≈90.7°` →
+  **SNAP_90** — rotate to the bridge axis so the bridge centers and the decoy rotates out of frame,
+  creep forward `SNAP_FWD_SEC` → VISUAL_CLIMB.) → **VISUAL_CLIMB** — lower the open bulldozer
+  claw, then drive full-thrust up the bridge centred on the **bridge-mask centroid** via
+  `_bridge_center_steer` (a `BRIDGE_DX_DEADBAND` absorbs the ~+90 px steady-state incline bias so a
+  fixed offset doesn't curve the car into the side rail). Two defenses keep it on the bridge bear, not
+  the decoy: (1) `YOLO_TARGET_PICK=onbridge` — the detection node subscribes to `/yolo/bridge_info` and
+  reports only the bear horizontally aligned with the bridge (latched through segmentation dropouts;
+  falls back to nearest when no bridge in view); (2) SNAP_90 having rotated the decoy out of frame.
+  Hand off to **OBSERVE** when the bear is within `VCLIMB_OBSERVE_DIST` (still clearly visible),
+  seen-then-lost-at-close (scooped), or on `VCLIMB_TIMEOUT` → **OBSERVE** — stop, rotate to face/center
+  the bear, hold `OBSERVE_SECONDS` (Locate & Observe) → **GRIP** — press forward + `scoop_grab`
+  (close + lift) → **SNAP_DESCEND** — rotate to center the **bridge mask** (`b_dx`, same as the climb;
+  falls back to the road mask `/yolo/road_info` `delta_x` when the bridge isn't detected — `/amcl_pose`
+  freezes on the bridge so no yaw up there) so the car points straight down the stairs → **DESCEND** —
+  full-thrust down, steering on the **bridge mask centre-line** (road mask only as fallback when the
+  bridge isn't detected looking down the stairs), over the wide flat "fat" top and down the stairs;
+  stop only when the **road fills the frame** (`road area_frac ≥ DESCEND_ROAD_AREA`,
+  set high ~0.55 because the far road is already visible ~0.33 from the top) held `DESCEND_DONE_CONFIRM`
+  frames, `DESCEND_MAX_SEC` fallback → pose-**RETURN** — drive the `RETURN_WAYPOINTS` detour **around**
+  the bridge (never straight back *over* it carrying the bear), then go-to-point to the start pose and
+  release (empty `RETURN_WAYPOINTS` = straight back, the old behavior). On-bridge `/amcl_pose`
+  freezes, so VISUAL_CLIMB/OBSERVE/SNAP_DESCEND/DESCEND use vision only, no pose.
 - **Task 3** — door knob: Locate & Observe the knob (`detection.pt` `knob` class via
   `YOLO_TARGET=knob` → `/yolo/target_info_knob`), **UNLOCK** with an arm poke
   (`arm_controller.knob_poke`), then **CLEAR** by driving the body forward to push the door open.
@@ -120,7 +129,7 @@ Manual per-piece `docker run` commands (for debugging individual containers) are
 | Path | Role |
 |---|---|
 | `workspace/pros/pros_car/src/pros_car_py/pros_car_py/task1_mission.py` | **`Task1Mission`** state machine (SEARCH→APPROACH→OBSERVE→CREEP→GRIP→RETURN→DONE). Tunables at top of `__init__`. |
-| `.../pros_car_py/task2_mission.py` | **`Task2Mission`** (no IMU; bridge bear + off-bridge decoy): BRIDGE_APPROACH (pose dock to `DOCK_X/Y`) → SNAP_90 (rotate to bridge axis so decoy leaves frame, then creep forward to dock onto ramp) → VISUAL_CLIMB (lower open claw, align-then-go up the bridge on the bear's `delta_x`; commit to GRIP on close-depth / seen-then-lost-at-close / timeout; stuck-guard reverse) → GRIP (press + `scoop_grab`) → DESCEND (drive down the far side; vision-terminated — far-side road mask appears / bridge mask shrinks, `DESCEND_MAX_SEC` fallback) → RETURN-to-start. Bridge-bear selection is in the YOLO node (`YOLO_TARGET_PICK=onbridge`). On-bridge `/amcl_pose` freezes so VISUAL_CLIMB/DESCEND are vision-only. Tunables (`SNAP_FWD_SEC`, `VCLIMB_SPEED`, `VCLIMB_ALIGN_PX`, `VCLIMB_GRIP_DIST`, `VCLIMB_MAX_TRACK_DIST`, `DESCEND_ROAD_AREA`, `DESCEND_BRIDGE_AREA`) at top of `__init__`. |
+| `.../pros_car_py/task2_mission.py` | **`Task2Mission`** (no IMU; bridge bear + off-bridge decoy): BRIDGE_APPROACH (pose `DRIVE_WP` through the `WAYPOINTS` ascent path — up the bridge axis a little onto the bridge so it mounts centred; last WP / pose-freeze stuck-guard → VISUAL_CLIMB. Empty `WAYPOINTS` = old fallback: DRIVE_DOCK to `DOCK_X/Y` → SNAP_90 rotate-to-axis + creep) → VISUAL_CLIMB (lower open claw, full-thrust up the bridge centred on the bridge-mask centroid via `_bridge_center_steer`+`BRIDGE_DX_DEADBAND`; hand off to OBSERVE on near-bear / seen-then-lost-at-close / timeout) → OBSERVE (stop, face/center the bear, hold `OBSERVE_SECONDS`) → GRIP (press + `scoop_grab`) → SNAP_DESCEND (rotate to center the bridge mask, road-mask fallback — no yaw on the bridge) → DESCEND (full-thrust down, bridge-mask-centred with road-mask fallback, stop when road fills the frame `road area_frac ≥ DESCEND_ROAD_AREA`, `DESCEND_MAX_SEC` fallback) → RETURN (drive the `RETURN_WAYPOINTS` detour around the bridge, then go-to-point to the start pose + release; empty list = straight back). Bridge-bear selection is in the YOLO node (`YOLO_TARGET_PICK=onbridge`). On-bridge `/amcl_pose` freezes so VISUAL_CLIMB/OBSERVE/SNAP_DESCEND/DESCEND are vision-only. Tunables (`SNAP_FWD_SEC`, `VCLIMB_SPEED`, `BRIDGE_DX_DEADBAND`, `VCLIMB_OBSERVE_DIST`, `OBSERVE_SECONDS`, `SNAP_ROAD_PX`, `DESCEND_ROAD_AREA`, `RETURN_WAYPOINTS`) at top of `__init__`. |
 | `.../pros_car_py/task3_mission.py` | **`Task3Mission`**: door knob (SEARCH→APPROACH→OBSERVE→UNLOCK→CLEAR). Knob via `YOLO_TARGET=knob`. Tunables at top of `__init__`. |
 | `.../pros_car_py/tf_to_amcl_pose.py` | republishes `map→base_footprint` TF as `/amcl_pose` so Nav2 follower works without AMCL. |
 | `.../pros_car_py/ros_communicator.py` | pub/sub hub: `publish_car_control`, `publish_raw_car_control`, `get_latest_amcl_pose`, `get_latest_bridge_info`, `get_latest_road_info`, `get_latest_knob_target_info`, etc. |
