@@ -2,10 +2,10 @@
 # =============================================================================
 # Final Project — bring up the ENTIRE isolated stack for ALL THREE tasks in one shot.
 #
-# This is the single, consolidated launcher (the merged-demo pipeline): every
-# perception node runs at once, so you can run Task 1, Task 2 and Task 3 back-to-back
-# in one Unity session WITHOUT restarting any container — just run the matching
-# run_taskN.sh each time.
+# Now a single `docker compose up -d` (four overlays under project `kylefp`) brings up
+# every container; Unity is the one host-side step (it's a GUI binary, not a container).
+# Every perception node runs at once, so you can run Task 1, Task 2 and Task 3 back-to-back
+# in one Unity session WITHOUT restarting any container — just run the matching run_taskN.sh.
 #
 # Perception topics (all live simultaneously, no interference):
 #   - /yolo/target_info       <- kylefp-yolo       (detection, YOLO_TARGET=bear)   Task 1 + Task 2 bear
@@ -15,14 +15,9 @@
 #   - /yolo/road_info         <- kylefp-yolo-seg   (segmentation, road centroid)   Task 2 road-follow
 #     (Note: Unity has no IMU — Task 2 is road-led, not IMU pitch based.)
 #
-# Brings up (all detached / background — no extra terminals needed):
-#   - kylefp compose stack : robot_bringup + slam + navigation + lidar_trans + rosbridge(9091)
-#   - kylefp-yolo          : YOLO bear detection            -> /yolo/target_info
-#   - kylefp-yolo-knob     : YOLO knob detection (remapped) -> /yolo/target_info_knob
-#   - kylefp-yolo-seg      : YOLO bridge segmentation       -> /yolo/bridge_info
-#   - kylefp-tfshim        : TF -> /amcl_pose shim
-#   - kylefp-foxglove      : Foxglove bridge (ws://localhost:8766)
-#   - Unity sim            : on Chrome Remote Desktop display :20
+# Containers (all detached): kylefp compose stack (robot_bringup + slam + navigation +
+#   lidar_trans + rosbridge:9091) + kylefp-yolo / -yolo-knob / -yolo-seg + kylefp-tfshim +
+#   kylefp-foxglove (ws://localhost:8766). Plus the Unity sim on display :20.
 #
 # After this, you only:
 #   1) In Unity: log in -> FINAL PROJECT -> CAR+ARM Mode = AI ->
@@ -32,64 +27,21 @@
 #        ./workspace/pros/pros_car/run_task2.sh
 #        ./workspace/pros/pros_car/run_task3.sh
 #
-# Safe to re-run: it removes/recreates the helper containers each time.
+# Safe to re-run: `up -d` recreates only what changed.
 # =============================================================================
 set -e
 ROOT="/home/kyle/Desktop/Robot-navigation-projects"
 PROS="$ROOT/Final_Project/workspace/pros"
-NET="kylefp_my_bridge_network"
 
-echo "==> 1/7 compose stack (robot + slam + nav + rosbridge:9091)"
+echo "==> 1/2 full container stack (robot + slam + nav + rosbridge:9091 + perception + foxglove)"
 cd "$PROS/pros_app/docker/compose"
 docker compose -p kylefp \
   -f docker-compose_robot_unity.yml \
   -f docker-compose_slam_unity.yml \
-  -f docker-compose_navigation_unity.yml up -d
+  -f docker-compose_navigation_unity.yml \
+  -f docker-compose_perception_unity.yml up -d
 
-echo "==> 2/7 YOLO detection — bear -> /yolo/target_info (domain 7)"
-cd "$PROS/ros2_yolo_integration"
-docker rm -f kylefp-yolo >/dev/null 2>&1 || true
-docker run -d --name kylefp-yolo --network "$NET" --gpus all \
-  -e ROS_DOMAIN_ID=7 -e YOLO_DEVICE=cuda -e YOLO_TARGET=bear -v "$(pwd)/src:/workspaces/src" \
-  pros_cameraapi:cu128 \
-  bash -lc "cd /workspaces && colcon build && source install/setup.bash && ros2 run yolo_example_pkg yolo_node"
-
-echo "==> 3/7 YOLO detection — knob -> /yolo/target_info_knob (remapped, domain 7)"
-docker rm -f kylefp-yolo-knob >/dev/null 2>&1 || true
-# Same detection.pt, YOLO_TARGET=knob; remap ALL outputs off the bear topics so the two
-# detection nodes never clash. Task 3 subscribes to /yolo/target_info_knob.
-docker run -d --name kylefp-yolo-knob --network "$NET" --gpus all \
-  -e ROS_DOMAIN_ID=7 -e YOLO_DEVICE=cuda -e YOLO_TARGET=knob -v "$(pwd)/src:/workspaces/src" \
-  pros_cameraapi:cu128 \
-  bash -lc "cd /workspaces && colcon build && source install/setup.bash && \
-    ros2 run yolo_example_pkg yolo_node --ros-args \
-      -r /yolo/target_info:=/yolo/target_info_knob \
-      -r /yolo/target_marker:=/yolo/target_marker_knob \
-      -r /yolo/detection/compressed:=/yolo/detection_knob/compressed \
-      -r /camera/x_multi_depth_values:=/camera/x_multi_depth_values_knob"
-
-echo "==> 4/7 YOLO segmentation — bridge -> /yolo/bridge_info (domain 7)"
-docker rm -f kylefp-yolo-seg >/dev/null 2>&1 || true
-docker run -d --name kylefp-yolo-seg --network "$NET" --gpus all \
-  -e ROS_DOMAIN_ID=7 -e YOLO_DEVICE=cuda -v "$(pwd)/src:/workspaces/src" \
-  pros_cameraapi:cu128 \
-  bash -lc "cd /workspaces && colcon build && source install/setup.bash && ros2 run yolo_example_pkg yolo_seg_node"
-
-echo "==> 5/7 TF -> /amcl_pose shim (domain 7)"
-cd "$PROS/pros_car"
-docker rm -f kylefp-tfshim >/dev/null 2>&1 || true
-docker run -d --name kylefp-tfshim --network "$NET" --gpus all \
-  -e ROS_DOMAIN_ID=7 -v "$(pwd)/src:/workspaces/src" \
-  ghcr.io/screamlab/pros_car_docker_image:latest \
-  bash -lc "cd /workspaces && colcon build && source install/setup.bash && ros2 run pros_car_py tf_to_amcl_pose"
-
-echo "==> 6/7 Foxglove bridge (ws://localhost:8766)"
-docker rm -f kylefp-foxglove >/dev/null 2>&1 || true
-docker run -d --name kylefp-foxglove --network "$NET" \
-  -e ROS_DOMAIN_ID=7 -p 8766:8765 \
-  us-central1-docker.pkg.dev/foxglove-images/images/foxglove_bridge:ros-humble-v3.2.6
-
-echo "==> 7/7 Unity sim on display :20"
+echo "==> 2/2 Unity sim on display :20"
 if pgrep -f pros_twin_unity_tsai >/dev/null 2>&1; then
   echo "    Unity already running, skipping."
 else

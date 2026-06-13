@@ -93,6 +93,22 @@ class YoloDetectionNode(Node):
         # 只為這些標籤發布抓取用的 3D Marker。
         self.grasp_labels = {target}
 
+        # ===== Task 2: bear-on-bridge gating (onbridge 挑選模式) =====
+        # 場景有兩隻熊:一隻在橋上 (目標)、一隻散在橋外的路面 (誘餌)。若只挑最近/最大會追錯熊。
+        # onbridge 模式:訂閱 segmentation 節點的 /yolo/bridge_info,用其 delta_x (橋面質心水平偏移)
+        # 當基準,只保留「橫向位置對齊橋面」(|bear_dx - bridge_dx| <= tol) 的熊,再從中挑最近 (面積最大)。
+        # 橋不在畫面 (bridge_found=False,如 Task 1 無橋場景) → 退回挑最近,不影響其它任務。
+        self.bridge_dx = 0.0
+        self.bridge_last_seen_ns = None    # 最近一次 bridge_found=1 的時戳 (latch 用)
+        # 容差 = 此比例 * 影像寬度 (px);熊質心與橋面質心的水平距離在此內才算「在橋上」。
+        self.onbridge_tol_frac = float(os.environ.get("ONBRIDGE_TOL_FRAC", "0.25"))
+        # 橋面 segmentation 近距會掉偵測 (F=0);掉偵測後沿用上次橋面位置這麼久 (s),避免 gate 一掉就退回最近。
+        self.bridge_latch_sec = float(os.environ.get("ONBRIDGE_LATCH_SEC", "2.0"))
+        self._onbridge_dbg = 0             # debug 列印節流
+        self.bridge_info_sub = self.create_subscription(
+            Float32MultiArray, "/yolo/bridge_info", self.bridge_info_callback, 1
+        )
+
         # 設定 YOLO 可信度閾值
         self.conf_threshold = 0.5  # 可以修改這個值來調整可信度
 
@@ -186,14 +202,23 @@ class YoloDetectionNode(Node):
     def draw_bounding_boxes(self, image, results):
         """在影像上繪製 YOLO 檢測到的 Bounding Box。
 
-        場景中可能有多隻 bear，為避免目標在多隻之間跳動造成車身左右擺動，
-        這裡只鎖定「面積最大 (最近) 」的那一隻作為單一目標。
+        場景中可能有多隻 bear，為避免目標在多隻之間跳動造成車身左右擺動，鎖定單一目標。
+        挑選策略由 YOLO_TARGET_PICK 環境變數決定 (預設 'near'):
+          onbridge — 只挑「橫向位置對齊橋面」(用 /yolo/bridge_info 的 delta_x) 的熊,再取其中「最遠」那隻
+                     (橋上目標熊在坡頂、較遠;橋外誘餌較近)。Task 2 場景有「橋上的目標熊」+「散在橋外的誘餌熊」,
+                     此模式只鎖橋上那隻、忽略橋外的。橋不在畫面時退回 near (Task 1 無橋場景不受影響)。見 _pick_onbridge。
+          far  — 「在 YOLO_FAR_MAX_DEPTH 範圍內、深度最大 (最遠) 」的那隻。範圍內無有效深度時退回面積最大。
+          near — 面積最大 (最近) 的那隻 (舊行為;Task 1 單隻熊不受影響)。
         """
         image, points = self.draw_cross(image)
         center_x = points[self.x_num_splits // 2][0]
 
-        # 先畫出所有符合標籤的框，同時挑出面積最大的目標
-        best = None  # (area, cx, cy, depth, class_name)
+        # 先畫出所有符合標籤的框，同時挑出目標 (onbridge=對齊橋面 / far=範圍內深度最大 / near=面積最大)
+        pick_mode = os.environ.get("YOLO_TARGET_PICK", "near").lower()
+        far_max_depth = float(os.environ.get("YOLO_FAR_MAX_DEPTH", "3.5"))  # m;超過視為「不在橋上」忽略
+        best_far = None    # (depth, cx, cy, depth, class_name, box) — 深度有效且 <= far_max_depth 的框
+        best_area = None   # (area,  cx, cy, depth, class_name, box) — 所有框
+        candidates = []    # 所有符合標籤的框 (area, cx, cy, depth, class_name, box) — 供 onbridge 篩選
         for result in results:
             for box in result.boxes:
                 x1, y1, x2, y2 = map(int, box.xyxy[0])
@@ -211,8 +236,35 @@ class YoloDetectionNode(Node):
                 # 畫框 (非選中目標用灰色，選中後再以綠色覆蓋)
                 cv2.rectangle(image, (x1, y1), (x2, y2), (160, 160, 160), 1)
 
-                if best is None or area > best[0]:
-                    best = (area, cx, cy, depth_value, class_name, (x1, y1, x2, y2))
+                cand = (cx, cy, depth_value, class_name, (x1, y1, x2, y2))
+                candidates.append((area, *cand))
+                if best_area is None or area > best_area[0]:
+                    best_area = (area, *cand)
+                # far 候選:深度有效且在上限內 (排除散在遠處、不在橋上的熊)
+                if depth_value is not None and 0.0 < depth_value <= far_max_depth:
+                    if best_far is None or depth_value > best_far[0]:
+                        best_far = (depth_value, *cand)
+
+        # 依模式挑目標: onbridge=橋面對齊的最近熊 / far=範圍內最遠 / near=最近(面積)
+        if pick_mode == "onbridge":
+            best = self._pick_onbridge(candidates, center_x, image.shape[1])
+            # 節流 debug:看 docker logs kylefp-yolo 確認 gate 是否生效 (橋面是否新鮮、哪些熊被濾掉)。
+            self._onbridge_dbg += 1
+            if self._onbridge_dbg % 15 == 0:
+                cand_str = ", ".join(
+                    f"dx={c[1] - center_x:+.0f}/d={c[3]:.1f}" for c in candidates
+                ) or "none"
+                chosen = f"{best[1] - center_x:+.0f}" if best else "NONE(ignored)"
+                print(
+                    f"[yolo onbridge] bridge_fresh={self._bridge_fresh()} "
+                    f"bridge_dx={self.bridge_dx:+.0f} tol={self.onbridge_tol_frac * image.shape[1]:.0f}px "
+                    f"bears=[{cand_str}] -> chosen dx={chosen}",
+                    flush=True,
+                )
+        elif pick_mode == "far":
+            best = best_far or best_area
+        else:
+            best = best_area
 
         H, W = image.shape[:2]
         if best is None:
@@ -276,6 +328,44 @@ class YoloDetectionNode(Node):
     def camera_info_callback(self, msg):
         """快取相機內參 (K 矩陣)，供反投影使用。"""
         self.camera_info = msg
+
+    def bridge_info_callback(self, msg):
+        """快取 segmentation 節點的橋面資訊 (供 onbridge 挑選模式判斷熊是否在橋上)。
+        data = [found, delta_x(px), area_frac, centroid_y_frac, bottom_edge_dx, symmetry, aspect_ratio]
+        只在 found=1 時更新位置與時戳;掉偵測 (F=0) 不清掉位置 → 由 latch 計時決定是否還沿用。"""
+        d = msg.data
+        if d and len(d) >= 2 and d[0] == 1:
+            self.bridge_dx = float(d[1])
+            self.bridge_last_seen_ns = self.get_clock().now().nanoseconds
+
+    def _bridge_fresh(self):
+        """橋面位置是否仍可信:近 bridge_latch_sec 秒內有偵測到過。"""
+        if self.bridge_last_seen_ns is None:
+            return False
+        age_s = (self.get_clock().now().nanoseconds - self.bridge_last_seen_ns) / 1e9
+        return age_s <= self.bridge_latch_sec
+
+    def _pick_onbridge(self, candidates, center_x, img_w):
+        """從所有 bear 候選中挑「橋上那隻」:橫向位置對齊橋面質心的,再取「最遠」那隻。
+        - candidates: [(area, cx, cy, depth, class_name, box), ...]
+        - 取最遠 (深度最大):橋上的目標熊在坡頂、距離較遠 (~3m);橋外的誘餌熊通常較近 (~1m)。橋面質心
+          有時落在兩隻熊中間 → 兩隻都通過橫向 gate,此時挑「較遠」那隻才會是橋上的目標 (取最近會挑到誘餌)。
+        - 橋面位置不可信 (從沒偵測到 / 掉偵測超過 latch 秒,如 Task 1 無橋場景) → 退回挑面積最大 (= near)。
+        - 橋面可信但沒有任何熊落在橋上 → 回 None (寧可「沒看到」,也不要去追橋外的誘餌熊)。"""
+        if not candidates:
+            return None
+        if not self._bridge_fresh():
+            return max(candidates, key=lambda c: c[0])
+        bridge_cx = center_x + self.bridge_dx
+        tol = self.onbridge_tol_frac * img_w
+        on_bridge = [c for c in candidates if abs(c[1] - bridge_cx) <= tol]
+        if not on_bridge:
+            return None
+        # 橋上對齊的熊裡挑「深度最大 (最遠)」那隻 = 坡頂的目標熊;深度無效 (-1) 的排在最後。
+        valid = [c for c in on_bridge if c[3] is not None and c[3] > 0.0]
+        if valid:
+            return max(valid, key=lambda c: c[3])
+        return max(on_bridge, key=lambda c: c[0])
 
     def publish_target_marker(self, u, v, depth):
         """

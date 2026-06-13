@@ -1,8 +1,30 @@
-# Task 2 — Walk-then-Visual-Dock Hybrid (DESIGN / DEFERRED)
+# Task 2 — Walk-then-Visual-Dock Hybrid (DESIGN)
 
-**Status:** Approved design, **deferred**. Implement *after* the persistent-map /
-localization work (that spec is the prerequisite — it removes the per-session
-re-measure burden that this design otherwise inherits).
+**Status:** **Implemented 2026-06-11, then simplified** when the actual scene turned out
+to have **one bear on the bridge** (not a near/far pair). The shipped version keeps the
+walk-then-visual-dock *shape* (pose dock for coarse position/heading, then a vision phase)
+but docks on the **bear** (`/yolo/target_info`, `YOLO_TARGET_PICK=near`) instead of the
+**bridge mask** (`/yolo/bridge_info`) — bear detection proved far more stable near the
+ramp than the bridge segmentation's `symmetry`/`aspect_ratio`, so the §2 center+gate law
+was not used. The first cut (VISUAL_DOCK→SNAP_90→CROSS→APPROACH_FAR→GRIP_FAR, near bear as
+a landmark + grab a far bear) was scrapped: there was no far bear, so CROSS drove over the
+single bear and rammed the top wall. Shipped state machine (in `task2_mission.py`):
+
+```
+BRIDGE_APPROACH (pose dock to DOCK_X/Y + coarse YAW_ALIGN, gets the bear in frame)  [unchanged]
+  → VISUAL_CLIMB  lower the open claw; drive full-thrust up the bridge while differential-
+                  steering on the bear's delta_x (_arc(VCLIMB_SPEED, gain*dx)) to stay
+                  centered on the one bear; commit to GRIP when depth ≤ VCLIMB_GRIP_DIST for
+                  N frames, or seen-then-lost-at-close (scooped/occluded), or VCLIMB_TIMEOUT
+  → GRIP          press forward + scoop_grab (close + lift)
+  → RETURN → DONE (release)
+```
+
+Key point: on the bridge `/amcl_pose` freezes (laser scan-matcher loses lock), so
+VISUAL_CLIMB is **vision-only** — no SNAP_90/pose on the bridge; the coarse heading from
+BRIDGE_APPROACH plus per-frame `delta_x` steering keep it on the bear. The §2–§3
+bridge-mask center/gate/rotate-search law below is retained as the original design record
+but is **not** what shipped.
 
 **Date:** 2026-06-11
 

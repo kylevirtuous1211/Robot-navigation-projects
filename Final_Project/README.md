@@ -1,15 +1,22 @@
-# Final Project — Task 1 Autonomous Mission
+# Final Project — Autonomous Unity Rover Missions
 
-Autonomous **Task 1** for the Unity rover challenge: find a bear, approach and hold
-(Locate & Observe, 10 pts), grip it, and drive back to the start (Recovery, 20 pts) —
-fully autonomous, no manual Foxglove clicking or keyboard driving.
+Fully autonomous missions for the Unity rover challenge — no manual Foxglove clicking or keyboard
+driving. Each task is its own hands-free state machine; run them in any order against one live stack.
 
-Strategy: **reactive visual servoing** (YOLO `/yolo/target_info` + depth) for search →
-approach → grip, then **online SLAM + Nav2** to return to the recorded start pose. The map
-is randomized each run, so the costmap is built live as the rover explores — no map pre-pass.
+- **Task 1 (bear):** find a bear, approach and hold (Locate & Observe, 10 pts), grip it, and drive
+  back to the start (Recovery, 20 pts). Strategy: **reactive visual servoing** (YOLO
+  `/yolo/target_info` + depth) for search → approach → grip, then **online SLAM + Nav2** back to the
+  recorded start pose. Map randomized each run, costmap built live — no map pre-pass.
+- **Task 2 (bridge + bear) — working end-to-end:** mount the bridge on a measured waypoint path →
+  climb it centred on the bridge segmentation mask → **observe** the bear (face + hold) → **grip** →
+  **descend** the far stairs (full-thrust, stop when the road fills the frame) → **return via a
+  waypoint detour *around* the bridge** (not back over it) and release. No IMU and `/amcl_pose`
+  freezes on the bridge, so the crossing is **vision-only**; pose-based nav needs `reset_map.sh
+  --pin` first (see CLAUDE.md). Run with `run_task2.sh`.
+- **Task 3 (door knob):** Locate & Observe the knob, poke to unlock, push the door open.
 
 This builds on the HW4 stack (copied into `workspace/pros/`), reusing the trained
-`detection.pt` (bear/knob) and the existing wheel/arm/Nav2 primitives.
+`detection.pt` (bear/knob) + `segmentation.pt` (bridge/road) and the existing wheel/arm/Nav2 primitives.
 
 ## Quick start (recommended)
 
@@ -43,58 +50,73 @@ That's it. Ctrl-C stops the mission; re-run to try again (new random map each ti
 > **Note:** If your stack is already up, skip `start_stack.sh` entirely and just run the `run_taskN.sh`
 > you want.
 
-The section below documents the equivalent manual steps (raw `docker run` commands) if you
-ever need to bring pieces up individually or debug the stack.
+The section below documents the equivalent manual steps if you ever need to bring the stack up
+without `start_stack.sh`, or to debug it.
 
-## Run — isolated stack (verified, shared GPU box)
+## Run — isolated stack via Docker Compose (verified, shared GPU box)
 
 When another user already runs a stack on the default `ROS_DOMAIN_ID=1` / port 9090, bring up
 your own isolated stack instead: project `kylefp`, `ROS_DOMAIN_ID=7`, rosbridge on host port
-**9091**, foxglove on **8766** (`.env` files already set to domain 7; slam compose maps 9091).
+**9091**, foxglove on **8766** (`.env` already sets domain 7; slam compose maps 9091).
+
+**One Compose command brings up all 11 containers** — the robot/SLAM/Nav2 stack *and* all
+perception (the YOLO bear/knob/seg nodes, the `tf → /amcl_pose` shim, and Foxglove). The five
+former one-off `docker run` containers are now services in
+`docker-compose_perception_unity.yml` (`--gpus all`, your bind-mounted `src`, and the knob
+remaps are all expressed there; `container_name` is pinned so names match the old setup).
 
 ```bash
-# 1. Stack: robot + online SLAM + Nav2 (project kylefp, own network)
+# All containers (robot + online SLAM + Nav2 + rosbridge:9091 + YOLO ×3 + tfshim + foxglove)
 cd ~/Desktop/Robot-navigation-projects/Final_Project/workspace/pros/pros_app/docker/compose
 docker compose -p kylefp \
   -f docker-compose_robot_unity.yml \
   -f docker-compose_slam_unity.yml \
-  -f docker-compose_navigation_unity.yml up -d
+  -f docker-compose_navigation_unity.yml \
+  -f docker-compose_perception_unity.yml up -d
+```
 
-# 2. YOLO perception (domain 7, mounts your edited src)
-cd ~/Desktop/Robot-navigation-projects/Final_Project/workspace/pros/ros2_yolo_integration
-docker run -d --name kylefp-yolo --network kylefp_my_bridge_network --gpus all \
-  -e ROS_DOMAIN_ID=7 -e YOLO_DEVICE=cuda -v "$(pwd)/src:/workspaces/src" \
-  pros_cameraapi:cu128 \
-  bash -lc "cd /workspaces && colcon build && source install/setup.bash && ros2 run yolo_example_pkg yolo_node"
+**Unity is the one host-side step** (it's a GUI binary on display `:20`, not a container, so it
+can't live in Compose). Launch it, then in-sim set **CAR + ARM Mode = AI** and
+**RosBridge PORT = 9091**, press **Reload** (must show "Connected"):
 
-# 3. TF -> /amcl_pose shim (domain 7)
-cd ~/Desktop/Robot-navigation-projects/Final_Project/workspace/pros/pros_car
-docker run -d --name kylefp-tfshim --network kylefp_my_bridge_network --gpus all \
-  -e ROS_DOMAIN_ID=7 -v "$(pwd)/src:/workspaces/src" \
-  ghcr.io/screamlab/pros_car_docker_image:latest \
-  bash -lc "cd /workspaces && colcon build && source install/setup.bash && ros2 run pros_car_py tf_to_amcl_pose"
-
-# 4. Foxglove bridge on domain 7 (view at ws://localhost:8766)
-docker run -d --name kylefp-foxglove --network kylefp_my_bridge_network \
-  -e ROS_DOMAIN_ID=7 -p 8766:8765 \
-  us-central1-docker.pkg.dev/foxglove-images/images/foxglove_bridge:ros-humble-v3.2.6
-
-# 5. Unity sim on the Chrome Remote Desktop display, then in-sim set
-#    CAR + ARM Mode = AI and RosBridge PORT = 9091, press Reload (must show "Connected").
-cd ~/Desktop/Robot-navigation-projects/HW4/pros_twin_linux/pros_twin_unity_linux
+```bash
+cd ~/Desktop/Robot-navigation-projects/Final_Project/pros_twin_linux/pros_twin_unity_linux
 DISPLAY=:20 XAUTHORITY=/home/kyle/.Xauthority \
   __NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia \
   ./pros_twin_unity_tsai_run_linux.x86_64 -force-vulkan &
 ```
 
-### Launch the Task 1 mission
+> `start_stack.sh` does exactly the two steps above (Compose up + Unity) in one shot — prefer it.
+
+To bring the whole container stack **down** (Unity is a separate host process — close its window):
 
 ```bash
-~/Desktop/Robot-navigation-projects/Final_Project/workspace/pros/pros_car/run_task1.sh
+cd ~/Desktop/Robot-navigation-projects/Final_Project/workspace/pros/pros_app/docker/compose
+docker compose -p kylefp \
+  -f docker-compose_robot_unity.yml \
+  -f docker-compose_slam_unity.yml \
+  -f docker-compose_navigation_unity.yml \
+  -f docker-compose_perception_unity.yml down
 ```
 
-Runs `task1_auto` headless (builds + `ros2 run pros_car_py task1_auto`) in your terminal so you
-see the live `[Task1]` state log. **Ctrl-C** stops it; re-run to try again. Equivalent raw command:
+### Launch the missions (Task 1 / Task 2 / Task 3)
+
+With the stack up and Unity Connected, run any task — in any order, no restarts between them.
+Each script builds and runs `taskN_auto` headless in your terminal so you see the live
+`[TaskN]` state log. **Ctrl-C** stops it; re-run to try again (new random map each time).
+
+```bash
+# Task 1 — bear: search -> approach -> observe -> grip -> Nav2 return
+~/Desktop/Robot-navigation-projects/Final_Project/workspace/pros/pros_car/run_task1.sh
+
+# Task 2 — bridge: road-led climb -> grab top-middle bear -> return to start
+~/Desktop/Robot-navigation-projects/Final_Project/workspace/pros/pros_car/run_task2.sh
+
+# Task 3 — door knob: observe (>=5s) -> unlock (arm poke) -> clear (push door open)
+~/Desktop/Robot-navigation-projects/Final_Project/workspace/pros/pros_car/run_task3.sh
+```
+
+Equivalent raw command (Task 1 shown; swap `task1_auto` for `task2_auto` / `task3_auto`):
 
 ```bash
 cd ~/Desktop/Robot-navigation-projects/Final_Project/workspace/pros/pros_car
@@ -110,6 +132,29 @@ docker run -it --rm --name kylefp-mission \
 - `/yolo/detection/compressed` boxes the bear; `/yolo/target_marker` sits on the bear in 3D.
 - Mission reaches the bear, holds 5 s (Locate & Observe), grips, and Nav2-returns (Recovery).
 - Re-open the **FINAL PROJECT** tab 2–3× (new random map) to confirm robustness.
+
+## Handy debug commands
+
+**Interactive menu UI (`robot_control`)** — manual driving / arm control to sanity-check the stack
+or hand-test a primitive (builds + runs the urwid menu in your terminal, `Ctrl-C` to quit):
+
+```bash
+cd ~/Desktop/Robot-navigation-projects/Final_Project/workspace/pros/pros_car
+docker run -it --rm --name kylefp-control \
+  --network kylefp_my_bridge_network --gpus all \
+  -e ROS_DOMAIN_ID=7 -e PYTHONUNBUFFERED=1 \
+  -v "$(pwd)/src:/workspaces/src" \
+  ghcr.io/screamlab/pros_car_docker_image:latest \
+  bash -lc "cd /workspaces && colcon build && source install/setup.bash && ros2 run pros_car_py robot_control"
+```
+
+**Echo `/amcl_pose`** — confirm the TF→pose shim is publishing (Task 2 climb distance + RETURN rely on
+it). Runs inside the already-up Foxglove container, so no extra container needed:
+
+```bash
+docker exec kylefp-foxglove bash -lc \
+  "source /opt/ros/humble/setup.bash && ROS_DOMAIN_ID=7 ros2 topic echo /amcl_pose"
+```
 
 ## Known integration check
 `final_project_unity.sh` runs `navigation_unity.xml`, which passes a `map` arg to

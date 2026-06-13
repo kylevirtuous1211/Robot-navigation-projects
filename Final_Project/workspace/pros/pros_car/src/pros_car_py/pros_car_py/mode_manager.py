@@ -5,19 +5,58 @@ import time
 
 
 class VehicleMode(BaseMode):
+    # Movement keys are "hold to drive". A terminal has no key-release event, so
+    # we lean on the keyboard auto-repeat that arrives while a key is held and a
+    # watchdog timer that fires once the repeats stop (i.e. you let go).
+    MOVE_KEYS = {"w", "a", "s", "d", "e", "r"}
+    # Seconds with no key repeat before we auto-stop. Must be a bit longer than
+    # the terminal's auto-repeat interval so holding a key doesn't stutter.
+    STOP_TIMEOUT = 0.3
+
     def enter(self):
-        text = urwid.Text("Vehicle Mode\nPress 'q' to return to main menu.")
+        text = urwid.Text(
+            "Vehicle Mode\n"
+            "Hold a key to drive; release to stop.\n"
+            "Press 'q' to return to main menu."
+        )
         filler = urwid.Filler(text, valign="top")
 
+        self._stop_alarm = None
         self.app.loop.widget = filler
         self.app.loop.unhandled_input = self.handle_input
 
+    def _cancel_stop_alarm(self):
+        if getattr(self, "_stop_alarm", None) is not None:
+            self.app.loop.remove_alarm(self._stop_alarm)
+            self._stop_alarm = None
+
+    def _auto_stop(self, _loop, _user_data):
+        # No key repeat arrived within STOP_TIMEOUT -> the key was released.
+        self._stop_alarm = None
+        self.app.car_controller.manual_control("z")  # STOP -> publishes zeros
+
     def handle_input(self, key):
         if key == "q":
-            self.app.car_controller.manual_control(key)
+            self._cancel_stop_alarm()
+            self.app.car_controller.manual_control("z")  # ensure wheels stop
             self.app.main_menu()
+            return
+
+        self.app.car_controller.manual_control(key)
+
+        if key in self.MOVE_KEYS:
+            # (Re)arm the watchdog. Each auto-repeat keypress reschedules it;
+            # once you release the key the repeats stop and STOP gets published.
+            self._cancel_stop_alarm()
+            self._stop_alarm = self.app.loop.set_alarm_in(
+                self.STOP_TIMEOUT, self._auto_stop
+            )
         else:
-            self.app.car_controller.manual_control(key)
+            # Any explicit non-movement key (e.g. 'z' stop) clears the watchdog.
+            self._cancel_stop_alarm()
+
+    def exit(self):
+        self._cancel_stop_alarm()
 
 
 class ArmMode(BaseMode):
@@ -119,8 +158,8 @@ class Task2Mode(BaseMode):
         self.show_submode_screen(
             message=(
                 "Task 2 Mission running...\n"
-                "(BRIDGE_SEARCH -> ALIGN -> ASCENT/CREST/DESCENT -> CROSSED ->\n"
-                " APPROACH -> OBSERVE -> CREEP -> GRIP -> RETURN)\n"
+                "(BRIDGE_APPROACH -> SNAP_90 -> VISUAL_CLIMB (climb on the\n"
+                " bridge mask) -> GRIP -> DESCEND (down the far side) -> RETURN)\n"
                 "See the terminal log for live state.\n\n"
                 "Press 'q' to stop the mission and return to the main menu."
             ),

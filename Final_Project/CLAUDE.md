@@ -16,11 +16,12 @@ Strategy: **reactive visual servoing** (YOLO `/yolo/target_info` + depth) for se
 then **online SLAM + Nav2** to return. The map is **randomized each run**, so the costmap is built
 live — there is no map pre-pass.
 
-**Tasks 2 (bridge) and 3 (door) are now implemented** as their own state machines, same hands-free
-pattern as Task 1:
+**Tasks 2 (bridge) and 3 (door) are implemented** as their own state machines, same hands-free
+pattern as Task 1. **Task 2 is verified working end-to-end** (mount → climb → observe → grip →
+descend the far stairs → detour return around the bridge):
 - **Task 2** — bridge (no IMU — Unity has none; deterministic scene + spawn). **One bear on the
-  bridge.** Pose-based coarse dock to the ramp foot, then bear vision climbs to it (bear detection is
-  far more stable near the ramp than the bridge/road masks). Flow: **BRIDGE_APPROACH** — pose-based
+  bridge.** A measured waypoint path mounts the bridge centred, then it climbs on the **bridge
+  segmentation mask** (stable up the incline) and grips the bear at the top. Flow: **BRIDGE_APPROACH** — pose-based
   `DRIVE_WP` through the measured `WAYPOINTS` ascent path (lined up with the bridge mouth → straight up
   the bridge axis `+y` a little onto the bridge, so the car mounts **centred** and doesn't catch the
   side), in the **pinned `/amcl_pose` (0,0,0)-spawn frame** (only valid after `reset_map.sh --pin`);
@@ -46,8 +47,10 @@ pattern as Task 1:
   set high ~0.55 because the far road is already visible ~0.33 from the top) held `DESCEND_DONE_CONFIRM`
   frames, `DESCEND_MAX_SEC` fallback → pose-**RETURN** — drive the `RETURN_WAYPOINTS` detour **around**
   the bridge (never straight back *over* it carrying the bear), then go-to-point to the start pose and
-  release (empty `RETURN_WAYPOINTS` = straight back, the old behavior). On-bridge `/amcl_pose`
-  freezes, so VISUAL_CLIMB/OBSERVE/SNAP_DESCEND/DESCEND use vision only, no pose.
+  release (empty `RETURN_WAYPOINTS` = straight back, the old behavior). Return drives at
+  `RETURN_DRIVE_SPEED=200` (lower stalls into a single-wheel pivot at waypoints), and an
+  arc-mode-gated stuck-guard advances to the next waypoint if the pose stops changing while driving.
+  On-bridge `/amcl_pose` freezes, so VISUAL_CLIMB/OBSERVE/SNAP_DESCEND/DESCEND use vision only, no pose.
 - **Task 3** — door knob: Locate & Observe the knob (`detection.pt` `knob` class via
   `YOLO_TARGET=knob` → `/yolo/target_info_knob`), **UNLOCK** with an arm poke
   (`arm_controller.knob_poke`), then **CLEAR** by driving the body forward to push the door open.

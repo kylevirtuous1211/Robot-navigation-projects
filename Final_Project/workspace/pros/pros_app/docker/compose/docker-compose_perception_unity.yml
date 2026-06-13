@@ -1,0 +1,112 @@
+# Perception + helpers overlay for the isolated `kylefp` stack.
+#
+# Folds the five containers that used to be loose `docker run` commands into
+# Compose so ONE `docker compose ... up -d` brings up the whole stack:
+#   kylefp-yolo       bear  detection  -> /yolo/target_info
+#   kylefp-yolo-knob  knob  detection  -> /yolo/target_info_knob  (outputs remapped)
+#   kylefp-yolo-seg   bridge/road seg  -> /yolo/bridge_info, /yolo/road_info
+#   kylefp-tfshim     TF -> /amcl_pose shim
+#   kylefp-foxglove   Foxglove bridge  -> ws://localhost:8766
+#
+# container_name is pinned (not the default kylefp-<svc>-1) so existing tooling
+# that addresses these by exact name keeps working (e.g. `docker exec kylefp-foxglove`).
+#
+# Use together with the robot/slam/navigation overlays under project `kylefp`:
+#   docker compose -p kylefp \
+#     -f docker-compose_robot_unity.yml \
+#     -f docker-compose_slam_unity.yml \
+#     -f docker-compose_navigation_unity.yml \
+#     -f docker-compose_perception_unity.yml up -d
+#
+# Paths are relative to this file (.../pros_app/docker/compose); ../../../ == .../pros.
+# Note: Unity is a host GUI binary (display :20, PRIME offload) and is NOT a service here.
+services:
+  yolo:
+    image: pros_cameraapi:cu128
+    container_name: kylefp-yolo
+    env_file:
+      - .env
+    environment:
+      YOLO_DEVICE: cuda
+      YOLO_TARGET: bear
+      # 目標挑選 (Task 2 場景:橋上一隻目標熊 + 橋外一隻誘餌熊):
+      #   onbridge=只挑「橫向對齊橋面 (/yolo/bridge_info)」的熊、忽略橋外誘餌;橋不在畫面時退回 near。
+      #   near=最近/面積最大 (Task 1 單熊用)。 far=範圍內最遠 (看 YOLO_FAR_MAX_DEPTH)。
+      YOLO_TARGET_PICK: onbridge
+      ONBRIDGE_TOL_FRAC: "0.25"   # 熊質心與橋面質心的水平容差 = 此比例 * 影像寬;調大=較寬鬆
+      YOLO_FAR_MAX_DEPTH: "3.5"
+    gpus: all
+    volumes:
+      - ../../../ros2_yolo_integration/src:/workspaces/src
+    networks:
+      - my_bridge_network
+    command: >
+      bash -lc "cd /workspaces && colcon build && source install/setup.bash &&
+      ros2 run yolo_example_pkg yolo_node"
+
+  yolo_knob:
+    image: pros_cameraapi:cu128
+    container_name: kylefp-yolo-knob
+    env_file:
+      - .env
+    environment:
+      YOLO_DEVICE: cuda
+      YOLO_TARGET: knob
+    gpus: all
+    volumes:
+      - ../../../ros2_yolo_integration/src:/workspaces/src
+    networks:
+      - my_bridge_network
+    # Same detection.pt, YOLO_TARGET=knob; remap ALL outputs off the bear topics so
+    # the two detection nodes never clash. Task 3 reads /yolo/target_info_knob.
+    command: >
+      bash -lc "cd /workspaces && colcon build && source install/setup.bash &&
+      ros2 run yolo_example_pkg yolo_node --ros-args
+      -r /yolo/target_info:=/yolo/target_info_knob
+      -r /yolo/target_marker:=/yolo/target_marker_knob
+      -r /yolo/detection/compressed:=/yolo/detection_knob/compressed
+      -r /camera/x_multi_depth_values:=/camera/x_multi_depth_values_knob"
+
+  yolo_seg:
+    image: pros_cameraapi:cu128
+    container_name: kylefp-yolo-seg
+    env_file:
+      - .env
+    environment:
+      YOLO_DEVICE: cuda
+    gpus: all
+    volumes:
+      - ../../../ros2_yolo_integration/src:/workspaces/src
+    networks:
+      - my_bridge_network
+    command: >
+      bash -lc "cd /workspaces && colcon build && source install/setup.bash &&
+      ros2 run yolo_example_pkg yolo_seg_node"
+
+  tfshim:
+    image: ghcr.io/screamlab/pros_car_docker_image:latest
+    container_name: kylefp-tfshim
+    env_file:
+      - .env
+    gpus: all
+    volumes:
+      - ../../../pros_car/src:/workspaces/src
+    networks:
+      - my_bridge_network
+    command: >
+      bash -lc "cd /workspaces && colcon build && source install/setup.bash &&
+      ros2 run pros_car_py tf_to_amcl_pose"
+
+  foxglove:
+    image: us-central1-docker.pkg.dev/foxglove-images/images/foxglove_bridge:ros-humble-v3.2.6
+    container_name: kylefp-foxglove
+    env_file:
+      - .env
+    ports:
+      - 8766:8765
+    networks:
+      - my_bridge_network
+
+networks:
+  my_bridge_network:
+    driver: bridge
