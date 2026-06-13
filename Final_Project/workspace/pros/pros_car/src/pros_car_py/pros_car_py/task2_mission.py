@@ -165,11 +165,11 @@ class Task2Mission:
         # bear 只用來判夾取時機:走近到 GRIP_DIST,或「曾靠近 (<=COMMIT_DIST) 後持續看不到=已鏟入爪中」→ GRIP;
         # 都沒觸發就一路過橋到 VCLIMB_TIMEOUT (視為已過橋/到頂) 再夾。不靠 /amcl_pose (橋上 pose 會凍)。
         self.VCLIMB_SPEED = 200.0         # 上橋前進輪速 (full thrust;太慢會卡在坡面)
-        self.VCLIMB_STEER_GAIN = 0.35     # 置中差速增益:steer = GAIN * (扣 deadband 後的 bridge_dx)。
-                                          #   調小 (0.6→0.35):增益太大會一路把車帶去撞側牆 (低增益→修正溫和,不硬轉)。
-        self.VCLIMB_STEER_CLAMP = 0.3     # steer 夾在 ±此比例*base (調小,限制最大彎度,避免硬轉撞牆)
+        self.VCLIMB_STEER_GAIN = 0.50     # 置中差速增益:steer = GAIN * (扣 deadband 後的 bridge_dx)。
+                                          #   調大 (0.35→0.50):實測爬偏出橋側,加強置中修正 (仍 < 舊版 0.6 撞牆值)。
+        self.VCLIMB_STEER_CLAMP = 0.4     # steer 夾在 ±此比例*base (調大→偏掉時容許更大回正彎度)
         self.BRIDGE_DX_DEADBAND = 70.0    # b_dx 在 ±此值內不轉向 (DESCEND 用;吸收下坡時橋面質心的穩態偏移)。
-        self.VCLIMB_STEER_DEADBAND = 35.0 # VISUAL_CLIMB 專用、較緊的 deadband:上橋要更貼著橋中線校正朝向。
+        self.VCLIMB_STEER_DEADBAND = 20.0 # VISUAL_CLIMB 專用、更緊的 deadband (35→20):上橋要更貼橋中線。
                                           #   實測上橋常停在 bridge_dx≈+55 (熊 dx≈+131=車偏左,是真偏移不是 camera 偏置),
                                           #   70 太寬會把這真偏移當雜訊不修 → 車爬偏。設 35 讓它把朝向校回橋中線;
                                           #   增益仍低 (0.35) 故修正溫和、不會像舊版 (gain 0.6) 一路撞牆。爬偏才調大。
