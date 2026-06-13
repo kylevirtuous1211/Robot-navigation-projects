@@ -60,6 +60,14 @@ class ArmController:
         # 伸到位後停留 (s)，讓 Unity 的門把互動 (壓下/觸發) 生效。
         self.KNOB_HOLD_WAIT = 1.0
 
+        # ---- Task 3 門把「下壓開門」(lever press) 參數 (現場依 Unity 把手幾何微調) ----
+        # 「最高」待命姿勢 [shoulder, elbow, gripper]：手臂抬高,爪落在門把上方,前進時不撞把手。
+        self.KNOB_RAISE_POSE = [-180.0, 0.0, 90.0]
+        # 「最低」下壓姿勢 [shoulder, elbow, gripper]：手臂下降把 lever 壓下去 → 解門閂。
+        self.KNOB_PRESS_POSE = [-150.0, -75.0, 90.0]
+        # 下壓到底後停留 (s),讓 Unity 的門閂觸發。
+        self.KNOB_PRESS_HOLD = 1.0
+
         print(f"🦾 Arm Controller Initialized: {len(self.joint_limits)} Joints Managed.")
 
     # ==========================================
@@ -206,6 +214,22 @@ class ArmController:
         self._smooth_move_to([self.KNOB_RETRACT_POSE[0], self.KNOB_RETRACT_POSE[1], None],
                              step=5.0, delay=0.1)
         print("✅ 門把互動完成。")
+
+    def knob_raise(self):
+        """Task 3 lever press 步驟 1：抬手臂到最高待命姿勢 (爪在門把上方,前進不撞把手)。阻塞。"""
+        print("🚪 抬手臂到最高 ...")
+        self._smooth_move_to(list(self.KNOB_RAISE_POSE), step=5.0, delay=0.1)
+
+    def knob_press_down(self):
+        """Task 3 lever press 步驟 3：下降手臂把門把/lever 壓下 → 解門閂,停留 KNOB_PRESS_HOLD。阻塞。"""
+        print("🚪 下壓門把 (lever press) ...")
+        self._smooth_move_to(list(self.KNOB_PRESS_POSE), step=5.0, delay=0.1)
+        time.sleep(self.KNOB_PRESS_HOLD)
+
+    def knob_retract(self):
+        """Task 3 lever press 步驟 4：壓完把手臂收回最高,避免擋住車身前進穿門。阻塞。"""
+        print("🚪 收回手臂 (抬高) ...")
+        self._smooth_move_to(list(self.KNOB_RAISE_POSE), step=5.0, delay=0.1)
 
     def _execute_grab_sequence(self, x_target, z_target):
         """背景執行的完整抓取流程 (結合軌跡規劃)"""
