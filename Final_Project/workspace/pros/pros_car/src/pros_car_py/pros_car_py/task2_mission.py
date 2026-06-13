@@ -20,9 +20,10 @@ Task2Mission — Final Project Task 2 自動任務
                     車自然朝 ~90° (yaw sanity 確認);成立 N 幀 → (B) 沿橋軸直行 SNAP_FWD_SEC 秒貼上橋口 → VISUAL_CLIMB。
                     (WAYPOINTS 上橋路徑已取代此段;僅 WAYPOINTS 空時用。)
   VISUAL_CLIMB   → 進場先 scoop_pose() 把鏟爪降下+開爪 (阻塞一次),之後沿「橋面中線 (bridge_dx)」全速直行過橋
-                    (bridge_dx 穩,bear 深度太抖不用來轉向)。bear 只判夾取時機:走近到 VCLIMB_GRIP_DIST,或「曾靠近
-                    (<=COMMIT_DIST) 後持續看不到=已鏟入爪中」,或 VCLIMB_TIMEOUT (到頂) → GRIP。
-                    (Task 2 無 Locate&Observe 計分,故不停下觀察、直接夾;停在坡面會被重力滑下坡。)
+                    (bridge_dx 穩,bear 深度太抖不用來轉向)。bear 只判時機:走近到 VCLIMB_OBSERVE_DIST (仍清楚可見),
+                    或「曾靠近 (<=COMMIT_DIST) 後持續看不到=已鏟入爪中」,或 VCLIMB_TIMEOUT (到頂) → OBSERVE。
+  OBSERVE        → 停下原地轉把橋上的熊置中 (面向它),再停住持住 OBSERVE_SECONDS 秒 (Locate & Observe 計分) → GRIP。
+                    熊被低位爪遮/掉鏡頭或對中逾時 → 直接持住。
   GRIP           → 小幅前頂 (把熊鏟進爪中、抗坡面後滑) + scoop_grab() 關爪+抬起。
   SNAP_DESCEND   → 夾完原地轉對正 (朝下對側直):優先用「橋面質心 (b_dx,= 上橋同款)」,橋面看不到才退用前方路面
                     (r_dx);橋上 pose 凍,不用 yaw。對正/逾時 → DESCEND。
@@ -55,6 +56,7 @@ class Task2Mission:
     BRIDGE_APPROACH = "BRIDGE_APPROACH"   # 位姿粗對位 (DRIVE_WP/DRIVE_DOCK)
     SNAP_90 = "SNAP_90"                   # 原地轉到橋軸 (~90°),橋面置中、誘餌熊轉出畫面
     VISUAL_CLIMB = "VISUAL_CLIMB"         # 降爪 + 視覺伺服上橋走近橋上的熊並鏟入
+    OBSERVE = "OBSERVE"                   # 停下面向橋上的熊 + 持住觀察 (Locate & Observe 計分),再夾
     GRIP = "GRIP"                         # 前推 + 關爪夾起
     SNAP_DESCEND = "SNAP_DESCEND"         # 夾完以「前方路面」對正 (朝下對側直),再下坡
     DESCEND = "DESCEND"                   # 夾住後沿路面中線過 fat 頂、下階梯到平地
@@ -110,9 +112,7 @@ class Task2Mission:
             [0.899, 0.0, 0.12],   # 對到橋口 (= dock 位置)
             [0.899, 0.2, 0.12],   # 沿橋軸 (+y) 上橋口
             [0.899, 0.4, 0.12],   # 沿橋軸 (+y) 上橋口
-            [0.899, 0.500, 0.12],   # 沿橋軸 (+y) 上橋口
             [0.899, 0.616, 0.12],   # 沿橋軸 (+y) 上橋口
-            [0.899, 0.700, 0.12],   # 沿橋軸 (+y) 上橋口
             [0.899, 0.800, 0.18],   # 開一點上橋 (置中) → VISUAL_CLIMB
         ]
         # 實測最終 docking pose —— 在「釘住的 (0,0,0) spawn frame」量測 (from /amcl_pose;
@@ -125,7 +125,7 @@ class Task2Mission:
         # yaw = 2*atan2(z, w) = 2*atan2(0.71157, 0.70262) ≈ 1.5834 rad (90.7°)。不在 ±180° 邊界。
         self.DOCK_YAW_RAD = 1.5834           # rad ≈ 90.7°
         # Controller knobs — 三段速度 (FAR / MID / NEAR) 讓終點精準對齊不衝過頭
-        self.APPROACH_DRIVE_SPEED = 200.0    # 全速 (dist >= APPROACH_FAR_DIST 時)
+        self.APPROACH_DRIVE_SPEED = 150.0    # 全速 (dist >= APPROACH_FAR_DIST 時)
         self.APPROACH_TURN_GAIN = 7.0        # 角度 → wheel-diff 比例 (deg → speed)
         self.APPROACH_SPIN_DEG = 15.0        # 方位角差 > 此值 → 原地轉 (略嚴,讓接近時更端正)
         self.APPROACH_FAR_DIST = 1.0         # < 此距離降到 70% (避免衝過頭)
@@ -140,7 +140,7 @@ class Task2Mission:
                                              #   stall 帶 (實測車會在 ~0.24m 卡住),卡住即視為到位 → VISUAL_CLIMB。
         self.STUCK_MOVE_TOL = 0.03           # N 幀內位移 < 此值 (m) 視為沒動
         self.STUCK_TICKS = 15                # ~1.5s 沒動 → 觸發
-        self.BRIDGE_APPROACH_TIMEOUT = 200.0  # 位姿粗對位全程逾時保險
+        self.BRIDGE_APPROACH_TIMEOUT = 120.0  # 位姿粗對位全程逾時保險
 
         # ---- SNAP_90：到 dock 後原地轉到橋軸 (~DOCK_YAW_RAD≈90.7°,pinned frame) ----
         # 為何需要 (實測):dock 處車朝向不定,橋面常落在畫面邊緣 (bridge_dx≈-290),橋外的誘餌熊反而置中/較近,
@@ -156,7 +156,7 @@ class Task2Mission:
         self.SNAP_90_TIMEOUT = 25.0           # 對準逾時保險 (s) → 仍前進一段再入 VISUAL_CLIMB
         # 對準後、進 VISUAL_CLIMB 前,先沿橋軸直行一小段「貼上橋口」(修正平移/docking),再交給視覺。
         self.SNAP_FWD_SEC = 1.2               # 對準後直行前進的時間 (s);0=不前進
-        self.SNAP_FWD_SPEED = 150.0           # 此段前進輪速 (比上橋慢,溫和貼進坡口)
+        self.SNAP_FWD_SPEED = 120.0           # 此段前進輪速 (比上橋慢,溫和貼進坡口)
 
         # ---- VISUAL_CLIMB：降爪 + 沿「橋面 segmentation 中線」全速過橋,走近橋上的熊並鏟入 ----
         # 轉向用穩定的 bridge_info delta_x (b_dx) 維持在橋中線、全速直行過橋 (不用 bear 深度轉向——太抖)。
@@ -171,8 +171,9 @@ class Task2Mission:
                                           #   實測上橋常停在 bridge_dx≈+55 (熊 dx≈+131=車偏左,是真偏移不是 camera 偏置),
                                           #   70 太寬會把這真偏移當雜訊不修 → 車爬偏。設 35 讓它把朝向校回橋中線;
                                           #   增益仍低 (0.35) 故修正溫和、不會像舊版 (gain 0.6) 一路撞牆。爬偏才調大。
-        self.VCLIMB_GRIP_DIST = 0.65      # 走近橋上的熊到此距離 (m) 連續 N 幀 → 直接 GRIP (Task 2 無 Locate&Observe,
-                                          #   不停下觀察;停在坡面會被重力滑下,故一到位就夾)。調小=爬更久更靠近才夾。
+        self.VCLIMB_OBSERVE_DIST = 0.65   # 走近橋上的熊到此距離 (m) 連續 N 幀 → 停下「面向 + 觀察」(OBSERVE)。
+                                          #   調小 (0.9→0.65) = 上橋爬更久/更靠近熊才停 (爬到更上面);熊此時仍可見可面向。
+        self.VCLIMB_GRIP_DIST = 0.55      # 熊深度 <= 此距離 (m) 連續 N 幀 → 已到熊前 → GRIP (保留;OBSERVE 觸發實際用 OBSERVE_DIST)
         self.VCLIMB_MAX_TRACK_DIST = 4.0  # 只追深度 <= 此距離 (m) 的熊 (判夾取時機用)。深度 -1 (過近觸底) 仍算。
         self.VCLIMB_GRIP_CONFIRM = 3      # 連續 N 幀夠近才 GRIP (濾抖動)
         self.VCLIMB_COMMIT_DIST = 0.70    # 曾靠近到此距離 (m) 後持續看不到 = 已鏟入爪中 → GRIP。
@@ -183,8 +184,14 @@ class Task2Mission:
         # (移除 bear 深度卡死偵測:橋上 bear 深度常凍在 ~1m 不隨車前進而變,會誤判卡死、亂倒退浪費過橋時間。
         #  改靠 full thrust + bridge 中線轉向 open-loop 過橋;真的物理卡死就靠 VCLIMB_TIMEOUT 兜底。)
 
+        # ---- OBSERVE：停下面向橋上的熊 + 持住觀察 (Locate & Observe 計分),再進 GRIP ----
+        # VISUAL_CLIMB 走近熊 (<= VCLIMB_OBSERVE_DIST) 或曾靠近後看不到 → 進 OBSERVE。先原地轉把熊置中 (面向它),
+        # 再停住持住 OBSERVE_SECONDS 秒 (>5s 給分餘裕),然後 GRIP。熊看不到 (被爪遮/掉鏡頭) 時不轉,直接持住。
+        self.OBSERVE_SECONDS = 5.5        # 觀察持住秒數 (>5s 給分餘裕)
+        self.OBSERVE_ALIGN_PX = 60.0      # 面向熊的置中容差 (|bear dx| <= 此值算面向)
+        self.OBSERVE_FACE_TIMEOUT = 6.0   # 對中熊逾時保險 (s):轉不到位也進持住,避免在坡頂一直空轉
+
         # ---- GRIP：到頂/過橋後,前頂一段把熊鏟進低位開爪中 + 關爪夾起 (爪已在 VISUAL_CLIMB 降下且全程開著) ----
-        # (Task 2 無 Locate&Observe 計分,故走近熊後不停下觀察、直接進 GRIP;前頂中持續前進=不會被重力滑下坡。)
         self.GRIP_PRESS_SPEED = 200.0     # 關爪前的前頂輪速 (full thrust;上坡頂得動、把熊鏟進爪);0=純煞停
         self.GRIP_PRESS_SEC = 3.0         # 關爪前先前頂這麼久 (s):熊掉出鏡頭時常在爪前 ~0.8m,需多頂一段才鏟進爪
 
@@ -236,10 +243,6 @@ class Task2Mission:
                                          #   卡在繞行點 (實測 ang=14° 時 7*14=98,base 太小→turn 夾到 base→內輪=0 卡死)。
         self.RETURN_TURN_GAIN = 7
         self.GOTO_FAR_DIST = 1.0
-        # 繞行卡死 (road↔ground 階差頂不過) → 先「全速直衝」(雙輪等速、不轉向) 衝過階差,再不行才跳下一點。
-        # 直衝比轉向 arc 有更多直前推力 (arc 會降內輪)。繞行段全程不降速 (近 WP 也保 full)，把動量留給階差。
-        self.RETURN_BURST_SPEED = 250.0  # 直衝輪速 (雙輪等速;可能被 sim 輪速上限夾住,夾住即最大)
-        self.RETURN_BURST_TICKS = 12     # 直衝這麼多幀仍沒動 → 放棄、跳下一繞行點 (兜底)
 
         # ---- 執行緒狀態 ----
         self._thread = None
@@ -303,6 +306,11 @@ class Task2Mission:
         vclimb_grip_streak = 0               # 連續「夠近」的幀數
         vclimb_last_valid_dist = None        # 最近一次熊的有效深度 (判斷是否曾靠近)
         vclimb_dbg = 0
+        # OBSERVE 狀態 (進 OBSERVE 時初始化)
+        observe_entry = 0.0                  # 進 OBSERVE 的時間 (對中熊逾時用)
+        observe_centered = False             # 是否已面向熊 (或放棄對中) → 開始持住
+        observe_start = 0.0                  # 持住計時起點
+        observe_dbg = 0
         # SNAP_DESCEND 狀態 (進 SNAP_DESCEND 時於 GRIP 設定)
         snap_descend_entry = 0.0
         snap_road_streak = 0                 # 連續路面置中幀數
@@ -315,9 +323,6 @@ class Task2Mission:
         return_wp_idx = 0                    # 當前繞行 waypoint index (>= len(RETURN_WAYPOINTS) → 直線回起點)
         return_stuck_anchor = None           # 繞行卡死偵測基準位置 (只在 arc 直行段計,轉向段不算)
         return_stuck_tick = 0
-        return_bursting = False               # 卡死後「全速直衝」模式中
-        return_burst_tick = 0                 # 直衝起始 tick
-        return_burst_anchor = None            # 直衝起始位置 (判是否衝出來)
         dock_dbg = 0
         dbg_tick = 0
 
@@ -552,10 +557,11 @@ class Task2Mission:
                     vclimb_lost_streak = 0
                     vclimb_grip_streak = 0
                     vclimb_last_valid_dist = None
-                # 過橋時間到 → 視為已過完整座橋/到頂 → 關爪夾起
+                # 過橋時間到 → 視為已過完整座橋/到頂 → 停下觀察再夾
                 if time.time() - vclimb_entry_time > self.VCLIMB_TIMEOUT:
                     self._publish("STOP")
-                    self._transition(self.GRIP, "過橋時間到 (已過橋/到頂) → 關爪夾起")
+                    observe_entry = time.time(); observe_centered = False
+                    self._transition(self.OBSERVE, "過橋時間到 (已過橋/到頂) → 停下觀察")
                     continue
                 # === 轉向:用穩定的「橋面 segmentation 質心」(b_dx) 把車維持在橋中線,全速直行上橋過橋。
                 #     (bear 深度太抖,不用來轉向;只用來判「已走近熊 → 該夾了」。)
@@ -570,19 +576,20 @@ class Task2Mission:
                     self._arc(self.VCLIMB_SPEED, 0.0)
                     steer_str = "no-bridge straight"
 
-                # === 夾取時機 (bear):走近橋上的熊到 GRIP_DIST,或「曾靠近 (<=COMMIT) 後持續看不到=已鏟入爪中」→ GRIP
-                #     (Task 2 無 Locate&Observe 計分,不停下觀察、直接夾;停在坡面會被重力滑下)。
+                # === 觀察時機 (bear):走近橋上的熊到 OBSERVE_DIST (此時仍清楚可見),或「曾靠近 (<=COMMIT) 後持續看不到
+                #     =已鏟入爪中」→ 進 OBSERVE (停下面向 + 持住觀察,再夾)。
                 t_on_target = t_found and (t_dist <= self.VCLIMB_MAX_TRACK_DIST)
                 if t_on_target:
                     vclimb_lost_streak = 0
                     if t_dist > 0.0:
                         vclimb_last_valid_dist = t_dist
-                    if 0.0 < t_dist <= self.VCLIMB_GRIP_DIST:
+                    if 0.0 < t_dist <= self.VCLIMB_OBSERVE_DIST:
                         vclimb_grip_streak += 1
                         if vclimb_grip_streak >= self.VCLIMB_GRIP_CONFIRM:
                             self._publish("STOP")
-                            self._transition(self.GRIP,
-                                             f"走近橋上的熊到位 (dist={t_dist:.2f}) → 關爪夾起")
+                            observe_entry = time.time(); observe_centered = False
+                            self._transition(self.OBSERVE,
+                                             f"走近橋上的熊到位 (dist={t_dist:.2f}) → 停下觀察")
                             continue
                     else:
                         vclimb_grip_streak = 0
@@ -594,7 +601,8 @@ class Task2Mission:
                                  and vclimb_last_valid_dist <= self.VCLIMB_COMMIT_DIST)
                     if was_close and vclimb_lost_streak >= self.VCLIMB_REACH_LOST:
                         self._publish("STOP")
-                        self._transition(self.GRIP, "靠近橋上的熊後持續看不到 (已鏟入/被爪遮) → 關爪夾起")
+                        observe_entry = time.time(); observe_centered = False
+                        self._transition(self.OBSERVE, "靠近橋上的熊後持續看不到 (已鏟入/被爪遮) → 停下觀察")
                         continue
                     lv = f"{vclimb_last_valid_dist:.2f}" if vclimb_last_valid_dist is not None else "—"
                     action = (f"CROSS({steer_str} last_bear={lv} lost={vclimb_lost_streak})")
@@ -604,6 +612,32 @@ class Task2Mission:
                     lv = f"{vclimb_last_valid_dist:.2f}" if vclimb_last_valid_dist is not None else "—"
                     print(f"[Task2] VISUAL_CLIMB bear(F={int(t_found)} dist={t_dist:.2f} dx={t_dx:+.0f}) "
                           f"last_valid={lv} grip={vclimb_grip_streak}/{self.VCLIMB_GRIP_CONFIRM} → {action}")
+
+            # ---------------- OBSERVE (停下面向橋上的熊 + 持住觀察 Locate & Observe,再夾) ----------------
+            elif self.state == self.OBSERVE:
+                if not observe_centered:
+                    # 面向階段:原地轉把熊置中。熊看得到且偏太多 → 轉去對中;對中/熊看不到 (被爪遮)/逾時 → 開始持住。
+                    if t_found and abs(t_dx) > self.OBSERVE_ALIGN_PX \
+                            and (time.time() - observe_entry) < self.OBSERVE_FACE_TIMEOUT:
+                        self._publish("CLOCKWISE_ROTATION_SLOW" if t_dx > 0
+                                      else "COUNTERCLOCKWISE_ROTATION_SLOW")
+                        action = f"FACE(bear_dx={t_dx:+.0f})"
+                    else:
+                        observe_centered = True
+                        observe_start = time.time()
+                        self._publish("STOP")
+                        action = "FACED → 持住"
+                else:
+                    # 持住階段:停住觀察 OBSERVE_SECONDS 秒 → GRIP
+                    self._publish("STOP")
+                    held = time.time() - observe_start
+                    if held >= self.OBSERVE_SECONDS:
+                        self._transition(self.GRIP, f"觀察完成 (面向熊 + 持住 {held:.1f}s) → 關爪夾起")
+                        continue
+                    action = f"HOLD({held:.1f}/{self.OBSERVE_SECONDS:.1f}s)"
+                observe_dbg += 1
+                if observe_dbg % 10 == 1:
+                    print(f"[Task2] OBSERVE bear(F={int(t_found)} dist={t_dist:.2f} dx={t_dx:+.0f}) → {action}")
 
             # ---------------- GRIP (前頂把熊壓進爪中 + 關爪夾起;爪已在 VISUAL_CLIMB 降下) ----------------
             elif self.state == self.GRIP:
@@ -739,29 +773,11 @@ class Task2Mission:
                     if dwp < wp_arrive:
                         return_wp_idx += 1
                         return_stuck_anchor = None
-                        return_bursting = False
                         if return_wp_idx >= len(self.RETURN_WAYPOINTS):
                             print(f"[Task2] RETURN 通過最後繞行點 (dist={dwp:.2f}m) → 直線回起點")
                         else:
                             print(f"[Task2] RETURN 通過繞行點 {return_wp_idx}/{len(self.RETURN_WAYPOINTS)} "
                                   f"(dist={dwp:.2f}m) → 下一繞行點")
-                    elif return_bursting:
-                        # 卡死後「全速直衝」中 (雙輪等速、不轉向):衝過 road↔ground 階差。
-                        if cal_distance(car, return_burst_anchor) > self.STUCK_MOVE_TOL:
-                            return_bursting = False          # 衝出來 → 落回正常繞行 (下一幀正常 arc/spin)
-                            return_stuck_anchor = None
-                            print(f"[Task2] RETURN 繞行點 {return_wp_idx + 1}/{len(self.RETURN_WAYPOINTS)} "
-                                  f"直衝衝出階差 → 繼續繞行")
-                        elif dbg_tick - return_burst_tick >= self.RETURN_BURST_TICKS:
-                            print(f"[Task2] RETURN 繞行點 {return_wp_idx + 1}/{len(self.RETURN_WAYPOINTS)} "
-                                  f"直衝 {self.RETURN_BURST_TICKS}f 仍卡死 → 跳下一點")
-                            return_wp_idx += 1
-                            return_bursting = False
-                            return_stuck_anchor = None
-                        else:
-                            self.ros_communicator.publish_raw_car_control([self.RETURN_BURST_SPEED] * 4)
-                        time.sleep(self.TICK)
-                        continue
                     else:
                         ang = calculate_angle_point(o.z, o.w, car, wp_target)
                         if abs(ang) > self.RETURN_SPIN_DEG:
@@ -770,22 +786,21 @@ class Task2Mission:
                             action = f"WP_SPIN({ang:+.0f}°)"
                             return_stuck_anchor = None      # 原地轉向時位置本就不變,不算卡死
                         else:
-                            # arc 直行段:位置連 STUCK_TICKS 幀沒動 = 卡在 road↔ground 階差 (非轉向) → 進「全速直衝」
-                            # (先不跳點;直衝雙輪等速比轉向 arc 有更多直前推力)。直衝 RETURN_BURST_TICKS 仍沒動才跳下一點。
+                            # arc 直行段:位置連 STUCK_TICKS 幀沒動 = 真的卡住 (撞到/pose 凍,非轉向) → 跳下一繞行點,
+                            # 不要乾耗到 RETURN_TIMEOUT。(只在 arc 段判,故不會誤把正常原地轉向當卡死。)
                             if return_stuck_anchor is None or cal_distance(car, return_stuck_anchor) > self.STUCK_MOVE_TOL:
                                 return_stuck_anchor = list(car)
                                 return_stuck_tick = dbg_tick
                             elif dbg_tick - return_stuck_tick >= self.STUCK_TICKS:
                                 print(f"[Task2] RETURN 繞行點 {return_wp_idx + 1}/{len(self.RETURN_WAYPOINTS)} "
-                                      f"卡死 ({self.STUCK_TICKS}f arc 沒動,dist={dwp:.2f}) → 全速直衝衝階差")
-                                return_bursting = True
-                                return_burst_tick = dbg_tick
-                                return_burst_anchor = list(car)
-                                self.ros_communicator.publish_raw_car_control([self.RETURN_BURST_SPEED] * 4)
+                                      f"卡死 ({self.STUCK_TICKS}f arc 沒動,dist={dwp:.2f}) → 跳下一點")
+                                return_wp_idx += 1
+                                return_stuck_anchor = None
                                 time.sleep(self.TICK)
                                 continue
-                            # 繞行段不降速 (近 WP 也保 full RETURN_DRIVE_SPEED):把動量留給 road↔ground 階差。
                             base = self.RETURN_DRIVE_SPEED
+                            if dwp < self.GOTO_FAR_DIST:
+                                base *= 0.7
                             turn = max(-base, min(base, self.RETURN_TURN_GAIN * ang))
                             left = base - turn
                             right = base + turn
