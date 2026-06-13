@@ -61,10 +61,13 @@ class ArmController:
         self.KNOB_HOLD_WAIT = 1.0
 
         # ---- Task 3 門把「下壓開門」(lever press) 參數 (現場依 Unity 把手幾何微調) ----
-        # 「最高」待命姿勢 [shoulder, elbow, gripper]：手臂抬高,爪落在門把上方,前進時不撞把手。
-        self.KNOB_RAISE_POSE = [-180.0, 0.0, 90.0]
-        # 「最低」下壓姿勢 [shoulder, elbow, gripper]：手臂下降把 lever 壓下去 → 解門閂。
-        self.KNOB_PRESS_POSE = [-150.0, -75.0, 90.0]
+        # TA 參考動作:解鎖「只動肘 (Elbow) 一軸」,從抬起壓到底 (Unity Elbow 8°→75°),
+        # 其餘軸 (Base/Shoulder/Wrist) 固定、爪閉合 (Finger 0)。我們對應:press 只轉 elbow,
+        # 肩 (shoulder) 與爪 (gripper) 維持 READY 值不動,爪閉合用實心爪面壓桿。
+        # 待命/抬起姿勢 [shoulder, elbow, gripper]:手臂前伸到門把上方、elbow 抬起、爪閉合。
+        self.KNOB_READY_POSE = [-150.0, 0.0, 20.0]
+        # 下壓時的 elbow 角度 (只動這一軸,肩/爪維持 READY 值):把爪轉下去壓桿 → 解門閂。
+        self.KNOB_ELBOW_PRESS = -75.0
         # 下壓到底後停留 (s),讓 Unity 的門閂觸發。
         self.KNOB_PRESS_HOLD = 1.0
 
@@ -216,20 +219,20 @@ class ArmController:
         print("✅ 門把互動完成。")
 
     def knob_raise(self):
-        """Task 3 lever press 步驟 1：抬手臂到最高待命姿勢 (爪在門把上方,前進不撞把手)。阻塞。"""
-        print("🚪 抬手臂到最高 ...")
-        self._smooth_move_to(list(self.KNOB_RAISE_POSE), step=5.0, delay=0.1)
+        """Task 3 lever press 步驟 1：手臂前伸到門把上方、elbow 抬起、爪閉合 (READY 姿勢)。阻塞。"""
+        print(f"🚪 抬手臂到待命 (前伸+抬肘+閉爪) {self.KNOB_READY_POSE} ...")
+        self._smooth_move_to(list(self.KNOB_READY_POSE), step=5.0, delay=0.1)
 
     def knob_press_down(self):
-        """Task 3 lever press 步驟 3：下降手臂把門把/lever 壓下 → 解門閂,停留 KNOB_PRESS_HOLD。阻塞。"""
-        print("🚪 下壓門把 (lever press) ...")
-        self._smooth_move_to(list(self.KNOB_PRESS_POSE), step=5.0, delay=0.1)
+        """Task 3 lever press 步驟 3：只轉 elbow 一軸把 lever 壓下 → 解門閂 (肩/爪固定,對應 TA 動作)。阻塞。"""
+        print(f"🚪 下壓門把 (只動 elbow → {self.KNOB_ELBOW_PRESS}) ...")
+        self._smooth_move_to([None, self.KNOB_ELBOW_PRESS, None], step=5.0, delay=0.1)
         time.sleep(self.KNOB_PRESS_HOLD)
 
     def knob_retract(self):
-        """Task 3 lever press 步驟 4：壓完把手臂收回最高,避免擋住車身前進穿門。阻塞。"""
-        print("🚪 收回手臂 (抬高) ...")
-        self._smooth_move_to(list(self.KNOB_RAISE_POSE), step=5.0, delay=0.1)
+        """Task 3 lever press 步驟 4：elbow 轉回 READY 抬起,避免擋住車身前進穿門 (肩/爪固定)。阻塞。"""
+        print(f"🚪 收回 elbow (抬起 → {self.KNOB_READY_POSE[1]}) ...")
+        self._smooth_move_to([None, self.KNOB_READY_POSE[1], None], step=5.0, delay=0.1)
 
     def _execute_grab_sequence(self, x_target, z_target):
         """背景執行的完整抓取流程 (結合軌跡規劃)"""
