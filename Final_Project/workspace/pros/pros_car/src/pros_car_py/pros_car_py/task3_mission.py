@@ -9,7 +9,7 @@ Task3Mission — Final Project Task 3 自動任務 (門把：定位觀察 → �
                偵測容器 remap 輸出；bear 同時在 /yolo/target_info，兩者互不干擾)。格式與 bear 相同。
   APPROACH → 依 /yolo/target_info 的 delta_x 對準、依 distance 前進靠近門把
   OBSERVE  → 停在門把前並保持靜止 >= 5 秒 (Locate & Observe, 10 pts)
-  UNLOCK   → 手臂互動：伸臂去碰/壓門把 (arm_controller.knob_poke)
+  UNLOCK   → 手臂下壓開門：抬手臂到最高 → 前進到門把 → 下壓 lever (arm_controller.knob_press_down) → 收回
   CLEAR    → 車身直線前推一段，把門整個推開
   DONE     → 停車結束
 
@@ -100,8 +100,9 @@ class Task3Mission:
         # ---- 觀察 ----
         self.OBSERVE_SECONDS = 5.5       # 靜止觀察時間 (>5s 才拿分，留裕度)
 
-        # ---- 解鎖 (手臂門把互動) ----
-        self.UNLOCK_CLOSE_GRIPPER = True # knob_poke 時是否關爪做「轉/抓」動作
+        # ---- 解鎖 (手臂下壓開門 lever press) ----
+        # 抬手臂後往門把再前進的時間 (s),讓爪落在 lever 正上方,再下壓。
+        self.UNLOCK_NUDGE_SEC = 0.8
 
         # ---- 推開門 (車身前推) ----
         self.CLEAR_PUSH_SEC = 2.5        # 直線前推把門推開的時間 (s) — 主要微調旋鈕
@@ -287,13 +288,26 @@ class Task3Mission:
                 if time.time() - observe_start >= self.OBSERVE_SECONDS:
                     self._transition(self.UNLOCK, "觀察完成 → 解鎖門把")
 
-            # ---------------- UNLOCK (手臂門把互動) ----------------
+            # ---------------- UNLOCK (抬手 → 前進到門把 → 下壓 lever 開門) ----------------
             elif self.state == self.UNLOCK:
                 self._publish("STOP")
-                print("[Task3] UNLOCK：伸臂互動門把 (knob_poke)")
-                self.arm_controller.knob_poke(close_gripper=self.UNLOCK_CLOSE_GRIPPER)
+                print("[Task3] UNLOCK：抬手臂 → 前進到門把 → 下壓 lever 開門")
+                # 1. 抬手臂到最高 (爪移到門把上方,前進不撞把手)
+                self.arm_controller.knob_raise()
+                # 2. 往門把再前進一小段,讓爪落在 lever 正上方
+                nudge_start = time.time()
+                while time.time() - nudge_start < self.UNLOCK_NUDGE_SEC:
+                    if stop_event.is_set():
+                        break
+                    self._publish("FORWARD_SLOW")
+                    time.sleep(self.TICK)
+                self._publish("STOP")
+                # 3. 下壓 lever → 解門閂
+                self.arm_controller.knob_press_down()
+                # 4. 收回 (抬高) 避免擋住車身穿門
+                self.arm_controller.knob_retract()
                 clear_start = time.time()
-                self._transition(self.CLEAR, "解鎖完成 → 車身前推把門推開")
+                self._transition(self.CLEAR, "下壓開門完成 → 車身直行穿門")
 
             # ---------------- CLEAR (車身前推把門推開) ----------------
             elif self.state == self.CLEAR:
