@@ -242,7 +242,7 @@ class Task2Mission:
         self.RETURN_ARRIVE_CONFIRM = 4
         self.RETURN_TIMEOUT = 150.0      # 繞行較長,逾時放寬
         self.RETURN_SPIN_DEG = 20.0
-        self.RETURN_DRIVE_SPEED = 200.0  # 提高 (110→200):base 大於 GAIN*ang 才不會被 clamp 成「單輪歸零」原地頂、
+        self.RETURN_DRIVE_SPEED = 300.0  # 平地返航全速 (300,更快更有效率;近起點仍有減速 crawl)。base 大於 GAIN*ang 才不會被 clamp 成「單輪歸零」原地頂、
                                          #   卡在繞行點 (實測 ang=14° 時 7*14=98,base 太小→turn 夾到 base→內輪=0 卡死)。
         self.RETURN_TURN_GAIN = 7
         self.GOTO_FAR_DIST = 1.0

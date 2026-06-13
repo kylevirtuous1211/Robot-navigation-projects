@@ -83,7 +83,7 @@ class Task3Mission:
             [2.9,  1.69, 0.12],   # 門把 (3.3,1.69) 前 ~0.4m → 交給視覺 dock / 壓桿
         ]
         # DRIVE_WP 行進參數 (沿用 Task2 BRIDGE_APPROACH 調好的值)
-        self.APPROACH_DRIVE_SPEED = 200.0   # 全速 (dist >= APPROACH_FAR_DIST)
+        self.APPROACH_DRIVE_SPEED = 300.0   # 全速 (dist >= APPROACH_FAR_DIST) — 平地全速,更快更有效率
         self.APPROACH_TURN_GAIN = 7.0       # 角度 → wheel-diff 比例 (deg → speed)
         self.APPROACH_SPIN_DEG = 15.0       # 方位角差 > 此值 → 原地轉 (僅遠區)
         self.APPROACH_FAR_DIST = 1.0        # < 此距離降到 70%
@@ -109,7 +109,7 @@ class Task3Mission:
 
         # ---- 推開門 (車身前推) ----
         self.CLEAR_PUSH_SEC = 6.0        # 直線前推穿門的時間 (s) — 拉長確保整台車過門
-        self.CLEAR_SPEED = 200.0         # 前推輪速 (調高,確保完全穿過門)
+        self.CLEAR_SPEED = 300.0         # 前推輪速 (平地全速,確保完全穿過門)
 
         # ---- 執行緒狀態 ----
         self._thread = None
@@ -172,9 +172,7 @@ class Task3Mission:
                 if pose_msg is None:
                     self._publish("STOP")
                     if time.time() > wp_deadline:
-                        self._transition(self.SEARCH, "DRIVE_WP 無 /amcl_pose 逾時 → 退回 SEARCH")
-                        search_deadline = time.time() + self.SEARCH_TIMEOUT
-                        found_streak = 0
+                        self._transition(self.UNLOCK, "DRIVE_WP 無 /amcl_pose 逾時 → 直接解鎖+穿門")
                     self._dbg_line(dbg_tick, found, dist, dx)
                     time.sleep(self.TICK)
                     continue
@@ -192,10 +190,8 @@ class Task3Mission:
                     stuck_anchor_xy = None
                     if wp_idx >= len(self.WAYPOINTS):
                         self._publish("STOP")
-                        self._transition(self.SEARCH,
-                                         f"通過最後 WP (dist={dist_wp:.2f}m) → 視覺取得門把")
-                        search_deadline = time.time() + self.SEARCH_TIMEOUT
-                        found_streak = 0
+                        self._transition(self.UNLOCK,
+                                         f"通過最後 WP (dist={dist_wp:.2f}m) → 直接解鎖+穿門")
                     else:
                         print(f"[Task3] 通過 WP {wp_idx}/{len(self.WAYPOINTS)} (dist={dist_wp:.2f}m)")
                 else:
@@ -216,10 +212,8 @@ class Task3Mission:
                     elif dbg_tick - stuck_anchor_tick >= self.STUCK_TICKS:
                         self._publish("STOP")
                         if last_wp:
-                            self._transition(self.SEARCH,
-                                             f"末 WP 卡住 ({self.STUCK_TICKS}f 沒動) → 視覺取得門把")
-                            search_deadline = time.time() + self.SEARCH_TIMEOUT
-                            found_streak = 0
+                            self._transition(self.UNLOCK,
+                                             f"末 WP 卡住 ({self.STUCK_TICKS}f 沒動) → 直接解鎖+穿門")
                         else:
                             wp_idx += 1
                             print(f"[Task3] WP {wp_idx}/{len(self.WAYPOINTS)} 卡住 "
@@ -251,11 +245,9 @@ class Task3Mission:
 
                 if time.time() > wp_deadline:
                     self._publish("STOP")
-                    self._transition(self.SEARCH, "DRIVE_WP 逾時 → 退回 SEARCH")
-                    search_deadline = time.time() + self.SEARCH_TIMEOUT
-                    found_streak = 0
+                    self._transition(self.UNLOCK, "DRIVE_WP 逾時 → 直接解鎖+穿門")
 
-            # ---------------- SEARCH ----------------
+            # ---------------- SEARCH (備援:WAYPOINTS 為空時才會用到) ----------------
             elif self.state == self.SEARCH:
                 found_streak = found_streak + 1 if found else 0
                 if found_streak >= self.SEARCH_CONFIRM:
