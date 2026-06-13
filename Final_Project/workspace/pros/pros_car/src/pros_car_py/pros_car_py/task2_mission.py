@@ -109,9 +109,11 @@ class Task2Mission:
         # 讓車置中上橋、不卡在橋側 (取代原本 SNAP_90 原地轉+貼坡口,那一段會卡側邊)。arrive_dist 取小 (點間距很短),
         # 末點較大以涵蓋上橋後 pose 凍的範圍 (DRIVE_WP 另有「位置凍住」guard 兜底 → VISUAL_CLIMB)。
         self.WAYPOINTS = [
-            [0.904, 0.409, 0.12],   # 對到橋口 (= dock 位置)
+            [0.899, 0.0, 0.12],   # 對到橋口 (= dock 位置)
+            [0.899, 0.2, 0.12],   # 沿橋軸 (+y) 上橋口
+            [0.899, 0.4, 0.12],   # 沿橋軸 (+y) 上橋口
             [0.899, 0.616, 0.12],   # 沿橋軸 (+y) 上橋口
-            [0.896, 0.800, 0.18],   # 開一點上橋 (置中) → VISUAL_CLIMB
+            [0.899, 0.800, 0.18],   # 開一點上橋 (置中) → VISUAL_CLIMB
         ]
         # 實測最終 docking pose —— 在「釘住的 (0,0,0) spawn frame」量測 (from /amcl_pose;
         # quat z=0.7115656192, w=0.7026196479)。此 frame 由 reset ritual 維持:Unity restart →
@@ -162,13 +164,15 @@ class Task2Mission:
         # 都沒觸發就一路過橋到 VCLIMB_TIMEOUT (視為已過橋/到頂) 再夾。不靠 /amcl_pose (橋上 pose 會凍)。
         self.VCLIMB_SPEED = 200.0         # 上橋前進輪速 (full thrust;太慢會卡在坡面)
         self.VCLIMB_STEER_GAIN = 0.35     # 置中差速增益:steer = GAIN * (扣 deadband 後的 bridge_dx)。
-                                          #   調小 (0.6→0.35):坡面上 b_dx 有穩態右偏,增益太大會一路把車帶去撞側牆。
+                                          #   調小 (0.6→0.35):增益太大會一路把車帶去撞側牆 (低增益→修正溫和,不硬轉)。
         self.VCLIMB_STEER_CLAMP = 0.3     # steer 夾在 ±此比例*base (調小,限制最大彎度,避免硬轉撞牆)
-        self.BRIDGE_DX_DEADBAND = 70.0    # b_dx 在 ±此值內不轉向 (吸收坡面上的穩態偏移;只修大偏差)。
-                                          #   實測上橋後橋面質心常穩在 ~+90px (camera 上仰造成的偏置,非真的偏離中線),
-                                          #   不扣 deadband 會被這固定偏置一路帶去撞右側牆。VISUAL_CLIMB / DESCEND 共用。
-        self.VCLIMB_OBSERVE_DIST = 0.90   # 走近橋上的熊到此距離 (m) 連續 N 幀 → 停下「面向 + 觀察」(OBSERVE)。
-                                          #   設比 GRIP_DIST 大 (0.9):熊此時仍清楚可見、還沒被低位爪遮住,才能轉去面向它。
+        self.BRIDGE_DX_DEADBAND = 70.0    # b_dx 在 ±此值內不轉向 (DESCEND 用;吸收下坡時橋面質心的穩態偏移)。
+        self.VCLIMB_STEER_DEADBAND = 35.0 # VISUAL_CLIMB 專用、較緊的 deadband:上橋要更貼著橋中線校正朝向。
+                                          #   實測上橋常停在 bridge_dx≈+55 (熊 dx≈+131=車偏左,是真偏移不是 camera 偏置),
+                                          #   70 太寬會把這真偏移當雜訊不修 → 車爬偏。設 35 讓它把朝向校回橋中線;
+                                          #   增益仍低 (0.35) 故修正溫和、不會像舊版 (gain 0.6) 一路撞牆。爬偏才調大。
+        self.VCLIMB_OBSERVE_DIST = 0.65   # 走近橋上的熊到此距離 (m) 連續 N 幀 → 停下「面向 + 觀察」(OBSERVE)。
+                                          #   調小 (0.9→0.65) = 上橋爬更久/更靠近熊才停 (爬到更上面);熊此時仍可見可面向。
         self.VCLIMB_GRIP_DIST = 0.55      # 熊深度 <= 此距離 (m) 連續 N 幀 → 已到熊前 → GRIP (保留;OBSERVE 觸發實際用 OBSERVE_DIST)
         self.VCLIMB_MAX_TRACK_DIST = 4.0  # 只追深度 <= 此距離 (m) 的熊 (判夾取時機用)。深度 -1 (過近觸底) 仍算。
         self.VCLIMB_GRIP_CONFIRM = 3      # 連續 N 幀夠近才 GRIP (濾抖動)
@@ -215,30 +219,28 @@ class Task2Mission:
         # RETURN_WAYPOINTS = [[x, y, arrive_dist], ...]:在 pinned (reset_map.sh --pin) frame 量到的繞行點,依序開過,
         # 路由繞過橋的某一側回到起點。空 list = 不繞行、直線回起點 (舊行為)。座標待在 sim 量測後填入。
         # 量測自下橋後的 pinned frame (繞橋的 +x 側通道回起點;orientation 不需要,follower 自算 bearing)。
-        # arrive_dist 取小 (0.15):點間距密,0.40 會在離點還 ~0.4m 就判到位、提早轉向切角 (實測在 WP3/4 切角衝進橋角卡死)。
-        # 0.15 夠緊能真的開到每點、不切角;又高於 ~0.10 的 go-to-point 近目標病態 (畫圈/卡死) 門檻。
+        # arrive_dist=0.20:點間距密,0.40 會離點還 ~0.4m 就判到位切角 (撞橋角);0.20 夠緊不切角 (各段 >0.25)、
+        # 又配合提速後 (RETURN_DRIVE_SPEED=200) 不會因每幀位移大而衝過 0.15 的小半徑判不到、繞著點打轉。
         self.RETURN_WAYPOINTS = [
-            [0.83, 3.03, 0.15],   # 下橋落點 (遠端)
-            [0.914, 3.011, 0.15],   # 繞到橋遠端外
-            [1.4, 3.011, 0.15],
-            [1.836, 3.011, 0.15],  
-            [1.836, 2.074, 0.15],   # 沿 +x 側通道往 -y (與橋平行,不穿橋)
-            [1.862, 1.606, 0.15],
-            [1.862, 1.306, 0.15],
-            [1.862, 1.006, 0.15],
-            [1.862, 0.359, 0.15],   # 轉向:往 -x 回起點側
-            [1.149, 0.308, 0.15],
-            [0.562, 0.0359, 0.15],  # 接近起點 → 之後 GOTO_START 直線回 (0,0)
-            [0.562, 0.024, 0.15],
+            [0.83, 3.03, 0.20],   # 下橋落點 (遠端)
+            [0.914, 3.011, 0.20],   # 繞到橋遠端外
+            [1.4, 3.011, 0.20],
+            [1.836, 3.011, 0.20],  
+            [1.836, 2.074, 0.20],   # 沿 +x 側通道往 -y (與橋平行,不穿橋)
+            [1.862, 1.606, 0.20],
+            [1.862, 1.306, 0.20],
+            [1.862, 1.006, 0.20],
+            [1.862, 0.359, 0.20],   # 轉向:往 -x 回起點側
+            [1.149, 0.308, 0.20],
+            [0.562, 0.0359, 0.20],  # 接近起點 → 之後 GOTO_START 直線回 (0,0)
+            [0.562, 0.024, 0.20],
         ]
-        # 下坡終點會浮動 (橋沿 +y、返航朝 -y):進 RETURN 時跳過「y 比車高過此 margin」的繞行點 (還在橋/坡頂那側,
-        # 在車後方);否則車會倒車衝回階梯卡死 (實測下坡停在 y~2.08、首點在 y~2.77 時)。
-        self.RETURN_SKIP_Y_MARGIN = 0.20
         self.RETURN_ARRIVE_DIST = 0.40
         self.RETURN_ARRIVE_CONFIRM = 4
         self.RETURN_TIMEOUT = 150.0      # 繞行較長,逾時放寬
         self.RETURN_SPIN_DEG = 20.0
-        self.RETURN_DRIVE_SPEED = 110.0
+        self.RETURN_DRIVE_SPEED = 200.0  # 提高 (110→200):base 大於 GAIN*ang 才不會被 clamp 成「單輪歸零」原地頂、
+                                         #   卡在繞行點 (實測 ang=14° 時 7*14=98,base 太小→turn 夾到 base→內輪=0 卡死)。
         self.RETURN_TURN_GAIN = 7
         self.GOTO_FAR_DIST = 1.0
 
@@ -319,8 +321,7 @@ class Task2Mission:
         descend_done_streak = 0              # 連續滿足「路面占滿畫面 (到地面)」條件的幀數
         # RETURN 狀態
         return_wp_idx = 0                    # 當前繞行 waypoint index (>= len(RETURN_WAYPOINTS) → 直線回起點)
-        return_skip_done = False             # 進 RETURN 第一幀:跳過身後 (還在橋上方) 的繞行點,只做一次
-        return_stuck_anchor = None           # 繞行卡死偵測基準位置
+        return_stuck_anchor = None           # 繞行卡死偵測基準位置 (只在 arc 直行段計,轉向段不算)
         return_stuck_tick = 0
         dock_dbg = 0
         dbg_tick = 0
@@ -566,8 +567,8 @@ class Task2Mission:
                 #     (bear 深度太抖,不用來轉向;只用來判「已走近熊 → 該夾了」。)
                 if b_found:
                     base = self.VCLIMB_SPEED
-                    steer = self._bridge_center_steer(base, b_dx,
-                                                      self.VCLIMB_STEER_GAIN, self.VCLIMB_STEER_CLAMP)
+                    steer = self._bridge_center_steer(base, b_dx, self.VCLIMB_STEER_GAIN,
+                                                      self.VCLIMB_STEER_CLAMP, self.VCLIMB_STEER_DEADBAND)
                     self._arc(base, steer)
                     steer_str = f"bridge_dx={b_dx:+.0f} steer={steer:+.0f}"
                 else:
@@ -746,7 +747,7 @@ class Task2Mission:
                           f"bridge(F={int(b_found)} dx={b_dx:+.0f}) road(F={int(r_found)} area={r_area:.3f}) "
                           f"done={descend_done_streak}/{self.DESCEND_DONE_CONFIRM} → {ds}")
 
-            # ---------------- RETURN (繞行 waypoints 繞過橋 → 直線回起點;跳過身後點 + 卡死跳點) ----------------
+            # ---------------- RETURN (繞行 waypoints 繞過橋 → 直線回起點) ----------------
             elif self.state == self.RETURN:
                 pose_msg = self.ros_communicator.get_latest_amcl_pose()
                 if self.start_pose is None or pose_msg is None:
@@ -764,33 +765,11 @@ class Task2Mission:
                 o = pose_msg.pose.pose.orientation
                 car = [p.x, p.y]
 
-                # 進 RETURN 第一幀:下坡終點浮動 → 跳過「在車後上方 (y 高出車一截 = 還在橋/坡頂那側)」的繞行點,
-                # 否則會倒車衝回階梯卡死。橋沿 +y、返航朝 -y,故用 y 判前後。永遠至少保留最後一點。
-                if not return_skip_done:
-                    while (return_wp_idx < len(self.RETURN_WAYPOINTS) - 1
-                           and self.RETURN_WAYPOINTS[return_wp_idx][1] > car[1] + self.RETURN_SKIP_Y_MARGIN):
-                        print(f"[Task2] RETURN 跳過身後繞行點 {return_wp_idx + 1}/{len(self.RETURN_WAYPOINTS)} "
-                              f"(y={self.RETURN_WAYPOINTS[return_wp_idx][1]:.2f} > 車 y={car[1]:.2f}+margin)")
-                        return_wp_idx += 1
-                    return_skip_done = True
-                    return_stuck_anchor = None
-
-                # ---- Phase A: DETOUR_WP → 先依序開過繞行中繼點 (繞過橋,不直線穿回橋);背著熊不放下 ----
+                # ---- Phase A: DETOUR_WP → 依序開過繞行中繼點 (繞過橋的一側,不直線穿回橋);背著熊不放下 ----
                 if return_wp_idx < len(self.RETURN_WAYPOINTS):
                     wp_x, wp_y, wp_arrive = self.RETURN_WAYPOINTS[return_wp_idx]
                     wp_target = [wp_x, wp_y]
                     dwp = cal_distance(car, wp_target)
-                    # 卡死 guard:位置連 STUCK_TICKS 幀沒動 (撞到/不可達) → 跳下一個繞行點,不要乾耗到 RETURN_TIMEOUT。
-                    if return_stuck_anchor is None or cal_distance(car, return_stuck_anchor) > self.STUCK_MOVE_TOL:
-                        return_stuck_anchor = list(car)
-                        return_stuck_tick = dbg_tick
-                    elif dbg_tick - return_stuck_tick >= self.STUCK_TICKS:
-                        print(f"[Task2] RETURN 繞行點 {return_wp_idx + 1}/{len(self.RETURN_WAYPOINTS)} 卡死 "
-                              f"({self.STUCK_TICKS}f 沒動,dist={dwp:.2f}) → 跳下一點")
-                        return_wp_idx += 1
-                        return_stuck_anchor = None
-                        time.sleep(self.TICK)
-                        continue
                     if dwp < wp_arrive:
                         return_wp_idx += 1
                         return_stuck_anchor = None
@@ -805,7 +784,20 @@ class Task2Mission:
                             self._publish("COUNTERCLOCKWISE_ROTATION_SLOW" if ang > 0
                                           else "CLOCKWISE_ROTATION_SLOW")
                             action = f"WP_SPIN({ang:+.0f}°)"
+                            return_stuck_anchor = None      # 原地轉向時位置本就不變,不算卡死
                         else:
+                            # arc 直行段:位置連 STUCK_TICKS 幀沒動 = 真的卡住 (撞到/pose 凍,非轉向) → 跳下一繞行點,
+                            # 不要乾耗到 RETURN_TIMEOUT。(只在 arc 段判,故不會誤把正常原地轉向當卡死。)
+                            if return_stuck_anchor is None or cal_distance(car, return_stuck_anchor) > self.STUCK_MOVE_TOL:
+                                return_stuck_anchor = list(car)
+                                return_stuck_tick = dbg_tick
+                            elif dbg_tick - return_stuck_tick >= self.STUCK_TICKS:
+                                print(f"[Task2] RETURN 繞行點 {return_wp_idx + 1}/{len(self.RETURN_WAYPOINTS)} "
+                                      f"卡死 ({self.STUCK_TICKS}f arc 沒動,dist={dwp:.2f}) → 跳下一點")
+                                return_wp_idx += 1
+                                return_stuck_anchor = None
+                                time.sleep(self.TICK)
+                                continue
                             base = self.RETURN_DRIVE_SPEED
                             if dwp < self.GOTO_FAR_DIST:
                                 base *= 0.7
@@ -878,11 +870,11 @@ class Task2Mission:
         right = base - steer
         self.ros_communicator.publish_raw_car_control([left, right, left, right])
 
-    def _bridge_center_steer(self, base, b_dx, gain, clamp):
+    def _bridge_center_steer(self, base, b_dx, gain, clamp, deadband=None):
         """依「橋面 segmentation 質心」b_dx 算置中差速,維持在橋中線。
-        先扣 BRIDGE_DX_DEADBAND:坡面上 camera 上仰會讓質心穩態偏一側 (~+90px),不是真的偏離中線;
-        不扣掉這段固定偏置,P 控制會被它一路帶去撞側牆。扣完只對「大偏差」做修正,再 clamp 限制最大彎度。"""
-        db = self.BRIDGE_DX_DEADBAND
+        先扣 deadband (預設 BRIDGE_DX_DEADBAND;VISUAL_CLIMB 傳較緊的 VCLIMB_STEER_DEADBAND 校準朝向),
+        扣完只對剩餘偏差做 P 控制,再 clamp 限制最大彎度。"""
+        db = self.BRIDGE_DX_DEADBAND if deadband is None else deadband
         err = (b_dx - math.copysign(db, b_dx)) if abs(b_dx) > db else 0.0
         steer = gain * err
         cap = clamp * base
