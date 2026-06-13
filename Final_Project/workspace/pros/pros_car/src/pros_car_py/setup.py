@@ -33,6 +33,7 @@ setup(
             "task1_auto = pros_car_py.task1_mission:main",
             "task2_auto = pros_car_py.task2_mission:main",
             "task3_auto = pros_car_py.task3_mission:main",
+            "task23_auto = pros_car_py.combined_mission:main",
         ],
     },
 )

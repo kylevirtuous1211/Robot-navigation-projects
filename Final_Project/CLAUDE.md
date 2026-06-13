@@ -113,7 +113,17 @@ Then **in Unity** (Chrome Remote Desktop): log in → **FINAL PROJECT** → **CA
 ~/Desktop/Robot-navigation-projects/Final_Project/workspace/pros/pros_car/run_task1.sh   # task1_auto
 ~/Desktop/Robot-navigation-projects/Final_Project/workspace/pros/pros_car/run_task2.sh   # task2_auto
 ~/Desktop/Robot-navigation-projects/Final_Project/workspace/pros/pros_car/run_task3.sh   # task3_auto
+~/Desktop/Robot-navigation-projects/Final_Project/workspace/pros/pros_car/run_task23.sh  # task23_auto (Task 2 → Task 3 combined)
 ```
+
+**Combined Task 2 + Task 3 in one run (`task23_auto` / `combined_mission.py`):** `run_task23.sh`
+runs the **full Task 2** (mount → climb → grip → descend → return + release) then the **full Task 3**
+(drive to the door → dock on the knob → Locate & Observe ≥5 s → lever press → drive through) back-to-back
+in a single session, scoring all points from both. It reuses the `Task2Mission`/`Task3Mission` classes
+unchanged via a thin orchestrator (one shared `RosCommunicator` + spin thread, run sequentially).
+Run **`reset_map.sh --pin` once first** — both tasks' absolute waypoints live in that pinned spawn frame.
+After Task 2 returns to spawn (facing ~−180°), Task 3's `DRIVE_WP` spins to turn around and drives to the
+door; the knob visual-dock + OBSERVE correct for any pinned-frame drift accumulated over the Task 2 run.
 Runs `taskN_auto` headless in your terminal — watch the live `[TaskN]` state log (every state
 transition + a throttled per-tick sensor readout, tuned for fast knob calibration). **Ctrl-C** stops;
 re-run to retry (new random map each time). Because all perception runs at once, you can run Task 1 →
@@ -150,7 +160,8 @@ Manual per-piece `docker run` commands (for debugging individual containers) are
 | `workspace/pros/ros2_yolo_integration/.../object_detect.py` | YOLO **detection** node: single target by `YOLO_TARGET` env (`bear` default / `knob`); back-projects bbox-center + depth → `/yolo/target_marker`; publishes `/yolo/target_info`. |
 | `workspace/pros/ros2_yolo_integration/.../segment_detect.py` | YOLO **segmentation** node (`yolo_seg_node`): `bridge`/`road` masks → `/yolo/segmentation/compressed`; publishes `/yolo/bridge_info` (bridge geometry: delta_x, area, bottom-edge dx, symmetry) + `/yolo/road_info` (road centroid) for Task 2. |
 | `start_stack.sh` | **single consolidated launcher**: one-shot detached bring-up of the entire stack + all three YOLO containers (bear / knob-remapped / bridge-seg) + Unity. Run any task against it, no restarts. |
-| `workspace/pros/pros_car/run_task1.sh` / `run_task2.sh` / `run_task3.sh` | build + run the mission headless. |
+| `.../pros_car_py/combined_mission.py` | **`task23_auto`** orchestrator: runs full Task 2 then full Task 3 in one session, reusing both mission classes (one shared `RosCommunicator`). |
+| `workspace/pros/pros_car/run_task1.sh` / `run_task2.sh` / `run_task3.sh` / `run_task23.sh` | build + run the mission headless (`run_task23.sh` = Task 2 → Task 3 combined). |
 | `tools/reset_map.sh`, `tools/click20.py` | hands-free map reset via synthetic clicks on `:20`. |
 
 ## Key ROS topics
