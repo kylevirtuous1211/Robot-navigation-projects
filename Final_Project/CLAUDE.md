@@ -16,9 +16,11 @@ Strategy: **reactive visual servoing** (YOLO `/yolo/target_info` + depth) for se
 then **online SLAM + Nav2** to return. The map is **randomized each run**, so the costmap is built
 live — there is no map pre-pass.
 
-**Tasks 2 (bridge) and 3 (door) are implemented** as their own state machines, same hands-free
-pattern as Task 1. **Task 2 is verified working end-to-end and scores full points** (Ascent +
+**Tasks 2 (bridge) and 3 (door) are implemented and verified working end-to-end** as their own
+state machines, same hands-free pattern as Task 1. **Task 2 scores full points** (Ascent +
 Descent + Recovery: mount → climb → grip → descend the far stairs → detour return around the bridge).
+**Task 3 is verified working end-to-end** (waypoint drive to the door → visual dock on the knob →
+Locate & Observe ≥5 s → lever press-down, held → drive through the doorway).
 **Task 1 is expected to finish too** (same hands-free pattern). Note Task 2's scoring has **no
 Locate & Observe** — only Ascent/Descent/Recovery — so the climb grips the bear directly (no 5 s
 observe hold, which would slide the car back down the ramp):
