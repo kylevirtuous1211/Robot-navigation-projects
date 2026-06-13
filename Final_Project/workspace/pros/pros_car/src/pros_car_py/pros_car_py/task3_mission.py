@@ -9,7 +9,7 @@ Task3Mission — Final Project Task 3 自動任務 (門把：定位觀察 → �
                偵測容器 remap 輸出；bear 同時在 /yolo/target_info，兩者互不干擾)。格式與 bear 相同。
   APPROACH → 依 /yolo/target_info 的 delta_x 對準、依 distance 前進靠近門把
   OBSERVE  → 停在門把前並保持靜止 >= 5 秒 (Locate & Observe, 10 pts)
-  UNLOCK   → 手臂下壓開門：抬手臂到最高 → 前進到門把 → 下壓 lever (arm_controller.knob_press_down) → 收回
+  UNLOCK   → 手臂下壓開門：抬手臂 → 前進到門把 → 下壓 lever (arm_controller.knob_press_down) → 不收回 (維持壓著穿門)
   CLEAR    → 車身直線前推一段，把門整個推開
   DONE     → 停車結束
 
@@ -108,8 +108,8 @@ class Task3Mission:
         self.UNLOCK_NUDGE_SEC = 0.8
 
         # ---- 推開門 (車身前推) ----
-        self.CLEAR_PUSH_SEC = 2.5        # 直線前推把門推開的時間 (s) — 主要微調旋鈕
-        self.CLEAR_SPEED = 120.0         # 前推輪速
+        self.CLEAR_PUSH_SEC = 6.0        # 直線前推穿門的時間 (s) — 拉長確保整台車過門
+        self.CLEAR_SPEED = 200.0         # 前推輪速 (調高,確保完全穿過門)
 
         # ---- 執行緒狀態 ----
         self._thread = None
@@ -326,12 +326,10 @@ class Task3Mission:
                     self._publish("FORWARD_SLOW")
                     time.sleep(self.TICK)
                 self._publish("STOP")
-                # 3. 下壓 lever → 解門閂
+                # 3. 下壓 lever → 解門閂 (壓下後「不收回」,維持壓著直接穿門,避免門閂彈回)
                 self.arm_controller.knob_press_down()
-                # 4. 收回 (抬高) 避免擋住車身穿門
-                self.arm_controller.knob_retract()
                 clear_start = time.time()
-                self._transition(self.CLEAR, "下壓開門完成 → 車身直行穿門")
+                self._transition(self.CLEAR, "下壓開門完成 (不收手) → 車身直行穿門")
 
             # ---------------- CLEAR (車身前推把門推開) ----------------
             elif self.state == self.CLEAR:
