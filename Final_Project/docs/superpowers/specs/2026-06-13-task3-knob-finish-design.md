@@ -44,8 +44,11 @@ VISUAL_DOCK → visual servo on the knob (/yolo/target_info_knob: delta_x center
             rotate-in-place SEARCH. A short rotate-to-acquire fallback runs if the
             knob is not yet framed at the last waypoint.
 OBSERVE   → stop and hold ≥5 s on the knob (Locate & Observe, scoring).
-UNLOCK    → open-door script: arm interacts with the knob (knob_poke) to unlock.
-CLEAR     → drive the body forward through the now-open door.
+UNLOCK    → open-door by LEVER PRESS (not a turn): raise the arm to its highest
+            pose, drive forward toward the knob to position the gripper over the
+            lever handle, then lower the arm to its lowest pose to press the lever
+            down and unlatch the door.
+CLEAR     → drive the body straight forward through the now-open door (full points).
 DONE      → stop.
 ```
 
@@ -53,13 +56,37 @@ DONE      → stop.
 visual APPROACH), mirroring how Task 2's empty `WAYPOINTS` falls back to its old
 dock path. This keeps the vision-only path available for debugging.
 
+### Measured WAYPOINTS (pinned spawn frame)
+
+Measured in the pinned `(0,0,0)` frame; the path runs forward in `+x` to
+`(2.0, 0)`, turns and runs `+y` to `(2.0, 1.67)`, then nudges `+x` to the door at
+`(2.43, 1.66)`. `arrive_dist` per point is tuned in Phase 4 (placeholder values
+below; the last, in-front-of-the-knob point is tightest):
+
+```python
+# [x, y, arrive_dist]  (arrive_dist tuned in Phase 4)
+WAYPOINTS = [
+    [0.5,  0.0,  0.20],
+    [1.0,  0.0,  0.20],
+    [1.5,  0.0,  0.20],
+    [2.0,  0.0,  0.20],
+    [2.0,  0.5,  0.20],
+    [2.0,  1.0,  0.20],
+    [2.0,  1.5,  0.20],
+    [2.0,  1.67, 0.15],
+    [2.43, 1.66, 0.10],   # in front of the knob → hand off to VISUAL_DOCK
+]
+```
+
 ## Door mechanic (confirmed)
 
-- The Task 3 door is **locked**: the arm must interact with the knob to unlock
-  it, **then** the body pushes the door open. The `UNLOCK → CLEAR` design is the
-  correct shape and is kept. The exact Unity unlock trigger (gripper contact vs.
-  press/hold vs. gripper-close) is unknown and is discovered empirically in the
-  arm bench test.
+- The Task 3 "knob" is a **lever handle** on a wooden gate (see the demo
+  screenshot). The door opens by **pressing the lever down**, not turning it:
+  raise the arm to its highest pose, drive forward so the gripper sits over the
+  lever, then lower the arm to its lowest pose to push the lever down and
+  unlatch. The body then drives straight through. A 2-DOF arm (shoulder/elbow)
+  handles this vertical press directly. The `UNLOCK → CLEAR` design is the correct
+  shape; UNLOCK is implemented as this raise → approach → lower-press sequence.
 - The **door is at a fixed location relative to spawn** in the chosen demo map
   (confirmed), exactly like the Task 2 bridge. So waypoints measured once in the
   pinned frame stay valid run-to-run. This is the same assumption Task 2 relies
@@ -156,30 +183,32 @@ Also eyeball `/yolo/detection_knob/compressed` in Foxglove for the bounding box.
   relabel/retrain, or fall back to detecting the door body or an ArUco marker.
   Surface and decide then; do not proceed on flaky detection.
 
-### Phase 2 — Measure approach waypoints
+### Phase 2 — Approach waypoints (provided)
 
-After `reset_map.sh --pin`, manually drive the rover (via the `robot_control`
-menu UI / Foxglove teleop) from spawn along a clean path to just in front of the
-door knob. While driving, `ros2 topic echo /amcl_pose` and record a short
-ordered list of `[x, y, arrive_dist]` points into `Task3Mission.WAYPOINTS` — the
-same procedure used to measure Task 2's `WAYPOINTS`. The last point should leave
-the rover roughly facing the knob at a distance where `VISUAL_DOCK` can acquire
-it.
+The approach path has been measured (see *Measured WAYPOINTS* above): forward in
+`+x` to `(2.0, 0)`, then `+y` to `(2.0, 1.67)`, then `+x` to the knob at
+`(2.43, 1.66)`. These `x, y` values go straight into `Task3Mission.WAYPOINTS`;
+only the per-point `arrive_dist` tolerances remain to be tuned (Phase 4). If a
+fresh `reset_map.sh --pin` shows the path is off, re-measure by driving from
+spawn and echoing `/amcl_pose`.
 
-### Phase 3 — Arm bench test (`knob_poke` in isolation)
+### Phase 3 — Arm bench test (lever press in isolation)
 
-With the rover parked roughly at the intended dock distance from the knob,
-trigger `knob_poke()` alone and observe:
+With the rover parked roughly at the intended dock distance from the lever,
+run the UNLOCK arm sequence alone and observe:
 
-- Does `KNOB_REACH_POSE` place the gripper **at knob height and touching the
-  knob**?
-- Does Unity register the **unlock** (door becomes openable)?
+- Does the **highest** arm pose clear the lever on the forward approach (gripper
+  ends up above the lever handle, not jammed into it)?
+- Does the **lowest** arm pose press the lever **down** far enough to unlatch the
+  door?
 
-Tune `KNOB_REACH_POSE` `[shoulder, elbow, gripper]`, `KNOB_HOLD_WAIT`, and the
-`close_gripper` flag. **Risk:** the 2-DOF arm cannot axially *rotate* a knob, so
-the Unity unlock is most likely contact- or press-triggered. Discover the actual
-trigger here and shape `knob_poke` to match (may require a small forward body
-nudge during the poke to make contact).
+This replaces the old forward-poke `knob_poke` semantics with a vertical press.
+Tunables: the highest/lowest arm poses (shoulder/elbow angles), the forward-nudge
+distance/time that positions the gripper over the lever between raise and lower,
+and the hold time at the bottom. Gripper open/close likely does not matter for a
+press; default to whatever keeps the end-effector profile best for pushing the
+lever. Decide in the implementation plan whether to repurpose `knob_poke` or add
+a dedicated `knob_press` routine.
 
 ### Phase 4 — Drive + dock loop (DRIVE_WP → VISUAL_DOCK → OBSERVE)
 
@@ -198,11 +227,12 @@ Full `run_task3.sh`, tuning from the `[Task3]` log:
 Goal: the rover reliably stops centered at a distance where the Phase-3 arm
 reach can touch the knob.
 
-### Phase 5 — Full mission + door push (UNLOCK → CLEAR)
+### Phase 5 — Full mission: lever press + drive through (UNLOCK → CLEAR)
 
-End-to-end run. Tune `CLEAR_PUSH_SEC` and `CLEAR_SPEED` so the body pushes the
-unlocked door fully open and drives through. Confirm the arm retracts to
-`KNOB_RETRACT_POSE` before the push so it does not snag the door frame.
+End-to-end run. Confirm UNLOCK lowers the arm onto the lever and unlatches the
+door, then raises/retracts the arm clear of the gate. Tune `CLEAR_PUSH_SEC` and
+`CLEAR_SPEED` so the body drives straight through the now-unlatched door (pushing
+the gate aside as it passes) and clears it fully for full points.
 
 ### Phase 6 — Reliability + commit
 
@@ -224,9 +254,11 @@ unlocked door fully open and drives through. Confirm the arm retracts to
    wrong place. Contingency: the Phase-0 spawn ≈ `(0,0,0)` check is mandatory
    before trusting waypoints; the empty-`WAYPOINTS` vision-only fallback path
    stays available for debugging.
-3. **Arm cannot trigger the unlock** — 2-DOF arm can't rotate a knob. Contingency:
-   discover the Unity trigger mechanic in Phase 3 and adapt `knob_poke` (contact
-   nudge, hold, or gripper-close).
+3. **Lever press misses or under-presses** — the raised arm catches the lever on
+   approach, or the lowest pose doesn't push it down far enough to unlatch.
+   Contingency: tune the highest/lowest poses and the forward-nudge distance in
+   Phase 3; if reach is short, add a small extra forward body nudge while the arm
+   is down.
 4. **Depth unreliable at knob height** — `APPROACH_STOP_DIST` at depth
    saturation. Contingency: switch the VISUAL_DOCK stop criterion to bbox `area`
    / `bottom_frac`.
