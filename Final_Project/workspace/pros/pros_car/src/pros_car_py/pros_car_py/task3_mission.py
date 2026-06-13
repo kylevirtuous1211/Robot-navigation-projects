@@ -28,9 +28,12 @@ Task 3 沒有 bear、不需返航 (RETURN)。計分靠 Locate & Observe + 把門
 import threading
 import time
 
+from pros_car_py.nav2_utils import calculate_angle_point, cal_distance
+
 
 class Task3Mission:
     # ---- 狀態 ----
+    DRIVE_WP = "DRIVE_WP"
     SEARCH = "SEARCH"
     APPROACH = "APPROACH"
     OBSERVE = "OBSERVE"
@@ -62,6 +65,29 @@ class Task3Mission:
         # ---- 搜尋 ----
         self.SEARCH_TIMEOUT = 240.0      # 找不到 knob 的保險上限 (s)
         self.SEARCH_CONFIRM = 3          # 連續偵測到 N 幀才認定 (濾假偵測)
+
+        # ---- 位姿式上門 waypoint (pinned (0,0,0) spawn frame; reset_map.sh --pin 後量測) ----
+        # 依序開過這些點到門把前,再交給 SEARCH→APPROACH 視覺 dock。格式 [x, y, arrive_dist]。
+        # 空 list → 退回舊行為 (原地 SEARCH 旋轉找門把)。
+        self.WAYPOINTS = [
+            [0.5,  0.0,  0.20],
+            [1.0,  0.0,  0.20],
+            [1.5,  0.0,  0.20],
+            [2.0,  0.0,  0.20],
+            [2.0,  0.5,  0.20],
+            [2.0,  1.0,  0.20],
+            [2.0,  1.5,  0.20],
+            [2.0,  1.67, 0.15],
+            [2.43, 1.66, 0.10],   # 門把正前方 → 交給視覺 dock
+        ]
+        # DRIVE_WP 行進參數 (沿用 Task2 BRIDGE_APPROACH 調好的值)
+        self.APPROACH_DRIVE_SPEED = 200.0   # 全速 (dist >= APPROACH_FAR_DIST)
+        self.APPROACH_TURN_GAIN = 7.0       # 角度 → wheel-diff 比例 (deg → speed)
+        self.APPROACH_SPIN_DEG = 15.0       # 方位角差 > 此值 → 原地轉
+        self.APPROACH_FAR_DIST = 1.0        # < 此距離降到 70%
+        self.STUCK_MOVE_TOL = 0.03          # N 幀內位移 < 此值 (m) 視為沒動
+        self.STUCK_TICKS = 15               # ~1.5s 沒動 → 末點 stuck guard 觸發
+        self.WP_TIMEOUT = 60.0              # DRIVE_WP 總逾時保險 (s)
 
         # ---- 靠近 (= Task 1 APPROACH 風格) ----
         # 門把比 bear 高、且要「停在伸臂可碰到」的距離。深度 <0.45m 會觸底失效，
@@ -95,7 +121,7 @@ class Task3Mission:
         if self._running:
             return
         self._stop_event.clear()
-        self.state = self.SEARCH
+        self.state = self.DRIVE_WP if self.WAYPOINTS else self.SEARCH
         self._thread = threading.Thread(
             target=self._run, args=(self._stop_event,), daemon=True
         )
@@ -121,6 +147,10 @@ class Task3Mission:
         lost_streak = 0
         last_valid_dist = None
         dbg_tick = 0
+        wp_idx = 0
+        wp_deadline = time.time() + self.WP_TIMEOUT
+        stuck_anchor_xy = None
+        stuck_anchor_tick = 0
 
         while not stop_event.is_set():
             dbg_tick += 1
@@ -130,8 +160,78 @@ class Task3Mission:
             dist = info[1] if info else 0.0
             dx = info[2] if info else 0.0
 
+            # ---------------- DRIVE_WP (位姿式開到門把前) ----------------
+            if self.state == self.DRIVE_WP:
+                pose_msg = self.ros_communicator.get_latest_amcl_pose()
+                if pose_msg is None:
+                    self._publish("STOP")
+                    if time.time() > wp_deadline:
+                        self._transition(self.SEARCH, "DRIVE_WP 無 /amcl_pose 逾時 → 退回 SEARCH")
+                        search_deadline = time.time() + self.SEARCH_TIMEOUT
+                        found_streak = 0
+                    self._dbg_line(dbg_tick, found, dist, dx)
+                    time.sleep(self.TICK)
+                    continue
+
+                p = pose_msg.pose.pose.position
+                o = pose_msg.pose.pose.orientation
+                car_xy = [p.x, p.y]
+                wp_x, wp_y, wp_arrive = self.WAYPOINTS[wp_idx]
+                wp_target = [wp_x, wp_y]
+                dist_wp = cal_distance(car_xy, wp_target)
+                last_wp = (wp_idx == len(self.WAYPOINTS) - 1)
+
+                if dist_wp < wp_arrive:
+                    wp_idx += 1
+                    stuck_anchor_xy = None
+                    if wp_idx >= len(self.WAYPOINTS):
+                        self._publish("STOP")
+                        self._transition(self.SEARCH,
+                                         f"通過最後 WP (dist={dist_wp:.2f}m) → 視覺取得門把")
+                        search_deadline = time.time() + self.SEARCH_TIMEOUT
+                        found_streak = 0
+                    else:
+                        print(f"[Task3] 通過 WP {wp_idx}/{len(self.WAYPOINTS)} (dist={dist_wp:.2f}m)")
+                else:
+                    # 末點卡住 guard:連 STUCK_TICKS 幀沒動 → 視為到位 → 交給視覺
+                    if last_wp:
+                        if (stuck_anchor_xy is None
+                                or cal_distance(car_xy, stuck_anchor_xy) > self.STUCK_MOVE_TOL):
+                            stuck_anchor_xy = list(car_xy)
+                            stuck_anchor_tick = dbg_tick
+                        elif dbg_tick - stuck_anchor_tick >= self.STUCK_TICKS:
+                            self._publish("STOP")
+                            self._transition(self.SEARCH,
+                                             f"末 WP 卡住 ({self.STUCK_TICKS}f 沒動) → 視覺取得門把")
+                            search_deadline = time.time() + self.SEARCH_TIMEOUT
+                            found_streak = 0
+                            time.sleep(self.TICK)
+                            continue
+                    ang = calculate_angle_point(o.z, o.w, car_xy, wp_target)
+                    if abs(ang) > self.APPROACH_SPIN_DEG:
+                        self._publish("COUNTERCLOCKWISE_ROTATION_SLOW" if ang > 0
+                                      else "CLOCKWISE_ROTATION_SLOW")
+                    else:
+                        base = self.APPROACH_DRIVE_SPEED
+                        if dist_wp < self.APPROACH_FAR_DIST:
+                            base *= 0.70
+                        turn = self.APPROACH_TURN_GAIN * ang
+                        turn = max(-base, min(base, turn))
+                        left = base - turn
+                        right = base + turn
+                        self.ros_communicator.publish_raw_car_control([left, right, left, right])
+                    if dbg_tick % self.DBG_EVERY == 0:
+                        print(f"[Task3][DRIVE_WP] WP {wp_idx + 1}/{len(self.WAYPOINTS)} "
+                              f"car=({car_xy[0]:.2f},{car_xy[1]:.2f}) dist={dist_wp:.2f}")
+
+                if time.time() > wp_deadline:
+                    self._publish("STOP")
+                    self._transition(self.SEARCH, "DRIVE_WP 逾時 → 退回 SEARCH")
+                    search_deadline = time.time() + self.SEARCH_TIMEOUT
+                    found_streak = 0
+
             # ---------------- SEARCH ----------------
-            if self.state == self.SEARCH:
+            elif self.state == self.SEARCH:
                 found_streak = found_streak + 1 if found else 0
                 if found_streak >= self.SEARCH_CONFIRM:
                     self._transition(self.APPROACH, f"穩定偵測到 knob (dist={dist:.2f})")
