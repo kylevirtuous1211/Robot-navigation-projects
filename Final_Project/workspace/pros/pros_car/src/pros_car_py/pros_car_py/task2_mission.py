@@ -192,8 +192,8 @@ class Task2Mission:
         self.OBSERVE_FACE_TIMEOUT = 6.0   # 對中熊逾時保險 (s):轉不到位也進持住,避免在坡頂一直空轉
 
         # ---- GRIP：到頂/過橋後,前頂一段把熊鏟進低位開爪中 + 關爪夾起 (爪已在 VISUAL_CLIMB 降下且全程開著) ----
-        self.GRIP_PRESS_SPEED = 200.0     # 關爪前的前頂輪速 (full thrust;上坡頂得動、把熊鏟進爪);0=純煞停
-        self.GRIP_PRESS_SEC = 3.0         # 關爪前先前頂這麼久 (s):熊掉出鏡頭時常在爪前 ~0.8m,需多頂一段才鏟進爪
+        self.GRIP_PRESS_SPEED = 300.0     # 關爪前的前頂輪速 (full thrust;坡頂要更大力頂得動、把熊鏟進爪);0=純煞停
+        self.GRIP_PRESS_SEC = 5.0         # 關爪前先前頂這麼久 (s):熊掉出鏡頭時常在爪前 ~0.8m,需多頂一段才鏟進爪
 
         # ---- SNAP_DESCEND：夾完後以「前方路面 (road_info delta_x)」對正,朝下對側直,再 DESCEND ----
         # 橋上 /amcl_pose 會凍,不能用 yaw;改用穩定可見的路面質心 (r_dx→0=朝正前方下坡方向) 原地轉對正。
