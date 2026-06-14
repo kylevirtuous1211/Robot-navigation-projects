@@ -37,5 +37,6 @@ pros_twin_unity_linux/
 *.log
 runs/
 
-# Oversized doc (exceeds GitHub 100MB limit)
+# Oversized docs (exceed GitHub 100MB limit) — keep on disk, never commit
 Final_Project/Unity_final_project_spec.pdf
+Final_Project/docs/Unity_final_project_spec.pdf
