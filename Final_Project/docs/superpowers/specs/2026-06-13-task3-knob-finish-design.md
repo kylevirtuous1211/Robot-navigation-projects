@@ -88,7 +88,7 @@ WAYPOINTS = [
   handles this vertical press directly. The `UNLOCK → CLEAR` design is the correct
   shape; UNLOCK is implemented as this raise → approach → lower-press sequence.
 - The **door is at a fixed location relative to spawn** in the chosen demo map
-  (confirmed), exactly like the Task 2 bridge. So waypoints measured once in the
+  (confirmed), exactly like the Task 2 bridge. So waypoints measured once in theu
   pinned frame stay valid run-to-run. This is the same assumption Task 2 relies
   on and is what makes the waypoint front-end viable.
 

@@ -20,26 +20,29 @@ sleep 5
 echo "[reset] done — car should be at spawn on a fresh FINAL PROJECT map."
 
 # Post-scene-reset container restarts. Two modes:
-#   --pin  : reproducible-localization ritual (Task 2). Re-origin the laser scan_matcher
-#            odom to the spawn, THEN re-anchor SLAM, THEN resync Nav2 — in that order.
+#   --pin  : reproducible-localization ritual (Task 2/3, combined task23). Re-origin the
+#            laser scan_matcher odom to the spawn, THEN re-anchor SLAM — in that order.
 #            Needed because slam_toolbox anchors `map` to odom, and scan_matcher odom
 #            accumulates forever (never resets on its own), so the map frame floats every
 #            session. Verified 2026-06-11: after this, /amcl_pose at spawn reads ~(0,0,0).
 #            (slam_toolbox's map_start_pose does NOT pin a fresh map — odom reset is the fix.)
+#            Nav2 is NOT restarted: Task 2/3 + combined drive purely on /amcl_pose + vision
+#            (publish_raw_car_control), never the Nav2 stack — so the Nav2 costmap resync is
+#            dead weight here. Task 1's return DOES use Nav2; for it run --slam after --pin
+#            (a clean costmap, since the SLAM restart de-syncs it).
 #   --slam : older flag — rebuild SLAM + restart Nav2 only. Does NOT reset odom, so map
 #            coords still float. Use --pin when you need reproducible coordinates.
 case "${1:-}" in
   --pin)
     echo "[reset] PIN localization (car must be at spawn from the scene reset above):"
-    echo "[reset]   1/3 restart robot_bringup (scan_matcher odom -> 0 at spawn) ..."
+    echo "[reset]   1/2 restart robot_bringup (scan_matcher odom -> 0 at spawn) ..."
     docker restart kylefp-robot_bringup-1 >/dev/null 2>&1
     sleep 8
-    echo "[reset]   2/3 restart slam (map re-anchors to odom=0) ..."
+    echo "[reset]   2/2 restart slam (map re-anchors to odom=0) ..."
     docker restart kylefp-slam-1 >/dev/null 2>&1
     sleep 8
-    echo "[reset]   3/3 restart navigation (Nav2 costmap resync) ..."
-    docker restart kylefp-navigation-1 >/dev/null 2>&1
-    sleep 8
+    echo "[reset] Nav2 NOT restarted — Task 2/3 + combined don't use it (pose + vision only)."
+    echo "[reset]   Task 1's Nav2 return needs a clean costmap → run afterwards: reset_map.sh --slam"
     echo "[reset] PIN done — verify /amcl_pose at spawn reads ~(0,0,0):"
     echo "[reset]   docker exec kylefp-tfshim bash -lc 'source /opt/ros/humble/setup.bash && ROS_DOMAIN_ID=7 ros2 topic echo /amcl_pose --once'"
     ;;

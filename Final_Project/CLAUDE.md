@@ -218,8 +218,12 @@ Tune these against the in-sim "N units" and the gripper geometry.
   coordinates each session (observed: `(2.87,-3.46)`, `(-3.1,-4.3)`, `(-4.21,-4.24)`), and any
   hard-coded absolute pose (e.g. Task 2's `DOCK_X/Y/YAW`) silently goes stale. **Fix / ritual:** with
   the car at spawn, run **`reset_map.sh --pin`** — it re-origins the scan_matcher odom (restart
-  `robot_bringup`) → re-anchors SLAM → resyncs Nav2, *in that order*, so spawn ≡ `map (0,0,0)` and the
+  `robot_bringup`) → re-anchors SLAM (restart `slam`), *in that order*, so spawn ≡ `map (0,0,0)` and the
   whole deterministic scene gets reproducible coordinates. Verify: `/amcl_pose` at spawn ≈ `(0,0,0)`.
+  `--pin` no longer restarts Nav2 (`navigation`): Task 2/3 + combined `task23` drive purely on
+  `/amcl_pose` + vision (`publish_raw_car_control`), never the Nav2 stack, so the costmap resync was
+  dead weight. **Task 1's return *does* use Nav2** — after `--pin`, run **`reset_map.sh --slam`** for it
+  (the SLAM restart de-syncs the Nav2 costmap).
   Note `slam_toolbox`'s `map_start_pose` does **not** pin a fresh map (verified) — the odom reset is
   the actual lever. Task 2's dock constants were measured in this pinned frame. Full rationale:
   `docs/superpowers/specs/2026-06-11-task2-localization-pin-spawn-design.md`.

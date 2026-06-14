@@ -45,7 +45,7 @@ echo "==> 2/2 Unity sim on display :20"
 if pgrep -f pros_twin_unity_tsai >/dev/null 2>&1; then
   echo "    Unity already running, skipping."
 else
-  cd "$ROOT/Final_Project/pros_twin_linux/pros_twin_unity_linux"  # symlink -> V5 build
+  cd "$ROOT/Final_Project/pros_twin_linux/pros_twin_unity_linux"  # symlink -> V5.4 build
   DISPLAY=:20 XAUTHORITY=/home/kyle/.Xauthority \
     __NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia \
     setsid ./pros_twin_unity_tsai_run_linux.x86_64 -force-vulkan >/tmp/kylefp_unity.log 2>&1 &
