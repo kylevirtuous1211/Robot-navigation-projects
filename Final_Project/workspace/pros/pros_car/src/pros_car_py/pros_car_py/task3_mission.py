@@ -78,12 +78,12 @@ class Task3Mission:
             [2.0,  0.5,  0.20],
             [2.0,  1.0,  0.20],
             [2.0,  1.5,  0.20],
-            [2.0,  1.69, 0.15],
-            [2.5,  1.69, 0.15],
-            [2.6,  1.69, 0.12],
-            [2.7,  1.69, 0.12],
-            [2.8,  1.69, 0.12],
-            [2.9,  1.69, 0.12],   # 門把 (3.3,1.69) 前 ~0.4m → 交給視覺 dock / 壓桿
+            [2.0,  1.6, 0.15],
+            [2.5,  1.6, 0.15],
+            [2.6,  1.6, 0.12],
+            [2.7,  1.6, 0.12],
+            [2.8,  1.6, 0.12],
+            [2.9,  1.6, 0.12],   # 門把 (3.3,1.69) 前 ~0.4m → 交給視覺 dock / 壓桿
         ]
         # DRIVE_WP 行進參數 (沿用 Task2 BRIDGE_APPROACH 調好的值)
         self.APPROACH_DRIVE_SPEED = 500.0   # 全速 (dist >= APPROACH_FAR_DIST) — 平地全速 (app 更新 ×2.5)
@@ -125,9 +125,9 @@ class Task3Mission:
         self.UNLOCK_HOLD_GAIN = 7.0       # yaw 誤差 (deg) → wheel-diff 比例 (= DRIVE_WP 同款)
         self.UNLOCK_HOLD_CLAMP = 90.0     # 維持轉向差速上限 (raw):保兩輪都前進、溫和修正不甩出門
 
-        # ---- 推開門 (車身前推) ----
+        # ---- 推開門 (車身前推:壓著 lever 的爪維持下壓,車身連爪一起全速把門撞/推開) ----
         self.CLEAR_PUSH_SEC = 15.0       # 直線前推穿門的時間 (s) — 拉長確保整台車過門
-        self.CLEAR_SPEED = 300.0         # 前推輪速 (平地全速,確保完全穿過門) (app 更新 ×2.5)
+        self.CLEAR_SPEED = 500.0         # 前推輪速 (全速把門撞開;比舊 300 大 → 有衝勁推開門) (app 更新 ×2.5)
 
         # ---- 執行緒狀態 ----
         self._thread = None
@@ -367,21 +367,23 @@ class Task3Mission:
                     time.sleep(self.TICK)
                 self._publish("STOP")
                 print("[Task3] UNLOCK：已到門把正前方 → 抬手 + 下壓 lever")
-                # 2. 抬手臂到 READY (Wrist 177/Finger 閉合/Elbow 8) + 下壓 lever 開門 (不收回,維持壓著穿門,避免門閂彈回)
+                # 2. 抬手臂到 READY (Wrist 177/Finger 閉合/Elbow 8) → 下壓 lever (J0→-75) 解門閂。
+                #    ★壓下後不收回 (不呼叫 knob_retract)★ → 爪維持下壓在 lever 上,接著 CLEAR 全速把門撞/推開,
+                #    爪一路壓著 lever (門閂不彈回),整車衝過門。
                 self.arm_controller.knob_raise()
                 self.arm_controller.knob_press_down()
                 clear_start = time.time()
-                self._transition(self.CLEAR, "下壓開門完成 (不收手) → 車身直行穿門")
+                self._transition(self.CLEAR, "下壓開門完成 (爪維持下壓) → 全速撞開門穿過")
 
-            # ---------------- CLEAR (維持車頭垂直門面直行穿門) ----------------
+            # ---------------- CLEAR (爪維持下壓 lever + 車身全速把門撞/推開,維持垂直穿門) ----------------
             elif self.state == self.CLEAR:
                 clear_elapsed = time.time() - clear_start
                 if clear_elapsed >= self.CLEAR_PUSH_SEC:
                     self._publish("STOP")
                     self._transition(self.DONE, f"門已推開 (前推 {clear_elapsed:.1f}s)")
                 else:
-                    # ★維持車頭垂直門面 (yaw=0) 直行穿門★ (此時爪已抬起擋住門把偵測,故用 pose 維持垂直,
-                    #   不靠 knob 視覺):垂直對著門中心直穿,整車不卡門框。
+                    # 爪維持在下壓姿勢 (knob_press_down 後不再動手臂 → 關節保持 J0=-75 壓著 lever)。
+                    # 車身★全速 CLEAR_SPEED★ 直行把門撞/推開;用 /amcl_pose 維持車頭垂直門面 (yaw=0) → 直穿不卡門框。
                     self._drive_door_axis(self.CLEAR_SPEED)
 
             # ---------------- DONE ----------------
