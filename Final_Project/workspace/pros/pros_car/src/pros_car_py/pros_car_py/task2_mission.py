@@ -177,7 +177,7 @@ class Task2Mission:
                                           #   實測上橋常停在 bridge_dx≈+55 (熊 dx≈+131=車偏左,是真偏移不是 camera 偏置),
                                           #   70 太寬會把這真偏移當雜訊不修 → 車爬偏。設 35 讓它把朝向校回橋中線;
                                           #   增益仍低 (0.35) 故修正溫和、不會像舊版 (gain 0.6) 一路撞牆。爬偏才調大。
-        self.VCLIMB_OBSERVE_DIST = 0.65   # 走近橋上的熊到此距離 (m) 連續 N 幀 → 停下「面向 + 觀察」(OBSERVE)。
+        self.VCLIMB_OBSERVE_DIST = 0.8   # 走近橋上的熊到此距離 (m) 連續 N 幀 → 停下「面向 + 觀察」(OBSERVE)。
                                           #   調小 (0.9→0.65) = 上橋爬更久/更靠近熊才停 (爬到更上面);熊此時仍可見可面向。
         self.VCLIMB_GRIP_DIST = 0.55      # 熊深度 <= 此距離 (m) 連續 N 幀 → 已到熊前 → GRIP (保留;OBSERVE 觸發實際用 OBSERVE_DIST)
         self.VCLIMB_MAX_TRACK_DIST = 4.0  # 只追深度 <= 此距離 (m) 的熊 (判夾取時機用)。深度 -1 (過近觸底) 仍算。
@@ -194,7 +194,11 @@ class Task2Mission:
         # (配合連續 N 幀確認);轉向只吃較穩的 bbox dx。要回簡化版 (純計時爬) → 把 VCLIMB_TRACK_BEAR 設 False。
         self.VCLIMB_TRACK_BEAR = True     # True = 用 bear bbox dx 視覺伺服朝熊開、近+置中即停;False = 舊計時爬
         self.VCLIMB_BEAR_FRONT_PX = 80.0  # 熊 |dx| <= 此值算「在正前方」(配合 near 一起當停止條件;比 OBSERVE 寬,邊走邊收)
-        self.VCLIMB_BEAR_DEADBAND = 30.0  # 追熊轉向死區 (px):|dx| 在此內不轉,防 bbox 抖動亂修
+        # 追熊「專用」較猛的轉向 (比 bridge 中線退路硬):熊偏一邊就大力轉去朝它,不要只滑過去。
+        #   實測:gain 0.35/clamp 0.3/deadband 30 → dx=-110 只轉 ~28,車幾乎直走滑過熊。加大如下。
+        self.VCLIMB_BEAR_GAIN = 0.9       # 追熊轉向增益 (扣 deadband 後 P 控);比 bridge 中線 0.35 大很多 → 真的轉去朝熊
+        self.VCLIMB_BEAR_CLAMP = 0.7      # 追熊 steer 上限 = 此比例×base (0.7×300=210);放大才轉得動大偏差
+        self.VCLIMB_BEAR_DEADBAND = 15.0  # 追熊轉向死區 (px):縮小 30→15,稍微偏就開始修,朝熊對得更準
         self.VCLIMB_TRACK_MAX_SEC = 12.0  # 追熊安全逾時 (s):一直沒判到近+置中也最多爬這麼久 → OBSERVE (兜底)
 
         # ---- OBSERVE：停下面向橋上的熊 + 持住觀察 (Locate & Observe 計分),再進 GRIP ----
@@ -651,8 +655,8 @@ class Task2Mission:
                 # 轉向:看得到熊 (且深度可追) → 朝熊 bbox dx 開;看不到熊 → 退回橋中線 (維持上橋置中);都沒有 → 直走。
                 if t_found and t_dist <= self.VCLIMB_MAX_TRACK_DIST:
                     steer = self._bridge_center_steer(self.VCLIMB_SPEED, t_dx,
-                                                      self.VCLIMB_STEER_GAIN,
-                                                      self.VCLIMB_STEER_CLAMP,
+                                                      self.VCLIMB_BEAR_GAIN,
+                                                      self.VCLIMB_BEAR_CLAMP,
                                                       self.VCLIMB_BEAR_DEADBAND)
                     self._arc(self.VCLIMB_SPEED, steer)
                     steer_str = f"→bear dx={t_dx:+.0f} dist={t_dist:.2f} steer={steer:+.0f}"
