@@ -105,17 +105,21 @@ class Task3Mission:
 
         # ---- 解鎖 (手臂下壓開門 lever press) ----
         # 抬手臂後一路前進「撞上門」的時間 (s),讓爪落在 lever 正上方,再下壓 (門鎖著,撞著不會穿過)。
+        # 前進時★視覺伺服★:依 knob dx 轉向把門把保持在畫面中央 (knob_drive),爪才會正落在 lever 上。
         self.UNLOCK_NUDGE_SEC = 3.0
+        self.UNLOCK_NUDGE_SPEED = 200.0   # UNLOCK 前進撞門的輪速 (raw);慢一點讓視覺置中跟得上
         # 進門前先把車頭對正門軸 (+x = orientation/yaw 0),垂直進門,避免斜著進門卡到門框。
         self.UNLOCK_ALIGN_DEG = 6.0       # 車頭與 +x 夾角 <= 此值算對正
         self.UNLOCK_ALIGN_TIMEOUT = 4.0   # 對正逾時保險 (s):轉不到位也往下走
 
+        # ---- 朝門把視覺伺服 (UNLOCK 撞門 + CLEAR 穿門 共用):依 knob dx 轉向保持門把置中 ----
+        self.KNOB_CENTER_PX = 40.0        # |knob dx| <= 此值算置中 → 直行 (死區,防抖動亂轉)
+        self.KNOB_STEER_GAIN = 0.7        # 轉向比例:steer = gain × dx (knob 偏右 dx>0 → 右轉)
+        self.KNOB_STEER_CLAMP = 140.0     # 轉向差速上限 (raw),避免一次轉太猛甩出門
+
         # ---- 推開門 (車身前推) ----
         self.CLEAR_PUSH_SEC = 15.0       # 直線前推穿門的時間 (s) — 拉長確保整台車過門
         self.CLEAR_SPEED = 300.0         # 前推輪速 (平地全速,確保完全穿過門) (app 更新 ×2.5)
-        # 進門先往右偏一下,讓左輪避開左門框,再直行穿門 (門偏左卡輪用)。
-        self.CLEAR_RIGHT_SEC = 2.0       # CLEAR 前這麼多秒先往右偏 (s),之後直行
-        self.CLEAR_RIGHT_BIAS = 120.0    # 右偏差速 (左輪 +、右輪 −);若偏錯邊就把正負號反過來 (改 -120)
 
         # ---- 執行緒狀態 ----
         self._thread = None
@@ -334,12 +338,16 @@ class Task3Mission:
                 print(f"[Task3] UNLOCK：車頭已對正門軸 (+x, |ang|<={self.UNLOCK_ALIGN_DEG:.0f}°)")
                 # 1. 抬手臂到 READY (Wrist 177/Finger 閉合/Elbow 8),爪移到門把上方
                 self.arm_controller.knob_raise()
-                # 2. 抬手後一路前進到門口 (撞上門),讓爪落在 lever 正上方
+                # 2. 抬手後一路前進到門口 (撞上門),★視覺伺服★ 依 knob dx 轉向把門把保持畫面中央,
+                #    爪才會正落在 lever 正上方;門把離框 (太近被遮/掉框) → 直行。
                 nudge_start = time.time()
                 while time.time() - nudge_start < self.UNLOCK_NUDGE_SEC:
                     if stop_event.is_set():
                         break
-                    self._publish("FORWARD_SLOW")
+                    info = self.data_processor.get_knob_target_info()
+                    k_found = bool(info and info[0] > 0.5)
+                    k_dx = info[2] if info else 0.0
+                    self._knob_drive(self.UNLOCK_NUDGE_SPEED, k_found, k_dx)
                     time.sleep(self.TICK)
                 self._publish("STOP")
                 # 3. 下壓 lever → 解門閂 (壓下後「不收回」,維持壓著直接穿門,避免門閂彈回)
@@ -347,23 +355,19 @@ class Task3Mission:
                 clear_start = time.time()
                 self._transition(self.CLEAR, "下壓開門完成 (不收手) → 車身直行穿門")
 
-            # ---------------- CLEAR (先右偏避開門框 → 直行穿門) ----------------
+            # ---------------- CLEAR (朝門把視覺伺服直行穿門:門把保持畫面中央) ----------------
             elif self.state == self.CLEAR:
                 clear_elapsed = time.time() - clear_start
                 if clear_elapsed >= self.CLEAR_PUSH_SEC:
                     self._publish("STOP")
                     self._transition(self.DONE, f"門已推開 (前推 {clear_elapsed:.1f}s)")
-                elif clear_elapsed < self.CLEAR_RIGHT_SEC:
-                    # 先往右偏 (左輪快、右輪慢 → 車身右移) 讓左輪避開左門框
-                    left = self.CLEAR_SPEED + self.CLEAR_RIGHT_BIAS
-                    right = self.CLEAR_SPEED - self.CLEAR_RIGHT_BIAS
-                    self.ros_communicator.publish_raw_car_control([left, right, left, right])
                 else:
-                    # 右偏完成 → 直行穿門
-                    self.ros_communicator.publish_raw_car_control(
-                        [self.CLEAR_SPEED, self.CLEAR_SPEED,
-                         self.CLEAR_SPEED, self.CLEAR_SPEED]
-                    )
+                    # ★視覺伺服★ 依 knob dx 轉向把門把保持畫面中央 → 對著門中心直穿,不卡門框;
+                    #   門把掉框 (穿門時太近/被門遮) → 直行。
+                    info = self.data_processor.get_knob_target_info()
+                    k_found = bool(info and info[0] > 0.5)
+                    k_dx = info[2] if info else 0.0
+                    self._knob_drive(self.CLEAR_SPEED, k_found, k_dx)
 
             # ---------------- DONE ----------------
             elif self.state == self.DONE:
@@ -383,6 +387,20 @@ class Task3Mission:
         old = self.state
         self.state = new_state
         print(f"[Task3] {old} → {new_state}  ({reason})")
+
+    def _knob_drive(self, base, k_found, k_dx):
+        """前進並依 knob dx 視覺伺服轉向,把門把保持在畫面中央。
+        knob 偏右 (dx>0) → 右轉 (左輪快/右輪慢);|dx| 在死區內 或 門把不在框 → 直行。
+        UNLOCK 撞門 + CLEAR 穿門共用,確保壓桿/穿門時門把都對著畫面中心。"""
+        if k_found and abs(k_dx) > self.KNOB_CENTER_PX:
+            steer = self.KNOB_STEER_GAIN * k_dx
+            steer = max(-self.KNOB_STEER_CLAMP, min(self.KNOB_STEER_CLAMP, steer))
+        else:
+            steer = 0.0
+        left = base + steer
+        right = base - steer
+        self.ros_communicator.publish_raw_car_control([left, right, left, right])
+        return steer
 
     def _dbg_line(self, tick, found, dist, dx):
         if not self.DEBUG or tick % self.DBG_EVERY != 0:
