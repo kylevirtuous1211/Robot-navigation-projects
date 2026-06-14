@@ -60,6 +60,7 @@ class Task2Mission:
     GRIP = "GRIP"                         # 前推 + 關爪夾起
     SNAP_DESCEND = "SNAP_DESCEND"         # 夾完以「前方路面」對正 (朝下對側直),再下坡
     DESCEND = "DESCEND"                   # 夾住後沿路面中線過 fat 頂、下階梯到平地
+    RECOVER_BACK = "RECOVER_BACK"         # 下橋後:開爪+bulldozer → 倒退看到熊 → OBSERVE+夾 (補抓)
     RETURN = "RETURN"
     DONE = "DONE"
 
@@ -180,7 +181,7 @@ class Task2Mission:
                                           #   設嚴一點 (0.7),避免在 ~1m「熊掉出鏡頭」就誤判到位 (爪只構得到 ~0.2m)。
         self.VCLIMB_REACH_LOST = 10       # 靠近後連續看不到熊這麼多幀 (~1.0s) → GRIP
         self.VCLIMB_TIMEOUT = 6.0        # (簡化版未用) 舊複雜邏輯的過橋逾時。
-        self.VCLIMB_CLIMB_SEC = 3.0      # ★簡化版★:全速沿橋中線爬這麼多秒 → 直接 OBSERVE (測試用,移除追熊 handoff)。
+        self.VCLIMB_CLIMB_SEC = 4.0      # ★簡化版★:全速沿橋中線爬這麼多秒 → 直接 OBSERVE (測試用,移除追熊 handoff)。
         # (移除 bear 深度卡死偵測:橋上 bear 深度常凍在 ~1m 不隨車前進而變,會誤判卡死、亂倒退浪費過橋時間。
         #  改靠 full thrust + bridge 中線轉向 open-loop 過橋;真的物理卡死就靠 VCLIMB_TIMEOUT 兜底。)
 
@@ -195,7 +196,7 @@ class Task2Mission:
 
         # ---- GRIP：到頂/過橋後,前頂一段把熊鏟進低位開爪中 + 關爪夾起 (爪已在 VISUAL_CLIMB 降下且全程開著) ----
         self.GRIP_PRESS_SPEED = 300.0     # 關爪前的前頂輪速 (full thrust;坡頂要更大力頂得動、把熊鏟進爪);0=純煞停 (app 更新 ×2.5)
-        self.GRIP_PRESS_SEC = 3.0         # 關爪前先前頂這麼久 (s):熊掉出鏡頭時常在爪前 ~0.8m,需多頂一段才鏟進爪
+        self.GRIP_PRESS_SEC = 2.0         # 關爪前先前頂這麼久 (s):熊掉出鏡頭時常在爪前 ~0.8m,需多頂一段才鏟進爪
 
         # ---- SNAP_DESCEND：夾完後以「前方路面 (road_info delta_x)」對正,朝下對側直,再 DESCEND ----
         # 橋上 /amcl_pose 會凍,不能用 yaw;改用穩定可見的路面質心 (r_dx→0=朝正前方下坡方向) 原地轉對正。
@@ -214,6 +215,11 @@ class Task2Mission:
         self.DESCEND_ROAD_AREA = 0.55     # 路面 area_frac >= 此值 → 路面占滿畫面=已下到地面 → 結束。
                                           #   坡頂看遠處路面只 ~0.33,故設高 (~0.55);用 log 的 road_area 頂/底值微調。
         self.DESCEND_DONE_CONFIRM = 5     # 連續 N 幀滿足「到底」條件才結束 (濾 segmentation 抖動)
+
+        # ---- 下橋後補抓 (RECOVER):開爪+bulldozer → 倒退看到熊 → 重用 OBSERVE+GRIP → RETURN ----
+        # 熊常在橋上沒夾到、被推下橋;下橋後在平地補抓比在斜坡夾可靠。下橋一律執行此補抓。
+        self.RECOVER_BACK_SEC = 2.0       # 下橋後倒退這麼久 (s),讓剛帶下橋的熊進入視野/車前
+        self.RECOVER_BACK_SPEED = 200.0   # 倒退輪速 (raw;[-spd]*4 = 直線後退)
         self.DESCEND_STEER_GAIN = 0.35    # 沿路面中線置中的差速增益 (扣 BRIDGE_DX_DEADBAND 後 P 控,= VCLIMB 同款)
         self.DESCEND_STEER_CLAMP = 0.3    # steer 夾在 ±此比例*base
 
@@ -322,6 +328,10 @@ class Task2Mission:
         descend_entry_time = 0.0
         descend_dbg = 0
         descend_done_streak = 0              # 連續滿足「路面占滿畫面 (到地面)」條件的幀數
+        # RECOVER 狀態 (下橋後補抓)
+        in_recovery = False                  # True → GRIP 夾完走 RETURN (而非 SNAP_DESCEND)
+        recover_prepared = False             # RECOVER_BACK 只開爪降臂一次
+        recover_back_entry = 0.0
         # RETURN 狀態
         return_wp_idx = 0                    # 當前繞行 waypoint index (>= len(RETURN_WAYPOINTS) → 直線回起點)
         return_stuck_anchor = None           # 繞行卡死偵測基準位置 (只在 arc 直行段計,轉向段不算)
@@ -629,10 +639,19 @@ class Task2Mission:
                 print("[Task2] GRIP：關爪夾住 bear + 抬起搬運")
                 self.arm_controller.scoop_grab()   # 阻塞：關爪 + 等黏合 + 抬起
                 self._publish("STOP")
-                snap_descend_entry = time.time()
-                snap_road_streak = 0
-                snap_descend_dbg = 0
-                self._transition(self.SNAP_DESCEND, "夾取完成 → 以前方路面對正 (朝下對側直)")
+                if in_recovery:
+                    # 下橋補抓夾完 → 直接返航 (不再下橋)
+                    if self.start_pose is not None:
+                        print(f"[Task2] RETURN 目標(起點) = {self.start_pose}")
+                    self._return_entry_time = time.time()
+                    self._arrive_streak = 0
+                    self._return_dbg = 0
+                    self._transition(self.RETURN, "下橋補抓夾取完成 → 位姿式返航")
+                else:
+                    snap_descend_entry = time.time()
+                    snap_road_streak = 0
+                    snap_descend_dbg = 0
+                    self._transition(self.SNAP_DESCEND, "夾取完成 → 以前方路面對正 (朝下對側直)")
 
             # ---------------- SNAP_DESCEND (夾完以「前方路面」對正朝向,再下坡;橋上 pose 凍,不用 yaw) ----------------
             elif self.state == self.SNAP_DESCEND:
@@ -681,18 +700,16 @@ class Task2Mission:
             elif self.state == self.DESCEND:
                 elapsed = time.time() - descend_entry_time
 
-                def _to_return(reason):
+                def _to_recover(reason):
+                    # 下橋結束 → 一律進補抓 (RECOVER_BACK):開爪倒退看到熊再夾,比斜坡上夾可靠。
+                    nonlocal in_recovery
                     self._publish("STOP")
-                    if self.start_pose is not None:
-                        print(f"[Task2] RETURN 目標(起點) = {self.start_pose}")
-                    self._return_entry_time = time.time()
-                    self._arrive_streak = 0
-                    self._return_dbg = 0
-                    self._transition(self.RETURN, reason)
+                    in_recovery = True
+                    self._transition(self.RECOVER_BACK, reason)
 
-                # 兜底逾時:視覺沒判到底也最多前進這麼久 → RETURN
+                # 兜底逾時:視覺沒判到底也最多前進這麼久 → 補抓
                 if elapsed > self.DESCEND_MAX_SEC:
-                    _to_return("下坡逾時 (MAX_SEC) → 位姿式返航")
+                    _to_recover("下坡逾時 (MAX_SEC) → 下橋補抓")
                     continue
                 # 到底判定 (過 commit 窗後才允許):路面占滿畫面 (area_frac 高) = 已下到地面,連續 N 幀 → RETURN。
                 #   坡頂就看得到遠處路面 (~0.33),故門檻拉高 (~0.55),才不會在 fat part 上就誤判到底卡死。
@@ -702,7 +719,7 @@ class Task2Mission:
                     else:
                         descend_done_streak = 0
                     if descend_done_streak >= self.DESCEND_DONE_CONFIRM:
-                        _to_return("路面占滿畫面 (已下到地面) → 位姿式返航")
+                        _to_recover("路面占滿畫面 (已下到地面) → 下橋補抓")
                         continue
 
                 # 全速衝過 fat part + 下階梯 (不減速,避免卡在坡頂的階差)。轉向基準:優先沿「橋面中線 (b_dx,= 上橋同款)」
@@ -726,6 +743,24 @@ class Task2Mission:
                     print(f"[Task2] DESCEND t={elapsed:.1f}/{self.DESCEND_MAX_SEC:.0f}s base={base:.0f} "
                           f"bridge(F={int(b_found)} dx={b_dx:+.0f}) road(F={int(r_found)} area={r_area:.3f}) "
                           f"done={descend_done_streak}/{self.DESCEND_DONE_CONFIRM} → {ds}")
+
+            # ---------------- RECOVER_BACK (下橋補抓:開爪+bulldozer → 倒退看到熊 → OBSERVE+夾) ----------------
+            elif self.state == self.RECOVER_BACK:
+                # 1) 開爪 + 降到 bulldozer 鏟取低位 (阻塞一次);若橋上有夾到,開爪會把熊放到車前。
+                if not recover_prepared:
+                    self._publish("STOP")
+                    print("[Task2] RECOVER：開爪 + 降到 bulldozer 鏟取位 ...")
+                    self.arm_controller.scoop_pose()   # 阻塞:降臂 + 開爪
+                    recover_prepared = True
+                    recover_back_entry = time.time()
+                # 2) 倒退一小段,讓剛帶下橋的熊進入車前視野。
+                if time.time() - recover_back_entry < self.RECOVER_BACK_SEC:
+                    self.ros_communicator.publish_raw_car_control([-self.RECOVER_BACK_SPEED] * 4)
+                else:
+                    # 3) → 重用 OBSERVE (面向最近的熊) → GRIP (前頂+關爪);GRIP 因 in_recovery → RETURN。
+                    self._publish("STOP")
+                    observe_entry = time.time(); observe_centered = False
+                    self._transition(self.OBSERVE, "倒退完成 → 面向最近的熊再夾 (下橋補抓)")
 
             # ---------------- RETURN (繞行 waypoints 繞過橋 → 直線回起點) ----------------
             elif self.state == self.RETURN:
