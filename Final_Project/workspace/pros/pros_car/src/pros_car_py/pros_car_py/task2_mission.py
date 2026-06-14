@@ -209,12 +209,15 @@ class Task2Mission:
         # 沿「路面 (road_info delta_x)」中線持續前進 (橋面看下對側階梯時偵測不到,road 才穩);全速衝過 fat part + 下階梯。
         # 結束條件:「路面占滿畫面 (area_frac >= DESCEND_ROAD_AREA)」才算真的下到地面 —— 坡頂就看得到遠處路面 (~0.33),
         # 故門檻要拉高 (~0.55),否則會在 fat part 上就誤判到底、停住卡死。MIN_SEC 前不可結束,MAX_SEC 兜底。
-        self.DESCEND_MIN_SEC = 4.0        # commit 窗 (s):此前全速衝過 fat part + 階梯,視覺尚不可結束 (防坡頂誤判)
-        self.DESCEND_MAX_SEC = 9.0        # 結束逾時 (s):實測 ~8s 已下到地面;下坡時 road/bridge mask 偵測不穩、
-                                          #   road-fill 判底常失效,故縮短到 9s 當主要結束依據 → RETURN。
-        self.DESCEND_ROAD_AREA = 0.55     # 路面 area_frac >= 此值 → 路面占滿畫面=已下到地面 → 結束。
-                                          #   坡頂看遠處路面只 ~0.33,故設高 (~0.55);用 log 的 road_area 頂/底值微調。
-        self.DESCEND_DONE_CONFIRM = 5     # 連續 N 幀滿足「到底」條件才結束 (濾 segmentation 抖動)
+        self.DESCEND_MIN_SEC = 2.0        # commit 窗 (s):此前全速衝過 fat part + 階梯,視覺尚不可結束 (防坡頂誤判)。
+                                          #   實測下坡只 ~2-3s,故縮短 4→2。
+        self.DESCEND_MAX_SEC = 5.0        # 結束逾時 (s) 兜底:實測 ~2-3s 已下到地面,9s 太久 → 縮到 5s。
+        self.DESCEND_ROAD_AREA = 0.55     # 路面 area_frac >= 此值 → 路面占滿畫面=已下到地面 → 結束 (備用)。
+                                          #   實測下坡時 road mask 反而會掉到 0 (不會占滿),故此判底常失效。
+        self.DESCEND_DONE_CONFIRM = 5     # 連續 N 幀滿足「road 占滿」條件才結束 (濾 segmentation 抖動)
+        # ★主要結束依據★:下橋後 bridge+road 兩個 mask 都偵測不到 (F=0) 並持續 → 已駛離橋/階梯到平地。
+        #   實測 road area 0.24→0.17→0 後一直 0,正是「離開橋面」的訊號。MIN_SEC 後才允許,過此連續 N 幀 → 結束。
+        self.DESCEND_LOST_CONFIRM = 8     # 連續 N 幀 bridge+road 皆 F=0 (~0.8s) → 判定已離橋到平地 → 結束
 
         # ---- 下橋後補抓 (RECOVER):開爪+bulldozer → 倒退看到熊 → 重用 OBSERVE+GRIP → RETURN ----
         # 熊常在橋上沒夾到、被推下橋;下橋後在平地補抓比在斜坡夾可靠。下橋一律執行此補抓。
@@ -328,6 +331,7 @@ class Task2Mission:
         descend_entry_time = 0.0
         descend_dbg = 0
         descend_done_streak = 0              # 連續滿足「路面占滿畫面 (到地面)」條件的幀數
+        descend_lost_streak = 0              # 連續 bridge+road 皆 F=0 的幀數 (→ 已離橋到平地)
         # RECOVER 狀態 (下橋後補抓)
         in_recovery = False                  # True → GRIP 夾完走 RETURN (而非 SNAP_DESCEND)
         recover_prepared = False             # RECOVER_BACK 只開爪降臂一次
@@ -656,11 +660,12 @@ class Task2Mission:
             # ---------------- SNAP_DESCEND (夾完以「前方路面」對正朝向,再下坡;橋上 pose 凍,不用 yaw) ----------------
             elif self.state == self.SNAP_DESCEND:
                 def _to_descend(reason):
-                    nonlocal descend_entry_time, descend_dbg, descend_done_streak
+                    nonlocal descend_entry_time, descend_dbg, descend_done_streak, descend_lost_streak
                     self._publish("STOP")
                     descend_entry_time = time.time()
                     descend_dbg = 0
                     descend_done_streak = 0
+                    descend_lost_streak = 0
                     self._transition(self.DESCEND, reason)
 
                 if time.time() - snap_descend_entry > self.SNAP_DESCEND_TIMEOUT:
@@ -714,6 +719,15 @@ class Task2Mission:
                 # 到底判定 (過 commit 窗後才允許):路面占滿畫面 (area_frac 高) = 已下到地面,連續 N 幀 → RETURN。
                 #   坡頂就看得到遠處路面 (~0.33),故門檻拉高 (~0.55),才不會在 fat part 上就誤判到底卡死。
                 if elapsed > self.DESCEND_MIN_SEC:
+                    # ★主要判底★:bridge+road 兩個 mask 都偵測不到並持續 → 已駛離橋/階梯到平地 → 結束。
+                    if not b_found and not r_found:
+                        descend_lost_streak += 1
+                    else:
+                        descend_lost_streak = 0
+                    if descend_lost_streak >= self.DESCEND_LOST_CONFIRM:
+                        _to_recover("橋+路面 mask 皆消失 (已離橋到平地) → 下橋補抓")
+                        continue
+                    # 備用判底:路面占滿畫面 (實測常失效,但保留)。
                     if r_found and r_area >= self.DESCEND_ROAD_AREA:
                         descend_done_streak += 1
                     else:
@@ -742,6 +756,7 @@ class Task2Mission:
                 if descend_dbg % 10 == 1:
                     print(f"[Task2] DESCEND t={elapsed:.1f}/{self.DESCEND_MAX_SEC:.0f}s base={base:.0f} "
                           f"bridge(F={int(b_found)} dx={b_dx:+.0f}) road(F={int(r_found)} area={r_area:.3f}) "
+                          f"lost={descend_lost_streak}/{self.DESCEND_LOST_CONFIRM} "
                           f"done={descend_done_streak}/{self.DESCEND_DONE_CONFIRM} → {ds}")
 
             # ---------------- RECOVER_BACK (下橋補抓:開爪+bulldozer → 倒退看到熊 → OBSERVE+夾) ----------------
