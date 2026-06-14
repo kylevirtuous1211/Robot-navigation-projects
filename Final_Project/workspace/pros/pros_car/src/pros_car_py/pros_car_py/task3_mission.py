@@ -80,6 +80,9 @@ class Task3Mission:
             [2.0,  1.5,  0.20],
             [2.0,  1.69, 0.15],
             [2.5,  1.69, 0.15],
+            [2.6,  1.69, 0.12],
+            [2.7,  1.69, 0.12],
+            [2.8,  1.69, 0.12],
             [2.9,  1.69, 0.12],   # 門把 (3.3,1.69) 前 ~0.4m → 交給視覺 dock / 壓桿
         ]
         # DRIVE_WP 行進參數 (沿用 Task2 BRIDGE_APPROACH 調好的值)
@@ -104,25 +107,19 @@ class Task3Mission:
         self.OBSERVE_SECONDS = 5.5       # 靜止觀察時間 (>5s 才拿分，留裕度)
 
         # ---- 解鎖 (手臂下壓開門 lever press) ----
-        # 抬手臂後一路前進「撞上門」的時間 (s),讓爪落在 lever 正上方,再下壓 (門鎖著,撞著不會穿過)。
-        # 前進時★視覺伺服★:依 knob dx 轉向把門把保持在畫面中央 (knob_drive),爪才會正落在 lever 上。
+        # 趴到門把前 (arm 收著=門把可見) → 抬手 → 下壓 lever。進門/穿門全程★維持車頭垂直門面★ (對齊門軸 +x, yaw=0),
+        # 垂直撞門,爪才正對 lever 壓得到。(不用 knob dx 轉向置中 —— 門把橫向偏時那會把車轉成斜的,爪斜著撞門壓不到 lever。
+        #  橫向對齊靠 WAYPOINTS 末點停在門把同一 y;殘餘小偏移由垂直直行吸收。)
         self.UNLOCK_NUDGE_SEC = 3.0       # 趴到門把前的前進上限 (s);到門把很近 / 撞到門 會提早停
-        self.UNLOCK_NUDGE_SPEED = 200.0   # UNLOCK 前進撞門的輪速 (raw);慢一點讓視覺置中跟得上
+        self.UNLOCK_NUDGE_SPEED = 200.0   # 趴門前進輪速 (raw);慢一點好維持垂直
         self.UNLOCK_DOCK_DIST = 0.30      # ★arm 收著時★門把深度 <= 此值 → 已到門把正前方 → 停 (再抬手壓桿)。
                                           #   設小:確保夠近 (爪夠得到 lever);若還沒到門就停就調大,壓不到 lever 就調小。
         # 進門前先把車頭對正門軸 (+x = orientation/yaw 0),垂直進門,避免斜著進門卡到門框。
         self.UNLOCK_ALIGN_DEG = 6.0       # 車頭與 +x 夾角 <= 此值算對正
         self.UNLOCK_ALIGN_TIMEOUT = 4.0   # 對正逾時保險 (s):轉不到位也往下走
-
-        # ---- 進門前「精準把門把轉到畫面正中」(原地轉,直行後門把就在中央) ----
-        self.KNOB_ALIGN_PX = 15.0         # |knob dx| <= 此值算「已對準正中」(緊;比 APPROACH/servo 嚴)
-        self.KNOB_ALIGN_TIMEOUT = 4.0     # 對準逾時保險 (s):轉不到位也往下走 (避免空轉)
-        self.KNOB_ALIGN_CONFIRM = 3       # 連續 N 幀置中才算對準 (濾 bbox 抖動,對得更實)
-
-        # ---- 朝門把視覺伺服 (UNLOCK 撞門 + CLEAR 穿門 共用):依 knob dx 轉向保持門把置中 ----
-        self.KNOB_CENTER_PX = 20.0        # |knob dx| <= 此值算置中 → 直行 (死區收緊 40→20,直行時門把更貼中央)
-        self.KNOB_STEER_GAIN = 0.7        # 轉向比例:steer = gain × dx (knob 偏右 dx>0 → 右轉)
-        self.KNOB_STEER_CLAMP = 140.0     # 轉向差速上限 (raw),避免一次轉太猛甩出門
+        # 趴門/穿門時用 /amcl_pose 維持車頭垂直門面 (yaw=0) 的轉向修正 (直行 + 弱 yaw 修正,不靠 knob dx)。
+        self.UNLOCK_HOLD_GAIN = 7.0       # yaw 誤差 (deg) → wheel-diff 比例 (= DRIVE_WP 同款)
+        self.UNLOCK_HOLD_CLAMP = 90.0     # 維持轉向差速上限 (raw):保兩輪都前進、溫和修正不甩出門
 
         # ---- 推開門 (車身前推) ----
         self.CLEAR_PUSH_SEC = 15.0       # 直線前推穿門的時間 (s) — 拉長確保整台車過門
@@ -343,37 +340,10 @@ class Task3Mission:
                                   else "CLOCKWISE_ROTATION_SLOW")
                     time.sleep(self.TICK)
                 self._publish("STOP")
-                print(f"[Task3] UNLOCK：車頭已對正門軸 (+x, |ang|<={self.UNLOCK_ALIGN_DEG:.0f}°)")
-                # 0.5 ★精準把門把轉到畫面正中★:原地轉直到 |knob dx| <= KNOB_ALIGN_PX 連續 N 幀 (arm 還收著=門把清楚)。
-                #     對準後直行,門把就會一直在畫面中央 → 爪正落 lever、整車對著門中心穿過。
-                kc_start = time.time()
-                kc_streak = 0
-                while time.time() - kc_start < self.KNOB_ALIGN_TIMEOUT:
-                    if stop_event.is_set():
-                        break
-                    info = self.data_processor.get_knob_target_info()
-                    if not (info and info[0] > 0.5):
-                        kc_streak = 0
-                        self._publish("STOP")          # 門把暫時掉框 → 原地等,不亂轉
-                        time.sleep(self.TICK)
-                        continue
-                    k_dx = info[2]
-                    if abs(k_dx) <= self.KNOB_ALIGN_PX:
-                        kc_streak += 1
-                        self._publish("STOP")
-                        if kc_streak >= self.KNOB_ALIGN_CONFIRM:
-                            break
-                    else:
-                        kc_streak = 0
-                        # knob 偏右 (dx>0) → 順時針 (右轉) 把它轉回正中 (與 _knob_drive / APPROACH 同慣例)
-                        self._publish("CLOCKWISE_ROTATION_SLOW" if k_dx > 0
-                                      else "COUNTERCLOCKWISE_ROTATION_SLOW")
-                    time.sleep(self.TICK)
-                self._publish("STOP")
-                print(f"[Task3] UNLOCK：門把已置中 (|dx|<={self.KNOB_ALIGN_PX:.0f}px) → 直行趴到門把前")
-                # 1. ★趴到門把正前方 (arm 仍收著 = 門把清楚可見)★:視覺伺服直行,門把保持畫面中央,
+                print(f"[Task3] UNLOCK：車頭已對正門軸 (+x, |ang|<={self.UNLOCK_ALIGN_DEG:.0f}°) → 垂直直行趴到門把前")
+                # 1. ★趴到門把正前方 (arm 仍收著 = 門把清楚可見)★:★維持車頭垂直門面 (yaw=0) 直行★ (不靠 knob dx 轉向,
+                #    否則門把橫向偏時車會轉成斜的、爪斜著撞門壓不到 lever)。橫向對齊靠 WAYPOINTS;殘餘偏移由垂直直行吸收。
                 #    開到門把很近 (dist <= UNLOCK_DOCK_DIST) 或「曾靠近後掉框=撞到門/門把進爪下」或逾時 → 停。
-                #    定位都在 arm 收著時完成 —— 抬手後爪會擋住門把 (偵測掉框),故先趴好位置再抬手。
                 nudge_start = time.time()
                 k_was_close = False
                 while time.time() - nudge_start < self.UNLOCK_NUDGE_SEC:
@@ -382,14 +352,13 @@ class Task3Mission:
                     info = self.data_processor.get_knob_target_info()
                     k_found = bool(info and info[0] > 0.5)
                     k_dist = info[1] if info else 0.0
-                    k_dx = info[2] if info else 0.0
                     if k_found and 0.0 < k_dist <= self.UNLOCK_DOCK_DIST:
                         break                      # 到門把正前方 → 停
                     if k_was_close and not k_found:
                         break                      # 曾靠近後掉框 = 已撞到門/門把在爪下 → 到位
                     if k_found and 0.0 < k_dist <= self.UNLOCK_DOCK_DIST * 1.6:
                         k_was_close = True
-                    self._knob_drive(self.UNLOCK_NUDGE_SPEED, k_found, k_dx)
+                    self._drive_door_axis(self.UNLOCK_NUDGE_SPEED)   # 維持垂直直行
                     time.sleep(self.TICK)
                 self._publish("STOP")
                 print("[Task3] UNLOCK：已到門把正前方 → 抬手 + 下壓 lever")
@@ -399,19 +368,16 @@ class Task3Mission:
                 clear_start = time.time()
                 self._transition(self.CLEAR, "下壓開門完成 (不收手) → 車身直行穿門")
 
-            # ---------------- CLEAR (朝門把視覺伺服直行穿門:門把保持畫面中央) ----------------
+            # ---------------- CLEAR (維持車頭垂直門面直行穿門) ----------------
             elif self.state == self.CLEAR:
                 clear_elapsed = time.time() - clear_start
                 if clear_elapsed >= self.CLEAR_PUSH_SEC:
                     self._publish("STOP")
                     self._transition(self.DONE, f"門已推開 (前推 {clear_elapsed:.1f}s)")
                 else:
-                    # ★視覺伺服★ 依 knob dx 轉向把門把保持畫面中央 → 對著門中心直穿,不卡門框;
-                    #   門把掉框 (穿門時太近/被門遮) → 直行。
-                    info = self.data_processor.get_knob_target_info()
-                    k_found = bool(info and info[0] > 0.5)
-                    k_dx = info[2] if info else 0.0
-                    self._knob_drive(self.CLEAR_SPEED, k_found, k_dx)
+                    # ★維持車頭垂直門面 (yaw=0) 直行穿門★ (此時爪已抬起擋住門把偵測,故用 pose 維持垂直,
+                    #   不靠 knob 視覺):垂直對著門中心直穿,整車不卡門框。
+                    self._drive_door_axis(self.CLEAR_SPEED)
 
             # ---------------- DONE ----------------
             elif self.state == self.DONE:
@@ -432,19 +398,23 @@ class Task3Mission:
         self.state = new_state
         print(f"[Task3] {old} → {new_state}  ({reason})")
 
-    def _knob_drive(self, base, k_found, k_dx):
-        """前進並依 knob dx 視覺伺服轉向,把門把保持在畫面中央。
-        knob 偏右 (dx>0) → 右轉 (左輪快/右輪慢);|dx| 在死區內 或 門把不在框 → 直行。
-        UNLOCK 撞門 + CLEAR 穿門共用,確保壓桿/穿門時門把都對著畫面中心。"""
-        if k_found and abs(k_dx) > self.KNOB_CENTER_PX:
-            steer = self.KNOB_STEER_GAIN * k_dx
-            steer = max(-self.KNOB_STEER_CLAMP, min(self.KNOB_STEER_CLAMP, steer))
-        else:
-            steer = 0.0
-        left = base + steer
-        right = base - steer
+    def _drive_door_axis(self, base):
+        """前進並用 /amcl_pose 維持車頭「垂直門面」(對齊門軸 +x, yaw=0):垂直撞門/穿門,
+        爪正對 lever 壓得到、整車不卡門框。轉向只做弱 yaw 修正 (不靠 knob dx,避免門把橫向偏時把車轉斜)。
+        UNLOCK 趴門 + CLEAR 穿門共用。取不到 pose → 純直行。"""
+        pose_msg = self.ros_communicator.get_latest_amcl_pose()
+        turn = 0.0
+        if pose_msg is not None:
+            p = pose_msg.pose.pose.position
+            o = pose_msg.pose.pose.orientation
+            # 車頭與門軸 +x 的夾角 (deg);ang>0 → 車偏右需左修 (= DRIVE_WP 同款 arc 慣例)
+            ang = calculate_angle_point(o.z, o.w, [p.x, p.y], [p.x + 1.0, p.y])
+            turn = self.UNLOCK_HOLD_GAIN * ang
+            turn = max(-self.UNLOCK_HOLD_CLAMP, min(self.UNLOCK_HOLD_CLAMP, turn))
+        left = base - turn
+        right = base + turn
         self.ros_communicator.publish_raw_car_control([left, right, left, right])
-        return steer
+        return turn
 
     def _dbg_line(self, tick, found, dist, dx):
         if not self.DEBUG or tick % self.DBG_EVERY != 0:
