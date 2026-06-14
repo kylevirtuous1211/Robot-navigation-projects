@@ -113,6 +113,9 @@ class Task3Mission:
         # ---- 推開門 (車身前推) ----
         self.CLEAR_PUSH_SEC = 15.0       # 直線前推穿門的時間 (s) — 拉長確保整台車過門
         self.CLEAR_SPEED = 300.0         # 前推輪速 (平地全速,確保完全穿過門) (app 更新 ×2.5)
+        # 進門先往右偏一下,讓左輪避開左門框,再直行穿門 (門偏左卡輪用)。
+        self.CLEAR_RIGHT_SEC = 2.0       # CLEAR 前這麼多秒先往右偏 (s),之後直行
+        self.CLEAR_RIGHT_BIAS = 120.0    # 右偏差速 (左輪 +、右輪 −);若偏錯邊就把正負號反過來 (改 -120)
 
         # ---- 執行緒狀態 ----
         self._thread = None
@@ -344,13 +347,19 @@ class Task3Mission:
                 clear_start = time.time()
                 self._transition(self.CLEAR, "下壓開門完成 (不收手) → 車身直行穿門")
 
-            # ---------------- CLEAR (車身前推把門推開) ----------------
+            # ---------------- CLEAR (先右偏避開門框 → 直行穿門) ----------------
             elif self.state == self.CLEAR:
                 clear_elapsed = time.time() - clear_start
                 if clear_elapsed >= self.CLEAR_PUSH_SEC:
                     self._publish("STOP")
                     self._transition(self.DONE, f"門已推開 (前推 {clear_elapsed:.1f}s)")
+                elif clear_elapsed < self.CLEAR_RIGHT_SEC:
+                    # 先往右偏 (左輪快、右輪慢 → 車身右移) 讓左輪避開左門框
+                    left = self.CLEAR_SPEED + self.CLEAR_RIGHT_BIAS
+                    right = self.CLEAR_SPEED - self.CLEAR_RIGHT_BIAS
+                    self.ros_communicator.publish_raw_car_control([left, right, left, right])
                 else:
+                    # 右偏完成 → 直行穿門
                     self.ros_communicator.publish_raw_car_control(
                         [self.CLEAR_SPEED, self.CLEAR_SPEED,
                          self.CLEAR_SPEED, self.CLEAR_SPEED]
