@@ -195,7 +195,7 @@ class Task2Mission:
         self.OBSERVE_FACE_TIMEOUT = 10.0  # 對中熊逾時保險 (s):放寬 6→10,給足時間真的轉到熊置中再持住
 
         # ---- GRIP：到頂/過橋後,前頂一段把熊鏟進低位開爪中 + 關爪夾起 (爪已在 VISUAL_CLIMB 降下且全程開著) ----
-        self.GRIP_PRESS_SPEED = 300.0     # 關爪前的前頂輪速 (full thrust;坡頂要更大力頂得動、把熊鏟進爪);0=純煞停 (app 更新 ×2.5)
+        self.GRIP_PRESS_SPEED = 150.0     # 關爪前的前頂輪速 (full thrust;坡頂要更大力頂得動、把熊鏟進爪);0=純煞停 (app 更新 ×2.5)
         self.GRIP_PRESS_SEC = 2.0         # 關爪前先前頂這麼久 (s):熊掉出鏡頭時常在爪前 ~0.8m,需多頂一段才鏟進爪
 
         # ---- SNAP_DESCEND：夾完後以「前方路面 (road_info delta_x)」對正,朝下對側直,再 DESCEND ----
@@ -209,7 +209,7 @@ class Task2Mission:
         # 沿「路面 (road_info delta_x)」中線持續前進 (橋面看下對側階梯時偵測不到,road 才穩);全速衝過 fat part + 下階梯。
         # 結束條件:「路面占滿畫面 (area_frac >= DESCEND_ROAD_AREA)」才算真的下到地面 —— 坡頂就看得到遠處路面 (~0.33),
         # 故門檻要拉高 (~0.55),否則會在 fat part 上就誤判到底、停住卡死。MIN_SEC 前不可結束,MAX_SEC 兜底。
-        self.DESCEND_MIN_SEC = 2.0        # commit 窗 (s):此前全速衝過 fat part + 階梯,視覺尚不可結束 (防坡頂誤判)。
+        self.DESCEND_MIN_SEC = 0.5        # commit 窗 (s):此前全速衝過 fat part + 階梯,視覺尚不可結束 (防坡頂誤判)。
                                           #   實測下坡只 ~2-3s,故縮短 4→2。
         self.DESCEND_MAX_SEC = 5.0        # 結束逾時 (s) 兜底:實測 ~2-3s 已下到地面,9s 太久 → 縮到 5s。
         self.DESCEND_ROAD_AREA = 0.55     # 路面 area_frac >= 此值 → 路面占滿畫面=已下到地面 → 結束 (備用)。
@@ -706,15 +706,20 @@ class Task2Mission:
                 elapsed = time.time() - descend_entry_time
 
                 def _to_recover(reason):
-                    # 下橋結束 → 一律進補抓 (RECOVER_BACK):開爪倒退看到熊再夾,比斜坡上夾可靠。
-                    nonlocal in_recovery
+                    # ★下橋補抓 (RECOVER_BACK) pipeline 已停用★:不再放下熊→倒退→重觀察→重夾。
+                    # 橋頂 GRIP 已夾住熊,下橋後直接位姿式返航 (省掉不穩的補抓步驟)。
+                    # 要恢復補抓:改回 in_recovery=True + 轉 self.RECOVER_BACK (見下方被停用的 handler)。
                     self._publish("STOP")
-                    in_recovery = True
-                    self._transition(self.RECOVER_BACK, reason)
+                    if self.start_pose is not None:
+                        print(f"[Task2] RETURN 目標(起點) = {self.start_pose}")
+                    self._return_entry_time = time.time()
+                    self._arrive_streak = 0
+                    self._return_dbg = 0
+                    self._transition(self.RETURN, reason)
 
-                # 兜底逾時:視覺沒判到底也最多前進這麼久 → 補抓
+                # 兜底逾時:視覺沒判到底也最多前進這麼久 → 返航
                 if elapsed > self.DESCEND_MAX_SEC:
-                    _to_recover("下坡逾時 (MAX_SEC) → 下橋補抓")
+                    _to_recover("下坡逾時 (MAX_SEC) → 直接返航")
                     continue
                 # 到底判定 (過 commit 窗後才允許):路面占滿畫面 (area_frac 高) = 已下到地面,連續 N 幀 → RETURN。
                 #   坡頂就看得到遠處路面 (~0.33),故門檻拉高 (~0.55),才不會在 fat part 上就誤判到底卡死。
@@ -725,7 +730,7 @@ class Task2Mission:
                     else:
                         descend_lost_streak = 0
                     if descend_lost_streak >= self.DESCEND_LOST_CONFIRM:
-                        _to_recover("橋+路面 mask 皆消失 (已離橋到平地) → 下橋補抓")
+                        _to_recover("橋+路面 mask 皆消失 (已離橋到平地) → 直接返航")
                         continue
                     # 備用判底:路面占滿畫面 (實測常失效,但保留)。
                     if r_found and r_area >= self.DESCEND_ROAD_AREA:
@@ -733,7 +738,7 @@ class Task2Mission:
                     else:
                         descend_done_streak = 0
                     if descend_done_streak >= self.DESCEND_DONE_CONFIRM:
-                        _to_recover("路面占滿畫面 (已下到地面) → 下橋補抓")
+                        _to_recover("路面占滿畫面 (已下到地面) → 直接返航")
                         continue
 
                 # 全速衝過 fat part + 下階梯 (不減速,避免卡在坡頂的階差)。轉向基準:優先沿「橋面中線 (b_dx,= 上橋同款)」
@@ -760,6 +765,8 @@ class Task2Mission:
                           f"done={descend_done_streak}/{self.DESCEND_DONE_CONFIRM} → {ds}")
 
             # ---------------- RECOVER_BACK (下橋補抓:開爪+bulldozer → 倒退看到熊 → OBSERVE+夾) ----------------
+            # ★已停用 (unreachable)★:DESCEND 結束改直接走 RETURN (見上方 _to_recover),不再放下熊重抓。
+            #   保留此 handler 方便日後恢復補抓:把 _to_recover 改回 in_recovery=True + 轉 self.RECOVER_BACK 即可。
             elif self.state == self.RECOVER_BACK:
                 # 1) 開爪 + 降到 bulldozer 鏟取低位 (阻塞一次);若橋上有夾到,開爪會把熊放到車前。
                 if not recover_prepared:
