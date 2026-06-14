@@ -104,11 +104,11 @@ class Task2Mission:
         self.STUCK_TICKS = 15                # ~1.5s 沒動 → 觸發
         self.BRIDGE_APPROACH_TIMEOUT = 120.0  # 位姿粗對位全程逾時保險
 
-        # ---- VISUAL_CLIMB：降爪 + 朝熊 bbox 大力轉向、全速爬橋固定 N 秒 → OBSERVE ----
-        # 只用兩個東西:① 計時 (VCLIMB_CLIMB_SEC) ② 物件偵測 (bear bbox dx)。看得到熊 → 朝熊 bbox dx 大力轉並全速爬;
-        # 看不到熊 → 直走。深度 (t_dist) 只當「近到可追」門檻,不用來判停 (太抖)。不靠 /amcl_pose (橋上 pose 會凍)。
+        # ---- VISUAL_CLIMB：降爪 + 全速爬橋固定 N 秒 → OBSERVE。轉向:看得到熊 → 朝熊 bbox dx 大力轉;
+        #      看不到熊 → 退回沿「橋面 segmentation 中線 (b_dx)」爬 (★橋上的熊在橋頂中線,沿橋中線爬就是朝熊爬★);
+        #      兩者都沒有 → 直走。深度 (t_dist) 只當「近到可追」門檻,不用來判停 (太抖)。不靠 /amcl_pose (橋上 pose 凍)。
         self.VCLIMB_SPEED = 300.0         # 上橋前進輪速 (full thrust;太慢會卡在坡面) (app 更新 ×2.5)
-        self.VCLIMB_CLIMB_SEC = 3         # ★停止條件★:朝熊全速爬這麼多秒 → 直接 OBSERVE (不靠深度/置中提早停)。
+        self.VCLIMB_CLIMB_SEC = 3         # ★停止條件★:全速爬這麼多秒 → 直接 OBSERVE (爬不到熊就調大,讓它爬更上面)。
         self.VCLIMB_MAX_TRACK_DIST = 4.0  # 只追深度 <= 此距離 (m) 的熊。深度 -1 (過近觸底) 仍算;超過視為遠誘餌不追。
         self.BRIDGE_DX_DEADBAND = 70.0    # b_dx 在 ±此值內不轉向 (DESCEND 沿路面置中用;吸收下坡時質心穩態偏移)。
         # 朝熊轉向 (P 控,扣 deadband):熊偏一邊就大力轉去朝它,不要只滑過去。
@@ -116,6 +116,10 @@ class Task2Mission:
         self.VCLIMB_BEAR_GAIN = 0.9       # 追熊轉向增益 (扣 deadband 後 P 控) → 真的轉去朝熊
         self.VCLIMB_BEAR_CLAMP = 0.7      # 追熊 steer 上限 = 此比例×base (0.7×300=210);放大才轉得動大偏差
         self.VCLIMB_BEAR_DEADBAND = 15.0  # 追熊轉向死區 (px):稍微偏就開始修,朝熊對得更準
+        # 看不到熊時沿橋面中線爬的「退路」轉向 (溫和,跟舊 100 分版同款 —— 橋面 mask 在坡上穩,沿它爬=朝橋頂的熊爬):
+        self.VCLIMB_BRIDGE_GAIN = 0.35    # 橋面中線置中增益 (溫和,不硬轉撞側牆)
+        self.VCLIMB_BRIDGE_CLAMP = 0.3    # 橋面中線 steer 上限 = 此比例×base
+        self.VCLIMB_BRIDGE_DEADBAND = 35.0  # 橋面中線死區 (px):比 DESCEND 緊,上橋要更貼橋中線校正朝向
 
         # ---- OBSERVE：停下面向橋上的熊 + 持住觀察 (對齊;Task2 無 Locate&Observe 計分),再進 GRIP ----
         # VISUAL_CLIMB 爬滿固定秒數 → 進 OBSERVE。先原地轉把熊置中 (面向它),再停住持住 OBSERVE_SECONDS 秒,
@@ -127,7 +131,7 @@ class Task2Mission:
         self.OBSERVE_FACE_TIMEOUT = 10.0  # 對中熊逾時保險 (s):放寬 6→10,給足時間真的轉到熊置中再持住
 
         # ---- GRIP：到頂/過橋後,前頂一段把熊鏟進低位開爪中 + 關爪夾起 (爪已在 VISUAL_CLIMB 降下且全程開著) ----
-        self.GRIP_PRESS_SPEED = 150.0     # 關爪前的前頂輪速 (full thrust;坡頂要更大力頂得動、把熊鏟進爪);0=純煞停 (app 更新 ×2.5)
+        self.GRIP_PRESS_SPEED = 200.0     # 關爪前的前頂輪速 (full thrust;坡頂要更大力頂得動、把熊鏟進爪);0=純煞停 (app 更新 ×2.5)
         self.GRIP_PRESS_SEC = 1.0         # 關爪前先前頂這麼久 (s):熊掉出鏡頭時常在爪前 ~0.8m,需多頂一段才鏟進爪
 
         # ---- SNAP_DESCEND：夾完後以「前方路面 (road_info delta_x)」對正,朝下對側直,再 DESCEND ----
@@ -359,7 +363,8 @@ class Task2Mission:
                                      f"朝熊爬橋 {self.VCLIMB_CLIMB_SEC:.0f}s 到 → 停下觀察")
                     continue
 
-                # 3) 轉向:看得到熊 (深度可追) → 朝熊 bbox dx 大力轉並全速爬;看不到熊 → 直走。
+                # 3) 轉向:看得到熊 → 朝熊 bbox dx 大力轉並全速爬;看不到熊 → 退回沿橋面中線爬 (= 朝橋頂的熊爬);
+                #    兩者都沒有 → 直走。(★橋面退路是關鍵★:熊偵測常閃斷,沒退路就會直走漂走、爬不到熊。)
                 if t_found and t_dist <= self.VCLIMB_MAX_TRACK_DIST:
                     steer = self._bridge_center_steer(self.VCLIMB_SPEED, t_dx,
                                                       self.VCLIMB_BEAR_GAIN,
@@ -367,9 +372,16 @@ class Task2Mission:
                                                       self.VCLIMB_BEAR_DEADBAND)
                     self._arc(self.VCLIMB_SPEED, steer)
                     steer_str = f"→bear dx={t_dx:+.0f} dist={t_dist:.2f} steer={steer:+.0f}"
+                elif b_found:
+                    steer = self._bridge_center_steer(self.VCLIMB_SPEED, b_dx,
+                                                      self.VCLIMB_BRIDGE_GAIN,
+                                                      self.VCLIMB_BRIDGE_CLAMP,
+                                                      self.VCLIMB_BRIDGE_DEADBAND)
+                    self._arc(self.VCLIMB_SPEED, steer)
+                    steer_str = f"(no-bear) bridge_dx={b_dx:+.0f} steer={steer:+.0f}"
                 else:
                     self._arc(self.VCLIMB_SPEED, 0.0)
-                    steer_str = "no-bear straight"
+                    steer_str = "(no-bear/bridge) straight"
 
                 vclimb_dbg += 1
                 if vclimb_dbg % 10 == 1:
