@@ -106,8 +106,10 @@ class Task3Mission:
         # ---- 解鎖 (手臂下壓開門 lever press) ----
         # 抬手臂後一路前進「撞上門」的時間 (s),讓爪落在 lever 正上方,再下壓 (門鎖著,撞著不會穿過)。
         # 前進時★視覺伺服★:依 knob dx 轉向把門把保持在畫面中央 (knob_drive),爪才會正落在 lever 上。
-        self.UNLOCK_NUDGE_SEC = 3.0
+        self.UNLOCK_NUDGE_SEC = 3.0       # 趴到門把前的前進上限 (s);到門把很近 / 撞到門 會提早停
         self.UNLOCK_NUDGE_SPEED = 200.0   # UNLOCK 前進撞門的輪速 (raw);慢一點讓視覺置中跟得上
+        self.UNLOCK_DOCK_DIST = 0.30      # ★arm 收著時★門把深度 <= 此值 → 已到門把正前方 → 停 (再抬手壓桿)。
+                                          #   設小:確保夠近 (爪夠得到 lever);若還沒到門就停就調大,壓不到 lever 就調小。
         # 進門前先把車頭對正門軸 (+x = orientation/yaw 0),垂直進門,避免斜著進門卡到門框。
         self.UNLOCK_ALIGN_DEG = 6.0       # 車頭與 +x 夾角 <= 此值算對正
         self.UNLOCK_ALIGN_TIMEOUT = 4.0   # 對正逾時保險 (s):轉不到位也往下走
@@ -319,10 +321,11 @@ class Task3Mission:
                 if time.time() - observe_start >= self.OBSERVE_SECONDS:
                     self._transition(self.UNLOCK, "觀察完成 → 解鎖門把")
 
-            # ---------------- UNLOCK (抬手 → 前進到門把 → 下壓 lever 開門) ----------------
+            # ---------------- UNLOCK (對正門軸 → 置中門把 → 趴到門把前 → 抬手 + 下壓 lever 開門) ----------------
+            # 定位 (對正/置中/趴到門把前) 全在 arm 收著時完成 —— 抬手後爪會擋住門把偵測,故先趴好位置再抬手壓桿。
             elif self.state == self.UNLOCK:
                 self._publish("STOP")
-                print("[Task3] UNLOCK：對正門軸 → 抬手臂 → 前進撞門 → 下壓 lever 開門")
+                print("[Task3] UNLOCK：對正門軸 → 置中門把 → 趴到門把前 → 抬手 + 下壓 lever 開門")
                 # 0. 先把車頭對正門軸 (+x = yaw 0) → 垂直進門,避免斜著進門卡到門框 (左輪卡門柱)。
                 align_start = time.time()
                 while time.time() - align_start < self.UNLOCK_ALIGN_TIMEOUT:
@@ -367,22 +370,31 @@ class Task3Mission:
                                       else "COUNTERCLOCKWISE_ROTATION_SLOW")
                     time.sleep(self.TICK)
                 self._publish("STOP")
-                print(f"[Task3] UNLOCK：門把已置中 (|dx|<={self.KNOB_ALIGN_PX:.0f}px) → 抬手直行壓桿")
-                # 1. 抬手臂到 READY (Wrist 177/Finger 閉合/Elbow 8),爪移到門把上方
-                self.arm_controller.knob_raise()
-                # 2. 抬手後一路前進到門口 (撞上門),★視覺伺服★ 依 knob dx 轉向把門把保持畫面中央,
-                #    爪才會正落在 lever 正上方;門把離框 (太近被遮/掉框) → 直行。
+                print(f"[Task3] UNLOCK：門把已置中 (|dx|<={self.KNOB_ALIGN_PX:.0f}px) → 直行趴到門把前")
+                # 1. ★趴到門把正前方 (arm 仍收著 = 門把清楚可見)★:視覺伺服直行,門把保持畫面中央,
+                #    開到門把很近 (dist <= UNLOCK_DOCK_DIST) 或「曾靠近後掉框=撞到門/門把進爪下」或逾時 → 停。
+                #    定位都在 arm 收著時完成 —— 抬手後爪會擋住門把 (偵測掉框),故先趴好位置再抬手。
                 nudge_start = time.time()
+                k_was_close = False
                 while time.time() - nudge_start < self.UNLOCK_NUDGE_SEC:
                     if stop_event.is_set():
                         break
                     info = self.data_processor.get_knob_target_info()
                     k_found = bool(info and info[0] > 0.5)
+                    k_dist = info[1] if info else 0.0
                     k_dx = info[2] if info else 0.0
+                    if k_found and 0.0 < k_dist <= self.UNLOCK_DOCK_DIST:
+                        break                      # 到門把正前方 → 停
+                    if k_was_close and not k_found:
+                        break                      # 曾靠近後掉框 = 已撞到門/門把在爪下 → 到位
+                    if k_found and 0.0 < k_dist <= self.UNLOCK_DOCK_DIST * 1.6:
+                        k_was_close = True
                     self._knob_drive(self.UNLOCK_NUDGE_SPEED, k_found, k_dx)
                     time.sleep(self.TICK)
                 self._publish("STOP")
-                # 3. 下壓 lever → 解門閂 (壓下後「不收回」,維持壓著直接穿門,避免門閂彈回)
+                print("[Task3] UNLOCK：已到門把正前方 → 抬手 + 下壓 lever")
+                # 2. 抬手臂到 READY (Wrist 177/Finger 閉合/Elbow 8) + 下壓 lever 開門 (不收回,維持壓著穿門,避免門閂彈回)
+                self.arm_controller.knob_raise()
                 self.arm_controller.knob_press_down()
                 clear_start = time.time()
                 self._transition(self.CLEAR, "下壓開門完成 (不收手) → 車身直行穿門")
