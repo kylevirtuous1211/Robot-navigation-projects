@@ -189,11 +189,13 @@ class Task2Mission:
         # 再停住持住 OBSERVE_SECONDS 秒 (>5s 給分餘裕),然後 GRIP。熊看不到 (被爪遮/掉鏡頭) 時不轉,直接持住。
         self.OBSERVE_SECONDS = 5.5        # 觀察持住秒數 (>5s 給分餘裕)
         self.OBSERVE_ALIGN_PX = 60.0      # 面向熊的置中容差 (|bear dx| <= 此值算面向)
+        self.OBSERVE_NEAR_DIST = 1.5      # ★只用「近熊」(dist <= 此值,m) 對中★;遠處誘餌熊 (~2m) 忽略,
+                                          #   避免 bbox 抖到遠熊 (dx 小) 就誤判「已面向」而不轉。
         self.OBSERVE_FACE_TIMEOUT = 6.0   # 對中熊逾時保險 (s):轉不到位也進持住,避免在坡頂一直空轉
 
         # ---- GRIP：到頂/過橋後,前頂一段把熊鏟進低位開爪中 + 關爪夾起 (爪已在 VISUAL_CLIMB 降下且全程開著) ----
         self.GRIP_PRESS_SPEED = 300.0     # 關爪前的前頂輪速 (full thrust;坡頂要更大力頂得動、把熊鏟進爪);0=純煞停 (app 更新 ×2.5)
-        self.GRIP_PRESS_SEC = 5.0         # 關爪前先前頂這麼久 (s):熊掉出鏡頭時常在爪前 ~0.8m,需多頂一段才鏟進爪
+        self.GRIP_PRESS_SEC = 3.0         # 關爪前先前頂這麼久 (s):熊掉出鏡頭時常在爪前 ~0.8m,需多頂一段才鏟進爪
 
         # ---- SNAP_DESCEND：夾完後以「前方路面 (road_info delta_x)」對正,朝下對側直,再 DESCEND ----
         # 橋上 /amcl_pose 會凍,不能用 yaw;改用穩定可見的路面質心 (r_dx→0=朝正前方下坡方向) 原地轉對正。
@@ -583,17 +585,23 @@ class Task2Mission:
             # ---------------- OBSERVE (停下面向橋上的熊 + 持住觀察 Locate & Observe,再夾) ----------------
             elif self.state == self.OBSERVE:
                 if not observe_centered:
-                    # 面向階段:原地轉把熊置中。熊看得到且偏太多 → 轉去對中;對中/熊看不到 (被爪遮)/逾時 → 開始持住。
-                    if t_found and abs(t_dx) > self.OBSERVE_ALIGN_PX \
-                            and (time.time() - observe_entry) < self.OBSERVE_FACE_TIMEOUT:
+                    # 面向階段:只用「近熊」(dist <= OBSERVE_NEAR_DIST) 對中,忽略遠處誘餌熊。
+                    # 近熊偏太多 → 轉去對中;近熊已置中 或 對中逾時 → 開始持住;
+                    # 只有遠熊/暫時看不到近熊 → 停住「等」,不因此提早結束面向 (修:抖到遠熊就誤判已面向)。
+                    t_near = t_found and 0.0 < t_dist <= self.OBSERVE_NEAR_DIST
+                    faced_timeout = (time.time() - observe_entry) >= self.OBSERVE_FACE_TIMEOUT
+                    if t_near and abs(t_dx) > self.OBSERVE_ALIGN_PX and not faced_timeout:
                         self._publish("CLOCKWISE_ROTATION_SLOW" if t_dx > 0
                                       else "COUNTERCLOCKWISE_ROTATION_SLOW")
                         action = f"FACE(bear_dx={t_dx:+.0f})"
-                    else:
+                    elif (t_near and abs(t_dx) <= self.OBSERVE_ALIGN_PX) or faced_timeout:
                         observe_centered = True
                         observe_start = time.time()
                         self._publish("STOP")
-                        action = "FACED → 持住"
+                        action = "FACED → 持住" + ("(逾時)" if faced_timeout else "")
+                    else:
+                        self._publish("STOP")
+                        action = "WAIT(無近熊)"
                 else:
                     # 持住階段:停住觀察 OBSERVE_SECONDS 秒 → GRIP
                     self._publish("STOP")
