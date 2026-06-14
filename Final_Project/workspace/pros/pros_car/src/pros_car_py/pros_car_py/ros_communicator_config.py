@@ -9,7 +9,7 @@ vel, rotate_vel為自走車PID數值, 可於arduino程式碼查看
 
 前左、前右、後左、後右
 """
-speed_ratio = 125  # app 更新後速度單位變慢,×2.5 (50→125) 回到原本的有效速度 (200→500 那種感覺)
+speed_ratio = 75  # app 更新後速度單位變慢,×2.5 (50→125) 回到原本的有效速度 (200→500 那種感覺)
 vel = 6.0*speed_ratio
 vel_slow = 3.0*speed_ratio
 rotate_vel = 6.0*speed_ratio

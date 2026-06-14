@@ -83,7 +83,7 @@ class Task3Mission:
             [2.9,  1.69, 0.12],   # 門把 (3.3,1.69) 前 ~0.4m → 交給視覺 dock / 壓桿
         ]
         # DRIVE_WP 行進參數 (沿用 Task2 BRIDGE_APPROACH 調好的值)
-        self.APPROACH_DRIVE_SPEED = 750.0   # 全速 (dist >= APPROACH_FAR_DIST) — 平地全速 (app 更新 ×2.5)
+        self.APPROACH_DRIVE_SPEED = 300.0   # 全速 (dist >= APPROACH_FAR_DIST) — 平地全速 (app 更新 ×2.5)
         self.APPROACH_TURN_GAIN = 7.0       # 角度 → wheel-diff 比例 (deg → speed)
         self.APPROACH_SPIN_DEG = 15.0       # 方位角差 > 此值 → 原地轉 (僅遠區)
         self.APPROACH_FAR_DIST = 1.0        # < 此距離降到 70%
@@ -109,7 +109,7 @@ class Task3Mission:
 
         # ---- 推開門 (車身前推) ----
         self.CLEAR_PUSH_SEC = 15.0       # 直線前推穿門的時間 (s) — 拉長確保整台車過門
-        self.CLEAR_SPEED = 750.0         # 前推輪速 (平地全速,確保完全穿過門) (app 更新 ×2.5)
+        self.CLEAR_SPEED = 300.0         # 前推輪速 (平地全速,確保完全穿過門) (app 更新 ×2.5)
 
         # ---- 執行緒狀態 ----
         self._thread = None
