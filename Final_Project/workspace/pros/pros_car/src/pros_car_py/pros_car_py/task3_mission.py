@@ -74,11 +74,11 @@ class Task3Mission:
             [0.5,  0.0,  0.20],
             [1.0,  0.0,  0.20],
             [1.5,  0.0,  0.20],
-            [1.7,  0.0,  0.20],
-            [1.7,  0.5,  0.20],
-            [1.7,  1.0,  0.20],
-            [1.7,  1.5,  0.20],
-            [1.7,  1.6, 0.15],
+            [2.0,  0.0,  0.20],
+            [2.0,  0.5,  0.20],
+            [2.0,  1.0,  0.20],
+            [2.0,  1.5,  0.20],
+            [2.0,  1.6, 0.15],
             [2.5,  1.6, 0.15],
             [2.6,  1.6, 0.12],
             [2.7,  1.6, 0.12],
@@ -113,9 +113,7 @@ class Task3Mission:
         self.UNLOCK_NUDGE_SEC = 3.0       # 趴到門把前的前進上限 (s);到門把很近 / 撞到門 會提早停
         self.UNLOCK_NUDGE_SPEED = 200.0   # 趴門前進輪速 (raw);慢一點讓 pursuit 收斂跟得上
         self.UNLOCK_DOCK_DIST = 0.20      # ★arm 收著時★門把深度 <= 此值 → 已到門把正前方 → 停 (再抬手壓桿)。
-                                          #   設小=更貼門 (爪更夠得到 lever);太小若深度觸底讀不到,靠下面 CREEP+撞門兜底。
-        self.UNLOCK_CREEP_SEC = 0.6       # dock 後再「貼門 creep」這麼久 (s):垂直直行把最後一小段空隙頂到門上,
-                                          #   確保抬手壓桿時車已貼著門 (深度在 <0.45m 常觸底讀不到,故再盲頂一下)。
+                                          #   設小:確保夠近 (爪夠得到 lever);若還沒到門就停就調大,壓不到 lever 就調小。
         # 進門前先把車頭對正門軸 (+x = orientation/yaw 0),垂直起步,避免一開始就斜。
         self.UNLOCK_ALIGN_DEG = 6.0       # 車頭與 +x 夾角 <= 此值算對正
         self.UNLOCK_ALIGN_TIMEOUT = 4.0   # 對正逾時保險 (s):轉不到位也往下走
@@ -368,32 +366,24 @@ class Task3Mission:
                     self._knob_pursue(self.UNLOCK_NUDGE_SPEED, k_found, k_dx)   # 朝門把溫和收斂
                     time.sleep(self.TICK)
                 self._publish("STOP")
-                # 1.5 ★貼門 creep★:dock 後再垂直直行一小段把最後空隙頂到門上 (深度太近常觸底讀不到,盲頂兜底),
-                #     確保抬手壓桿時車已貼著門、爪夠得到 lever。
-                creep_start = time.time()
-                while time.time() - creep_start < self.UNLOCK_CREEP_SEC:
-                    if stop_event.is_set():
-                        break
-                    self._drive_door_axis(self.UNLOCK_NUDGE_SPEED)   # 垂直直行貼門
-                    time.sleep(self.TICK)
-                self._publish("STOP")
-                print("[Task3] UNLOCK：已貼到門前 → 抬手 + 下壓 lever")
-                # 2. 抬手臂到 READY (Wrist 177/Finger 閉合/Elbow 8) → 下壓 lever (J0→-75) 解門閂。
-                #    ★壓下後不收回 (不呼叫 knob_retract)★ → 爪維持下壓在 lever 上,接著 CLEAR 全速把門撞/推開,
-                #    爪一路壓著 lever (門閂不彈回),整車衝過門。
+                print("[Task3] UNLOCK：已貼到門前 → 抬手,然後邊壓 lever 邊推門")
+                # 2. 先抬手到 READY (Wrist 177/Finger 閉合/Elbow 8) 把爪移到 lever 正上方 (此步要先到位才壓得準)。
                 self.arm_controller.knob_raise()
-                self.arm_controller.knob_press_down()
+                # 3. ★解鎖 + 推門「同時」★:把下壓 lever (knob_press_down,阻塞 ~1-2s) 丟到背景執行緒,
+                #    主迴圈立刻進 CLEAR 全速推門 → 爪一邊壓下 lever (解門閂、壓著不彈回) 車身一邊把門撞/推開。
+                #    (手臂與輪子是不同 topic,併發安全;爪固定在車上,壓著 lever 隨車一起把門推開。)
+                threading.Thread(target=self.arm_controller.knob_press_down, daemon=True).start()
                 clear_start = time.time()
-                self._transition(self.CLEAR, "下壓開門完成 (爪維持下壓) → 全速撞開門穿過")
+                self._transition(self.CLEAR, "邊壓 lever 邊全速推門 (同時)")
 
-            # ---------------- CLEAR (爪維持下壓 lever + 車身全速把門撞/推開,維持垂直穿門) ----------------
+            # ---------------- CLEAR (邊壓 lever 邊全速推門:背景執行緒壓桿,車身同時把門撞/推開,維持垂直穿門) ----------------
             elif self.state == self.CLEAR:
                 clear_elapsed = time.time() - clear_start
                 if clear_elapsed >= self.CLEAR_PUSH_SEC:
                     self._publish("STOP")
                     self._transition(self.DONE, f"門已推開 (前推 {clear_elapsed:.1f}s)")
                 else:
-                    # 爪維持在下壓姿勢 (knob_press_down 後不再動手臂 → 關節保持 J0=-75 壓著 lever)。
+                    # 進 CLEAR 頭 ~1-2s 背景執行緒正把 J0 壓到 -75 (邊壓邊推);壓到後維持 (不收回) 一路壓著 lever。
                     # 車身★全速 CLEAR_SPEED★ 直行把門撞/推開;用 /amcl_pose 維持車頭垂直門面 (yaw=0) → 直穿不卡門框。
                     self._drive_door_axis(self.CLEAR_SPEED)
 
