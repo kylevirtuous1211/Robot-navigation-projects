@@ -218,7 +218,7 @@ class Task2Mission:
 
         # ---- 下橋後補抓 (RECOVER):開爪+bulldozer → 倒退看到熊 → 重用 OBSERVE+GRIP → RETURN ----
         # 熊常在橋上沒夾到、被推下橋;下橋後在平地補抓比在斜坡夾可靠。下橋一律執行此補抓。
-        self.RECOVER_BACK_SEC = 2.0       # 下橋後倒退這麼久 (s),讓剛帶下橋的熊進入視野/車前
+        self.RECOVER_BACK_SEC = 5.0       # 下橋後倒退這麼久 (s),讓剛帶下橋的熊退到車前可偵測距離 (太短熊太近/在鏡頭下方偵測不到)
         self.RECOVER_BACK_SPEED = 200.0   # 倒退輪速 (raw;[-spd]*4 = 直線後退)
         self.DESCEND_STEER_GAIN = 0.35    # 沿路面中線置中的差速增益 (扣 BRIDGE_DX_DEADBAND 後 P 控,= VCLIMB 同款)
         self.DESCEND_STEER_CLAMP = 0.3    # steer 夾在 ±此比例*base
