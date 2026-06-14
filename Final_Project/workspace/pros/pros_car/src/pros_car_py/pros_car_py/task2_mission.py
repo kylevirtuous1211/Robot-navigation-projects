@@ -192,7 +192,7 @@ class Task2Mission:
         self.OBSERVE_FACE_TIMEOUT = 6.0   # 對中熊逾時保險 (s):轉不到位也進持住,避免在坡頂一直空轉
 
         # ---- GRIP：到頂/過橋後,前頂一段把熊鏟進低位開爪中 + 關爪夾起 (爪已在 VISUAL_CLIMB 降下且全程開著) ----
-        self.GRIP_PRESS_SPEED = 200.0     # 關爪前的前頂輪速 (full thrust;坡頂要更大力頂得動、把熊鏟進爪);0=純煞停 (app 更新 ×2.5)
+        self.GRIP_PRESS_SPEED = 300.0     # 關爪前的前頂輪速 (full thrust;坡頂要更大力頂得動、把熊鏟進爪);0=純煞停 (app 更新 ×2.5)
         self.GRIP_PRESS_SEC = 5.0         # 關爪前先前頂這麼久 (s):熊掉出鏡頭時常在爪前 ~0.8m,需多頂一段才鏟進爪
 
         # ---- SNAP_DESCEND：夾完後以「前方路面 (road_info delta_x)」對正,朝下對側直,再 DESCEND ----
@@ -207,7 +207,8 @@ class Task2Mission:
         # 結束條件:「路面占滿畫面 (area_frac >= DESCEND_ROAD_AREA)」才算真的下到地面 —— 坡頂就看得到遠處路面 (~0.33),
         # 故門檻要拉高 (~0.55),否則會在 fat part 上就誤判到底、停住卡死。MIN_SEC 前不可結束,MAX_SEC 兜底。
         self.DESCEND_MIN_SEC = 4.0        # commit 窗 (s):此前全速衝過 fat part + 階梯,視覺尚不可結束 (防坡頂誤判)
-        self.DESCEND_MAX_SEC = 16.0       # 兜底逾時 (s):視覺沒判到底也最多前進這麼久 → RETURN
+        self.DESCEND_MAX_SEC = 9.0        # 結束逾時 (s):實測 ~8s 已下到地面;下坡時 road/bridge mask 偵測不穩、
+                                          #   road-fill 判底常失效,故縮短到 9s 當主要結束依據 → RETURN。
         self.DESCEND_ROAD_AREA = 0.55     # 路面 area_frac >= 此值 → 路面占滿畫面=已下到地面 → 結束。
                                           #   坡頂看遠處路面只 ~0.33,故設高 (~0.55);用 log 的 road_area 頂/底值微調。
         self.DESCEND_DONE_CONFIRM = 5     # 連續 N 幀滿足「到底」條件才結束 (濾 segmentation 抖動)
