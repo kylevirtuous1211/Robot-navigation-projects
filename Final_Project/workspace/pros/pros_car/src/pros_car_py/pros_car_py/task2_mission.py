@@ -641,11 +641,16 @@ class Task2Mission:
 
             # ---------------- GRIP (前頂把熊壓進爪中 + 關爪夾起;爪已在 VISUAL_CLIMB 降下) ----------------
             elif self.state == self.GRIP:
-                # 小幅前頂一下：抗坡面後滑、把熊壓在爪中 (期間輪速保持,scoop_grab 阻塞時仍前頂)。
+                # 前頂一段：抗坡面後滑、把熊壓進爪中。★每幀重發輪速★,確保整段真的持續前進
+                # (單發 publish + sleep 指令不會維持,車不會動 → 鏟不到熊)。
                 if self.GRIP_PRESS_SPEED > 0:
-                    print(f"[Task2] GRIP：小幅前頂 {self.GRIP_PRESS_SEC:.1f}s (壓熊進爪/抗後滑) 後關爪")
-                    self.ros_communicator.publish_raw_car_control([self.GRIP_PRESS_SPEED] * 4)
-                    time.sleep(self.GRIP_PRESS_SEC)
+                    print(f"[Task2] GRIP：前頂 {self.GRIP_PRESS_SEC:.1f}s (壓熊進爪/抗後滑) 後關爪")
+                    press_start = time.time()
+                    while time.time() - press_start < self.GRIP_PRESS_SEC:
+                        if stop_event.is_set():
+                            break
+                        self.ros_communicator.publish_raw_car_control([self.GRIP_PRESS_SPEED] * 4)
+                        time.sleep(self.TICK)
                 print("[Task2] GRIP：關爪夾住 bear + 抬起搬運")
                 self.arm_controller.scoop_grab()   # 阻塞：關爪 + 等黏合 + 抬起
                 self._publish("STOP")

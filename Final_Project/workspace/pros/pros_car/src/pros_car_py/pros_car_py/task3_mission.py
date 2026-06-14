@@ -104,11 +104,11 @@ class Task3Mission:
         self.OBSERVE_SECONDS = 5.5       # 靜止觀察時間 (>5s 才拿分，留裕度)
 
         # ---- 解鎖 (手臂下壓開門 lever press) ----
-        # 抬手臂後往門把再前進的時間 (s),讓爪落在 lever 正上方,再下壓。
-        self.UNLOCK_NUDGE_SEC = 0.8
+        # 抬手臂後一路前進「撞上門」的時間 (s),讓爪落在 lever 正上方,再下壓 (門鎖著,撞著不會穿過)。
+        self.UNLOCK_NUDGE_SEC = 3.0
 
         # ---- 推開門 (車身前推) ----
-        self.CLEAR_PUSH_SEC = 6.0        # 直線前推穿門的時間 (s) — 拉長確保整台車過門
+        self.CLEAR_PUSH_SEC = 15.0       # 直線前推穿門的時間 (s) — 拉長確保整台車過門
         self.CLEAR_SPEED = 750.0         # 前推輪速 (平地全速,確保完全穿過門) (app 更新 ×2.5)
 
         # ---- 執行緒狀態 ----
@@ -307,8 +307,10 @@ class Task3Mission:
             # ---------------- UNLOCK (抬手 → 前進到門把 → 下壓 lever 開門) ----------------
             elif self.state == self.UNLOCK:
                 self._publish("STOP")
-                print("[Task3] UNLOCK：前進到門把 → 抬手臂 → 下壓 lever 開門")
-                # 1. 先往門把再前進一小段 (手臂維持收起 → 相機不被擋,還看得到門把/路)
+                print("[Task3] UNLOCK：抬手臂 → 前進撞門 → 下壓 lever 開門")
+                # 1. 先抬手臂到 READY (Wrist 177/Finger 閉合/Elbow 8),爪移到門把上方
+                self.arm_controller.knob_raise()
+                # 2. 抬手後一路前進到門口 (撞上門),讓爪落在 lever 正上方
                 nudge_start = time.time()
                 while time.time() - nudge_start < self.UNLOCK_NUDGE_SEC:
                     if stop_event.is_set():
@@ -316,8 +318,6 @@ class Task3Mission:
                     self._publish("FORWARD_SLOW")
                     time.sleep(self.TICK)
                 self._publish("STOP")
-                # 2. 到位後才抬手臂到 READY (設定 Wrist 177/Finger 閉合/Elbow 8) — 此時擋到相機沒關係
-                self.arm_controller.knob_raise()
                 # 3. 下壓 lever → 解門閂 (壓下後「不收回」,維持壓著直接穿門,避免門閂彈回)
                 self.arm_controller.knob_press_down()
                 clear_start = time.time()
