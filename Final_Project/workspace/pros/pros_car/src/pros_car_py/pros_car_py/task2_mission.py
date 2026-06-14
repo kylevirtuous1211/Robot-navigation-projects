@@ -188,11 +188,11 @@ class Task2Mission:
         # ---- OBSERVE：停下面向橋上的熊 + 持住觀察 (Locate & Observe 計分),再進 GRIP ----
         # VISUAL_CLIMB 走近熊 (<= VCLIMB_OBSERVE_DIST) 或曾靠近後看不到 → 進 OBSERVE。先原地轉把熊置中 (面向它),
         # 再停住持住 OBSERVE_SECONDS 秒 (>5s 給分餘裕),然後 GRIP。熊看不到 (被爪遮/掉鏡頭) 時不轉,直接持住。
-        self.OBSERVE_SECONDS = 5.5        # 觀察持住秒數 (>5s 給分餘裕)
-        self.OBSERVE_ALIGN_PX = 60.0      # 面向熊的置中容差 (|bear dx| <= 此值算面向)
+        self.OBSERVE_SECONDS = 2.0        # 觀察持住秒數 (Task2 無 Locate&Observe 計分,持住只為對齊→2s 足夠)
+        self.OBSERVE_ALIGN_PX = 40.0      # 面向熊的置中容差 (|bear dx| <= 此值算面向);收緊 60→40 真的對準才停
         self.OBSERVE_NEAR_DIST = 1.5      # ★只用「近熊」(dist <= 此值,m) 對中★;遠處誘餌熊 (~2m) 忽略,
                                           #   避免 bbox 抖到遠熊 (dx 小) 就誤判「已面向」而不轉。
-        self.OBSERVE_FACE_TIMEOUT = 6.0   # 對中熊逾時保險 (s):轉不到位也進持住,避免在坡頂一直空轉
+        self.OBSERVE_FACE_TIMEOUT = 10.0  # 對中熊逾時保險 (s):放寬 6→10,給足時間真的轉到熊置中再持住
 
         # ---- GRIP：到頂/過橋後,前頂一段把熊鏟進低位開爪中 + 關爪夾起 (爪已在 VISUAL_CLIMB 降下且全程開著) ----
         self.GRIP_PRESS_SPEED = 300.0     # 關爪前的前頂輪速 (full thrust;坡頂要更大力頂得動、把熊鏟進爪);0=純煞停 (app 更新 ×2.5)
