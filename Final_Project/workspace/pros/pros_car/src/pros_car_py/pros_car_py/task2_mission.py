@@ -179,8 +179,8 @@ class Task2Mission:
         self.VCLIMB_COMMIT_DIST = 0.70    # 曾靠近到此距離 (m) 後持續看不到 = 已鏟入爪中 → GRIP。
                                           #   設嚴一點 (0.7),避免在 ~1m「熊掉出鏡頭」就誤判到位 (爪只構得到 ~0.2m)。
         self.VCLIMB_REACH_LOST = 10       # 靠近後連續看不到熊這麼多幀 (~1.0s) → GRIP
-        self.VCLIMB_TIMEOUT = 6.0        # 過橋時間 (s):全速沿橋中線過完整座橋的概估時間 → 到頂/過橋後 GRIP。
-                                          #   這是主要的「過橋→夾」旋鈕:沒爬到頂/沒過完就調大;衝過頭/衝下對側才夾就調小。
+        self.VCLIMB_TIMEOUT = 6.0        # (簡化版未用) 舊複雜邏輯的過橋逾時。
+        self.VCLIMB_CLIMB_SEC = 3.0      # ★簡化版★:全速沿橋中線爬這麼多秒 → 直接 OBSERVE (測試用,移除追熊 handoff)。
         # (移除 bear 深度卡死偵測:橋上 bear 深度常凍在 ~1m 不隨車前進而變,會誤判卡死、亂倒退浪費過橋時間。
         #  改靠 full thrust + bridge 中線轉向 open-loop 過橋;真的物理卡死就靠 VCLIMB_TIMEOUT 兜底。)
 
@@ -546,7 +546,7 @@ class Task2Mission:
                     print(f"[Task2] SNAP_90 {action}  (target yaw={math.degrees(self.DOCK_YAW_RAD):.0f}°, "
                           f"bridge F={int(b_found)} dx={b_dx:+.0f})")
 
-            # ---------------- VISUAL_CLIMB (降爪 + 視覺伺服上橋走近橋上的熊並鏟入) ----------------
+            # ---------------- VISUAL_CLIMB (簡化版:降爪 → 沿橋中線爬 N 秒 → OBSERVE) ----------------
             elif self.state == self.VISUAL_CLIMB:
                 # 1) 進場先把鏟爪降到貼地+開爪 (阻塞一次)。爪降下=熊會被一路鏟進爪中。
                 if not vclimb_scoop_prepared:
@@ -554,64 +554,30 @@ class Task2Mission:
                     self.arm_controller.scoop_pose()   # 阻塞：降臂 + 開爪
                     vclimb_scoop_prepared = True
                     vclimb_entry_time = time.time()
-                    vclimb_lost_streak = 0
-                    vclimb_grip_streak = 0
-                    vclimb_last_valid_dist = None
-                # 過橋時間到 → 視為已過完整座橋/到頂 → 停下觀察再夾
-                if time.time() - vclimb_entry_time > self.VCLIMB_TIMEOUT:
+                # 2) 簡化邏輯 (測試用):全速沿橋中線爬 VCLIMB_CLIMB_SEC 秒 → 直接 OBSERVE。
+                #    不追熊深度、不判夾取時機 (移除舊的 bear handoff / timeout 複雜邏輯)。
+                elapsed = time.time() - vclimb_entry_time
+                if elapsed > self.VCLIMB_CLIMB_SEC:
                     self._publish("STOP")
                     observe_entry = time.time(); observe_centered = False
-                    self._transition(self.OBSERVE, "過橋時間到 (已過橋/到頂) → 停下觀察")
+                    self._transition(self.OBSERVE,
+                                     f"爬橋 {self.VCLIMB_CLIMB_SEC:.0f}s 到 → 停下觀察")
                     continue
-                # === 轉向:用穩定的「橋面 segmentation 質心」(b_dx) 把車維持在橋中線,全速直行上橋過橋。
-                #     (bear 深度太抖,不用來轉向;只用來判「已走近熊 → 該夾了」。)
+                # 3) 轉向:橋面中線 (b_dx) 置中,全速直行;橋面沒偵測就直走。
                 if b_found:
-                    base = self.VCLIMB_SPEED
-                    steer = self._bridge_center_steer(base, b_dx, self.VCLIMB_STEER_GAIN,
-                                                      self.VCLIMB_STEER_CLAMP, self.VCLIMB_STEER_DEADBAND)
-                    self._arc(base, steer)
+                    steer = self._bridge_center_steer(self.VCLIMB_SPEED, b_dx,
+                                                      self.VCLIMB_STEER_GAIN,
+                                                      self.VCLIMB_STEER_CLAMP,
+                                                      self.VCLIMB_STEER_DEADBAND)
+                    self._arc(self.VCLIMB_SPEED, steer)
                     steer_str = f"bridge_dx={b_dx:+.0f} steer={steer:+.0f}"
                 else:
-                    # 橋面暫時沒偵測 → 直走 (靠 SNAP_90 對到的橋軸 open-loop 維持)
                     self._arc(self.VCLIMB_SPEED, 0.0)
                     steer_str = "no-bridge straight"
 
-                # === 觀察時機 (bear):走近橋上的熊到 OBSERVE_DIST (此時仍清楚可見),或「曾靠近 (<=COMMIT) 後持續看不到
-                #     =已鏟入爪中」→ 進 OBSERVE (停下面向 + 持住觀察,再夾)。
-                t_on_target = t_found and (t_dist <= self.VCLIMB_MAX_TRACK_DIST)
-                if t_on_target:
-                    vclimb_lost_streak = 0
-                    if t_dist > 0.0:
-                        vclimb_last_valid_dist = t_dist
-                    if 0.0 < t_dist <= self.VCLIMB_OBSERVE_DIST:
-                        vclimb_grip_streak += 1
-                        if vclimb_grip_streak >= self.VCLIMB_GRIP_CONFIRM:
-                            self._publish("STOP")
-                            observe_entry = time.time(); observe_centered = False
-                            self._transition(self.OBSERVE,
-                                             f"走近橋上的熊到位 (dist={t_dist:.2f}) → 停下觀察")
-                            continue
-                    else:
-                        vclimb_grip_streak = 0
-                    action = f"DRIVE({steer_str} bear={t_dist:.2f})"
-                else:
-                    vclimb_lost_streak += 1
-                    vclimb_grip_streak = 0
-                    was_close = (vclimb_last_valid_dist is not None
-                                 and vclimb_last_valid_dist <= self.VCLIMB_COMMIT_DIST)
-                    if was_close and vclimb_lost_streak >= self.VCLIMB_REACH_LOST:
-                        self._publish("STOP")
-                        observe_entry = time.time(); observe_centered = False
-                        self._transition(self.OBSERVE, "靠近橋上的熊後持續看不到 (已鏟入/被爪遮) → 停下觀察")
-                        continue
-                    lv = f"{vclimb_last_valid_dist:.2f}" if vclimb_last_valid_dist is not None else "—"
-                    action = (f"CROSS({steer_str} last_bear={lv} lost={vclimb_lost_streak})")
-
                 vclimb_dbg += 1
                 if vclimb_dbg % 10 == 1:
-                    lv = f"{vclimb_last_valid_dist:.2f}" if vclimb_last_valid_dist is not None else "—"
-                    print(f"[Task2] VISUAL_CLIMB bear(F={int(t_found)} dist={t_dist:.2f} dx={t_dx:+.0f}) "
-                          f"last_valid={lv} grip={vclimb_grip_streak}/{self.VCLIMB_GRIP_CONFIRM} → {action}")
+                    print(f"[Task2] VISUAL_CLIMB t={elapsed:.1f}/{self.VCLIMB_CLIMB_SEC:.0f}s → {steer_str}")
 
             # ---------------- OBSERVE (停下面向橋上的熊 + 持住觀察 Locate & Observe,再夾) ----------------
             elif self.state == self.OBSERVE:
