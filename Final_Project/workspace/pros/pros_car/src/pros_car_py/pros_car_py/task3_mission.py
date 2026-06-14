@@ -112,8 +112,13 @@ class Task3Mission:
         self.UNLOCK_ALIGN_DEG = 6.0       # 車頭與 +x 夾角 <= 此值算對正
         self.UNLOCK_ALIGN_TIMEOUT = 4.0   # 對正逾時保險 (s):轉不到位也往下走
 
+        # ---- 進門前「精準把門把轉到畫面正中」(原地轉,直行後門把就在中央) ----
+        self.KNOB_ALIGN_PX = 15.0         # |knob dx| <= 此值算「已對準正中」(緊;比 APPROACH/servo 嚴)
+        self.KNOB_ALIGN_TIMEOUT = 4.0     # 對準逾時保險 (s):轉不到位也往下走 (避免空轉)
+        self.KNOB_ALIGN_CONFIRM = 3       # 連續 N 幀置中才算對準 (濾 bbox 抖動,對得更實)
+
         # ---- 朝門把視覺伺服 (UNLOCK 撞門 + CLEAR 穿門 共用):依 knob dx 轉向保持門把置中 ----
-        self.KNOB_CENTER_PX = 40.0        # |knob dx| <= 此值算置中 → 直行 (死區,防抖動亂轉)
+        self.KNOB_CENTER_PX = 20.0        # |knob dx| <= 此值算置中 → 直行 (死區收緊 40→20,直行時門把更貼中央)
         self.KNOB_STEER_GAIN = 0.7        # 轉向比例:steer = gain × dx (knob 偏右 dx>0 → 右轉)
         self.KNOB_STEER_CLAMP = 140.0     # 轉向差速上限 (raw),避免一次轉太猛甩出門
 
@@ -336,6 +341,33 @@ class Task3Mission:
                     time.sleep(self.TICK)
                 self._publish("STOP")
                 print(f"[Task3] UNLOCK：車頭已對正門軸 (+x, |ang|<={self.UNLOCK_ALIGN_DEG:.0f}°)")
+                # 0.5 ★精準把門把轉到畫面正中★:原地轉直到 |knob dx| <= KNOB_ALIGN_PX 連續 N 幀 (arm 還收著=門把清楚)。
+                #     對準後直行,門把就會一直在畫面中央 → 爪正落 lever、整車對著門中心穿過。
+                kc_start = time.time()
+                kc_streak = 0
+                while time.time() - kc_start < self.KNOB_ALIGN_TIMEOUT:
+                    if stop_event.is_set():
+                        break
+                    info = self.data_processor.get_knob_target_info()
+                    if not (info and info[0] > 0.5):
+                        kc_streak = 0
+                        self._publish("STOP")          # 門把暫時掉框 → 原地等,不亂轉
+                        time.sleep(self.TICK)
+                        continue
+                    k_dx = info[2]
+                    if abs(k_dx) <= self.KNOB_ALIGN_PX:
+                        kc_streak += 1
+                        self._publish("STOP")
+                        if kc_streak >= self.KNOB_ALIGN_CONFIRM:
+                            break
+                    else:
+                        kc_streak = 0
+                        # knob 偏右 (dx>0) → 順時針 (右轉) 把它轉回正中 (與 _knob_drive / APPROACH 同慣例)
+                        self._publish("CLOCKWISE_ROTATION_SLOW" if k_dx > 0
+                                      else "COUNTERCLOCKWISE_ROTATION_SLOW")
+                    time.sleep(self.TICK)
+                self._publish("STOP")
+                print(f"[Task3] UNLOCK：門把已置中 (|dx|<={self.KNOB_ALIGN_PX:.0f}px) → 抬手直行壓桿")
                 # 1. 抬手臂到 READY (Wrist 177/Finger 閉合/Elbow 8),爪移到門把上方
                 self.arm_controller.knob_raise()
                 # 2. 抬手後一路前進到門口 (撞上門),★視覺伺服★ 依 knob dx 轉向把門把保持畫面中央,
