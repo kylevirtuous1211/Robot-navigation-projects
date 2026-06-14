@@ -106,6 +106,9 @@ class Task3Mission:
         # ---- 解鎖 (手臂下壓開門 lever press) ----
         # 抬手臂後一路前進「撞上門」的時間 (s),讓爪落在 lever 正上方,再下壓 (門鎖著,撞著不會穿過)。
         self.UNLOCK_NUDGE_SEC = 3.0
+        # 進門前先把車頭對正門軸 (+x = orientation/yaw 0),垂直進門,避免斜著進門卡到門框。
+        self.UNLOCK_ALIGN_DEG = 6.0       # 車頭與 +x 夾角 <= 此值算對正
+        self.UNLOCK_ALIGN_TIMEOUT = 4.0   # 對正逾時保險 (s):轉不到位也往下走
 
         # ---- 推開門 (車身前推) ----
         self.CLEAR_PUSH_SEC = 15.0       # 直線前推穿門的時間 (s) — 拉長確保整台車過門
@@ -307,8 +310,26 @@ class Task3Mission:
             # ---------------- UNLOCK (抬手 → 前進到門把 → 下壓 lever 開門) ----------------
             elif self.state == self.UNLOCK:
                 self._publish("STOP")
-                print("[Task3] UNLOCK：抬手臂 → 前進撞門 → 下壓 lever 開門")
-                # 1. 先抬手臂到 READY (Wrist 177/Finger 閉合/Elbow 8),爪移到門把上方
+                print("[Task3] UNLOCK：對正門軸 → 抬手臂 → 前進撞門 → 下壓 lever 開門")
+                # 0. 先把車頭對正門軸 (+x = yaw 0) → 垂直進門,避免斜著進門卡到門框 (左輪卡門柱)。
+                align_start = time.time()
+                while time.time() - align_start < self.UNLOCK_ALIGN_TIMEOUT:
+                    if stop_event.is_set():
+                        break
+                    pose_msg = self.ros_communicator.get_latest_amcl_pose()
+                    if pose_msg is None:
+                        break
+                    p = pose_msg.pose.pose.position
+                    o = pose_msg.pose.pose.orientation
+                    ang = calculate_angle_point(o.z, o.w, [p.x, p.y], [p.x + 1.0, p.y])
+                    if abs(ang) <= self.UNLOCK_ALIGN_DEG:
+                        break
+                    self._publish("COUNTERCLOCKWISE_ROTATION_SLOW" if ang > 0
+                                  else "CLOCKWISE_ROTATION_SLOW")
+                    time.sleep(self.TICK)
+                self._publish("STOP")
+                print(f"[Task3] UNLOCK：車頭已對正門軸 (+x, |ang|<={self.UNLOCK_ALIGN_DEG:.0f}°)")
+                # 1. 抬手臂到 READY (Wrist 177/Finger 閉合/Elbow 8),爪移到門把上方
                 self.arm_controller.knob_raise()
                 # 2. 抬手後一路前進到門口 (撞上門),讓爪落在 lever 正上方
                 nudge_start = time.time()
