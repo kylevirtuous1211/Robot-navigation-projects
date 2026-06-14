@@ -138,11 +138,41 @@ Manual per-piece `docker run` commands (for debugging individual containers) are
 - Source lives under `workspace/pros/<pkg>/src` and is **bind-mounted** into the containers at
   `/workspaces/src`. Editing a `.py` on the host changes it in the container.
 - ROS packages must be **rebuilt + re-sourced** to take effect — the run scripts already do
-  `colcon build && source install/setup.bash && ros2 run ...` on each launch.
+  `colcon build --symlink-install && source install/setup.bash && ros2 run ...` on each launch.
   - YOLO node: `yolo_example_pkg` → `ros2 run yolo_example_pkg yolo_node`
   - Car/mission: `pros_car_py` → entry points below.
 - After editing the YOLO or mission node, **restart that container** (or re-run `run_task1.sh` for
   the mission) so the rebuild picks up changes.
+
+### Fast iteration (demo-time) — persisted build cache + `NOBUILD=1`
+
+The mission containers run `--rm`, which used to wipe `/workspaces/{build,install}` and force a
+**cold full build of all 8 packages every launch** (incl. the two slow CMake interface pkgs
+`action_interface`, `custome_interfaces`). The `run_task*.sh` scripts now fix this:
+- **Build cache persists** in two named volumes (`kylefp_colcon_build`, `kylefp_colcon_install`),
+  so colcon goes **incremental** — unchanged packages (the CMake interface pkgs, untouched python)
+  are skipped on every run after the first.
+- **`--symlink-install`** makes the install tree symlink back to `src`, so a pure-Python edit
+  (`task2_mission.py` and the other mission/tunable files in `pros_car_py`) is live in the install
+  tree with no recompile.
+
+Three iteration speeds (pick per edit):
+
+| Command | Behavior | Use when |
+|---|---|---|
+| `./run_task2.sh` | incremental `colcon build --symlink-install` | default — always correct |
+| `NOBUILD=1 ./run_task2.sh` | **skips colcon entirely → instant start** | edited only `.py` logic in `pros_car_py` |
+| `./run_task2.sh` (plain) | full incremental build | changed `setup.py` entry points, added a new file, or touched a CMake / `*_interface` package |
+
+`NOBUILD=1` is self-guarding: it falls back to a real build if no install tree exists yet (e.g. fresh
+volume), so the **first run after a reboot/volume-wipe still builds**. Caveat: `NOBUILD=1` runs
+whatever is already installed — if you skip the build after changing `setup.py` or a CMake package you
+silently run stale code. Rule: `.py` logic edit → `NOBUILD=1` safe; structure/entry-point/interface
+change → run plain once.
+
+If the cache ever gets into a stale/bad state, nuke it and let the next run rebuild fresh:
+`docker volume rm kylefp_colcon_build kylefp_colcon_install`. **Prime it with one warm-up run before
+a demo** so the slow first build isn't on the clock.
 
 `pros_car_py` console entry points (`setup.py`):
 `robot_control` (menu UI), `task1_auto` / `task2_auto` / `task3_auto` (the autonomous missions),
@@ -219,7 +249,16 @@ Tune these against the in-sim "N units" and the gripper geometry.
   hard-coded absolute pose (e.g. Task 2's `DOCK_X/Y/YAW`) silently goes stale. **Fix / ritual:** with
   the car at spawn, run **`reset_map.sh --pin`** — it re-origins the scan_matcher odom (restart
   `robot_bringup`) → re-anchors SLAM (restart `slam`), *in that order*, so spawn ≡ `map (0,0,0)` and the
-  whole deterministic scene gets reproducible coordinates. Verify: `/amcl_pose` at spawn ≈ `(0,0,0)`.
+  whole deterministic scene gets reproducible coordinates. It **auto-verifies**: after the slam
+  restart it blocks on a single `/amcl_pose` echo that returns the instant the full TF chain
+  re-anchors (slam `map→odom` + scan_matcher `odom→base`, via tfshim) and prints the spawn pose, so
+  you eyeball `(0,0,0)` without a separate command. (Demo-time speed: that wait + `docker restart -t 3`
+  replace the old fixed `sleep 8` after slam with the actual settle time, ~2–5 s; bringup keeps a
+  short fixed `sleep 6`, purely sequencing so its odom is at 0 before slam reads it.) Two gotchas are
+  baked in: the ros2 calls use **`--no-daemon`** (the long-lived containers carry a wedged ros2 daemon
+  — `xmlrpc !rclpy.ok()` — that makes daemon-routed `topic echo`/`list` fail instantly), and the
+  readiness signal is `/amcl_pose` (continuously published by tfshim), **not** `/odom` (scan_matcher
+  only publishes it on movement, so `echo` can't even determine its type when the car is idle).
   `--pin` no longer restarts Nav2 (`navigation`): Task 2/3 + combined `task23` drive purely on
   `/amcl_pose` + vision (`publish_raw_car_control`), never the Nav2 stack, so the costmap resync was
   dead weight. **Task 1's return *does* use Nav2** — after `--pin`, run **`reset_map.sh --slam`** for it

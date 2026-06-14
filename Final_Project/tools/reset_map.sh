@@ -11,6 +11,14 @@ export DISPLAY=:20
 export XAUTHORITY=/home/kyle/.Xauthority
 CLICK="python3 $(dirname "$0")/click20.py"
 
+# Run a ros2 CLI command inside an always-up container on the kylefp net (ROS_DOMAIN_ID=7).
+# NOTE: the `--no-daemon` on the ros2 calls below is REQUIRED — the long-lived containers
+# carry a wedged ros2 daemon (fails with xmlrpc `!rclpy.ok()`), so daemon-routed calls
+# (topic list/echo) error out instantly. `--no-daemon` does its own DDS discovery (~2s) and
+# works reliably. Pick a topic with a CONTINUOUS publisher: e.g. /amcl_pose (tfshim) — NOT
+# /odom, which scan_matcher only publishes on movement so `echo` can't even find its type.
+ros2_in() { docker exec kylefp-tfshim bash -lc "source /opt/ros/humble/setup.bash && ROS_DOMAIN_ID=7 $*"; }
+
 echo "[reset] switching to RACING2026 ..."
 $CLICK 110 358
 sleep 3
@@ -36,15 +44,20 @@ case "${1:-}" in
   --pin)
     echo "[reset] PIN localization (car must be at spawn from the scene reset above):"
     echo "[reset]   1/2 restart robot_bringup (scan_matcher odom -> 0 at spawn) ..."
-    docker restart kylefp-robot_bringup-1 >/dev/null 2>&1
-    sleep 8
+    docker restart -t 3 kylefp-robot_bringup-1 >/dev/null 2>&1
+    sleep 6   # let scan_matcher come back with odom re-origined to 0 before slam reads it
     echo "[reset]   2/2 restart slam (map re-anchors to odom=0) ..."
-    docker restart kylefp-slam-1 >/dev/null 2>&1
-    sleep 8
+    docker restart -t 3 kylefp-slam-1 >/dev/null 2>&1
     echo "[reset] Nav2 NOT restarted — Task 2/3 + combined don't use it (pose + vision only)."
     echo "[reset]   Task 1's Nav2 return needs a clean costmap → run afterwards: reset_map.sh --slam"
-    echo "[reset] PIN done — verify /amcl_pose at spawn reads ~(0,0,0):"
-    echo "[reset]   docker exec kylefp-tfshim bash -lc 'source /opt/ros/humble/setup.bash && ROS_DOMAIN_ID=7 ros2 topic echo /amcl_pose --once'"
+    # One call both WAITS and VERIFIES: blocks until the full TF chain (slam map->odom +
+    # scan_matcher odom->base, republished by tfshim) produces a fresh /amcl_pose — i.e. slam
+    # has re-anchored to odom=0 — then prints the spawn pose. Returns as soon as ready (~2-5s),
+    # capped at 20s. Replaces the old blind `sleep 8` AND the manual verify command.
+    echo "[reset] waiting for /amcl_pose to republish — spawn should read ~(0,0,0):"
+    ros2_in "timeout 20 ros2 topic echo --no-daemon /amcl_pose --once --field pose.pose.position" 2>/dev/null \
+      || echo "[reset]   ! /amcl_pose not seen within 20s — verify manually"
+    echo "[reset] PIN done."
     ;;
   --slam)
     echo "[reset] restarting SLAM + navigation (Nav2) for a clean costmap ..."
