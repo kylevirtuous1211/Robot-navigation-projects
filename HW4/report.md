@@ -15,7 +15,7 @@ Both projects are set to **Public** visibility. Annotations were drawn manually 
 | Total images | 106 | 106 |
 | Classes | `bear`, `knob` | `road`, `bridge` |
 | Train / Val split | 90 / 16 | 90 / 16 |
-| Test set | held out from Roboflow split | held out from Roboflow split |
+| Test set | none: the Roboflow export has only `train/`, and the 16 validation images are carved out of it by `scripts/prepare_data.py` (seed 42) | same |
 | Preprocessing | Auto-Orient and Resize **disabled** | Auto-Orient and Resize **disabled** |
 | Augmentation (Roboflow) | none (skipped) | none (skipped) |
 | Augmentation (Ultralytics, train-time) | mosaic, fliplr=0.5, HSV(H=0.015, S=0.7, V=0.4), randaugment, erasing=0.4 | same |
@@ -34,15 +34,15 @@ Both models share the same hyperparameters; only the backbone weights differ.
 | Epochs | 100 | 100 |
 | Batch size | 16 | 16 |
 | Image size | 640 × 640 | 640 × 640 |
-| Optimizer | AdamW (auto-selected) | AdamW (auto-selected) |
-| Initial LR (`lr0`) | 0.01 | 0.01 |
+| Optimizer | AdamW (`optimizer=auto`) | AdamW (`optimizer=auto`) |
+| Initial LR | 0.001667 (auto-selected; the configured `lr0=0.01` is ignored under `optimizer=auto`) | same |
 | Final LR factor (`lrf`) | 0.01 | 0.01 |
-| Momentum | 0.937 | 0.937 |
+| Momentum (AdamW beta1) | 0.9 (auto-selected; the configured 0.937 is ignored) | same |
 | Weight decay | 5e-4 | 5e-4 |
 | Warmup epochs | 3.0 | 3.0 |
 | Device | GPU 0 | GPU 0 |
-| Mask ratio | — | 4 |
-| Overlap mask | — | enabled |
+| Mask ratio | - | 4 |
+| Overlap mask | - | enabled |
 
 
 ### Final epoch metrics (epoch 100/100)
