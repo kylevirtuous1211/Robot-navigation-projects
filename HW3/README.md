@@ -33,7 +33,7 @@ Across the 3-episode evaluation in the [HW3-2 report](HW3-2/report.md), map 4 is
 Map 4 has water potholes in the middle of the island, and some flags can only be reached through one-cell corridors between a pothole and the shore.
 The agent first scored 0/10 there.
 Raising the water penalty did not help: the agent learned that circling in open ground was cheaper than entering a corridor.
-Three changes fixed it: a tiered circling penalty (-1 to -3/-8), a stronger pull toward the flag (distance weight 10 to 15), and a one-time death penalty instead of one that scaled with the remaining time.
+Three changes fixed it: a tiered circling penalty (-3 when moving slowly, -8 when nearly stationary over 50 steps), a stronger pull toward the flag (distance weight 10 to 15), and a one-time death penalty instead of -100 on every step while dead.
 Pushing through a corridor then clearly beat circling, and map 4 went to 10/10.
 The full derivation is in the [HW3-2 report](HW3-2/report.md) ([PDF](HW3-2/report.pdf)).
 
@@ -49,7 +49,7 @@ The full derivation is in the [HW3-2 report](HW3-2/report.md) ([PDF](HW3-2/repor
 
 ## Reproduce
 
-The Proly build (`Proly.x86_64`, `Proly_Data/`, `UnityPlayer.so`) comes from the course materials, and the trained `model.zip` is not distributed; both are git-ignored and belong in `HW3-2/`.
+The Proly 1.4.0-beta.1 Linux build (`Proly.x86_64`, `Proly_Data/`, `UnityPlayer.so`) is on the [Proly releases page](https://github.com/PAIA-Playful-AI-Arena/Proly/releases/tag/1.4.0-beta.1), and the trained `model.zip` is not distributed; both are git-ignored and belong in `HW3-2/`.
 
 ```bash
 cd HW3/HW3-2
@@ -63,10 +63,10 @@ CUDA_VISIBLE_DEVICES="" uv run --project .. python -m mlgame3d -w 1 \
 ./eval_all_maps.sh
 ```
 
-To record a run, start this in a second terminal while an episode is playing (display `:20` by default):
+To record a run, start this in a second terminal while an episode is playing (display `:20` by default); an episode lasts about 30 s, so stop early with Ctrl-C if it ends first:
 
 ```bash
-tools/record_screen.sh map4.mp4 60 Proly    # from the repo root
+tools/record_screen.sh map4.mp4 40 Proly    # from the repo root
 ```
 
 Submitted reports: [HW3-1](HW3_111030034/HW3-1/report_111030034.pdf), [HW3-2](HW3_111030034/HW3-2/report_111030034.pdf).
