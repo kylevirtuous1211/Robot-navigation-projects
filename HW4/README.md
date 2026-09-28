@@ -1,4 +1,66 @@
-# HW4: Object Detection & Semantic Segmentation
+# HW4 - Object Detection and Instance Segmentation
+
+Two YOLO26s models trained on 106 hand-labeled frames from the PROS Twin Unity simulator: a detector for `bear` and `knob`, and an instance segmenter for `road` and `bridge`.
+The same detector weights drive the Final Project's bear search.
+
+![Detection predictions on the validation set](assets/det_val_pred.jpg)
+
+## Results
+
+Validation split (16 images), evaluated with the `best.pt` weights:
+
+| Model | Class | Precision | Recall | mAP@0.5 | mAP@0.5:0.95 |
+|---|---|---:|---:|---:|---:|
+| Detection | bear | 0.996 | 1.000 | 0.995 | 0.747 |
+| Detection | knob | 0.849 | 0.857 | 0.944 | 0.599 |
+| Detection | **all** | 0.923 | 0.929 | **0.969** | 0.673 |
+| Segmentation (mask) | bridge | 0.934 | 1.000 | 0.995 | 0.842 |
+| Segmentation (mask) | road | 0.956 | 0.706 | 0.850 | 0.563 |
+| Segmentation (mask) | **all** | 0.945 | 0.853 | **0.923** | 0.702 |
+
+The `knob` is small in most frames, which shows up as the lowest box mAP@0.5:0.95.
+`road` recall (0.71) is the weakest segmentation number: the model misses some road instances entirely.
+
+### Validation predictions
+
+| Ground truth | Prediction |
+|---|---|
+| ![Detection labels](assets/det_val_labels.jpg) | ![Detection predictions](assets/det_val_pred.jpg) |
+| ![Segmentation labels](assets/seg_val_labels.jpg) | ![Segmentation predictions](assets/seg_val_pred.jpg) |
+
+### Training curves
+
+**Detection**
+
+![Detection training curves](assets/det_results.png)
+
+**Segmentation**
+
+![Segmentation training curves](assets/seg_results.png)
+
+| Detection PR curve | Detection confusion matrix |
+|---|---|
+| ![Detection PR curve](assets/det_pr_curve.png) | ![Detection confusion matrix](assets/det_confusion_matrix.png) |
+| **Segmentation mask PR curve** | **Segmentation confusion matrix** |
+| ![Segmentation mask PR curve](assets/seg_mask_pr_curve.png) | ![Segmentation confusion matrix](assets/seg_confusion_matrix.png) |
+
+Dataset, training configuration and the Final Project navigation plan are in [`report.md`](report.md) ([PDF](report.pdf)).
+
+## Reproduce the metrics
+
+```bash
+cd HW4
+uv venv && uv pip install ultralytics
+python3 scripts/prepare_data.py                     # build train/valid splits from the Roboflow zips
+.venv/bin/yolo val model=detection/runs/detect/train/weights/best.pt data=detection/data/data.yaml
+.venv/bin/yolo val model=segmentation/runs/segment/train/weights/best.pt data=segmentation/data/data.yaml
+```
+
+The datasets and weights are not committed; the Roboflow projects are linked in the report.
+
+---
+
+The rest of this README is the working guide for the simulator, data collection and training.
 
 ## Quick Start
 
