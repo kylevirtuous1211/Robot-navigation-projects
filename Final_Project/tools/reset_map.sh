@@ -34,10 +34,9 @@ echo "[reset] done — car should be at spawn on a fresh FINAL PROJECT map."
 #            accumulates forever (never resets on its own), so the map frame floats every
 #            session. Verified 2026-06-11: after this, /amcl_pose at spawn reads ~(0,0,0).
 #            (slam_toolbox's map_start_pose does NOT pin a fresh map — odom reset is the fix.)
-#            Nav2 is NOT restarted: Task 2/3 + combined drive purely on /amcl_pose + vision
-#            (publish_raw_car_control), never the Nav2 stack — so the Nav2 costmap resync is
-#            dead weight here. Task 1's return DOES use Nav2; for it run --slam after --pin
-#            (a clean costmap, since the SLAM restart de-syncs it).
+#            Nav2 is NOT restarted: every mission (Task 1/2/3 + combined) drives purely on
+#            /amcl_pose + vision (publish_raw_car_control), never the Nav2 stack, so the Nav2
+#            costmap resync is dead weight here. Task 1's RETURN is a go-to-point on /amcl_pose.
 #   --slam : older flag — rebuild SLAM + restart Nav2 only. Does NOT reset odom, so map
 #            coords still float. Use --pin when you need reproducible coordinates.
 case "${1:-}" in
@@ -48,8 +47,7 @@ case "${1:-}" in
     sleep 6   # let scan_matcher come back with odom re-origined to 0 before slam reads it
     echo "[reset]   2/2 restart slam (map re-anchors to odom=0) ..."
     docker restart -t 3 kylefp-slam-1 >/dev/null 2>&1
-    echo "[reset] Nav2 NOT restarted — Task 2/3 + combined don't use it (pose + vision only)."
-    echo "[reset]   Task 1's Nav2 return needs a clean costmap → run afterwards: reset_map.sh --slam"
+    echo "[reset] Nav2 NOT restarted - no mission uses it (pose + vision only)."
     # One call both WAITS and VERIFIES: blocks until the full TF chain (slam map->odom +
     # scan_matcher odom->base, republished by tfshim) produces a fresh /amcl_pose — i.e. slam
     # has re-anchored to odom=0 — then prints the spawn pose. Returns as soon as ready (~2-5s),

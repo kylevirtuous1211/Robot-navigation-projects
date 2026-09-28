@@ -2,12 +2,14 @@
 # Launch the Final Project Task 3 autonomous mission (headless) on the
 # isolated kylefp stack (ROS_DOMAIN_ID=7, network kylefp_my_bridge_network).
 #
-# Task 3 = door knob: SEARCH -> APPROACH -> OBSERVE (>=5s, Locate & Observe) ->
-# UNLOCK (arm knob_poke) -> CLEAR (drive body forward to push the door open).
+# Task 3 = door knob: DRIVE_WP (measured waypoints to the door, needs reset_map.sh --pin) ->
+# UNLOCK (square up, knob pursuit, knob_raise, start knob_press_down) -> CLEAR (drive through
+# the doorway while the lever is held down). SEARCH/APPROACH/OBSERVE only run if WAYPOINTS is empty.
 #
 # Prereqs (already running):
 #   - The full stack is up -> ../../../start_stack.sh  (one launcher for all 3 tasks;
 #     the knob detection container remaps its output to /yolo/target_info_knob)
+#   - reset_map.sh --pin has been run at spawn (DRIVE_WP needs the pinned map frame)
 #   - Unity in FINAL PROJECT scene, CAR + ARM Mode = AI, RosBridge port 9091 (Connected)
 #
 # Watch the live "[Task3]" state log (transitions + per-tick knob found/dist/dx) to

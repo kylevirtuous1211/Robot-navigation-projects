@@ -5,7 +5,8 @@
 # Now a single `docker compose up -d` (four overlays under project `kylefp`) brings up
 # every container; Unity is the one host-side step (it's a GUI binary, not a container).
 # Every perception node runs at once, so you can run Task 1, Task 2 and Task 3 back-to-back
-# in one Unity session WITHOUT restarting any container — just run the matching run_taskN.sh.
+# in one Unity session without restarting the perception containers — just run reset_map.sh --pin
+# (restarts only odometry + SLAM) and the matching run_taskN.sh.
 #
 # Perception topics (all live simultaneously, no interference):
 #   - /yolo/target_info       <- kylefp-yolo       (detection, YOLO_TARGET=bear)   Task 1 + Task 2 bear
@@ -65,7 +66,7 @@ echo ""
 echo "Then run any mission (stack stays up between tasks):"
 echo "  $PROS/pros_car/run_task1.sh   # bear: search -> grab -> return"
 echo "  $PROS/pros_car/run_task2.sh   # bridge -> grab bear -> return"
-echo "  $PROS/pros_car/run_task3.sh   # door knob: observe -> unlock -> clear"
+echo "  $PROS/pros_car/run_task3.sh   # door knob: waypoints -> unlock -> clear"
 echo "Foxglove viewer: ws://localhost:8766"
 echo "============================================================"
 docker ps --filter name=kylefp- --format '  {{.Names}}: {{.Status}}' | sort
