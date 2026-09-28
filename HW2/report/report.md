@@ -1,126 +1,40 @@
+# HW2 Tuning Log
 
-navigation.py
- — NewFeature: Replaced the live OpenCV display window with imageio.get_writer() to save the simulation as an MP4 video. This was necessary to run the simulation on a headless server (no display). The output filename is dynamically named as nav_output_{simulator}_{controller}_{track}.mp4. The main loop now automatically terminates when has_finished is set to True by the metrics evaluator, instead of relying on a keyboard Esc event.
+Raw tuning results behind [`report_hw2.tex`](report_hw2.tex).
+All runs use the bicycle kinematic model with the PID longitudinal controller.
+Pure pursuit always runs with `Lfc=1.0`, which `navigation.py` passes to the controller (overriding the constructor default of 5.0).
 
+## Code changes
 
- ## Silverstone
+- `navigation.py`: the OpenCV display window was replaced with `imageio.get_writer()`, so the simulation saves an MP4 (`nav_output_{simulator}_{controller}_{track}_test.mp4`) and runs on a headless server.
+  The main loop exits when the metrics evaluator sets `has_finished`, instead of waiting for Esc.
 
- ### pure pursuit
+## Silverstone
 
-kp=0.1, Lfc=5.0
- ========================================
---- Simulation Finished ---
-Total Elapsed Time: 55.50 seconds
-Average Cross-Track Error: 0.0265 meters
-========================================
-
-kp=1.0, Lfc=5.0
-========================================
---- Simulation Finished ---
-Total Elapsed Time: 53.40 seconds
-Average Cross-Track Error: 2.3545 meters
-========================================
-
-kp=0.3, Lfc=5.0
-========================================
---- Simulation Finished ---
-Total Elapsed Time: 55.25 seconds
-Average Cross-Track Error: 0.0836 meters
-========================================
-
-kp=0.08, Lfc=5.0
-========================================
---- Simulation Finished ---
-Total Elapsed Time: 55.10 seconds
-Average Cross-Track Error: 0.0278 meters
-========================================
-
-kp=0.06, Lfc=5.0
-========================================
---- Simulation Finished ---
-Total Elapsed Time: 55.30 seconds
-Average Cross-Track Error: 0.1754 meters
-========================================
-
-
-### stanley
-kp=1.0
-========================================
---- Simulation Finished ---
-Total Elapsed Time: 55.10 seconds
-Average Cross-Track Error: 0.2739 meters
-========================================
-![alt text](image.png)
-
-kp=5.0
-========================================
---- Simulation Finished ---
-Total Elapsed Time: 56.00 seconds
-Average Cross-Track Error: 0.2815 meters
-========================================
-
-kp=0.1
-========================================
---- Simulation Finished ---
-Total Elapsed Time: 55.20 seconds
-Average Cross-Track Error: 0.8002 meters
-========================================
-
-### lqr
-
-========================================
---- Simulation Finished ---
-Total Elapsed Time: 55.50 seconds
-Average Cross-Track Error: 0.2064 meters
-========================================
+| Controller | Gain | Lap time (s) | Avg cross-track error (m) |
+|---|---|---:|---:|
+| Pure pursuit | `kp=1.0` | 53.40 | 2.3545 |
+| Pure pursuit | `kp=0.3` | 55.25 | 0.0836 |
+| Pure pursuit | **`kp=0.1`** | 55.50 | **0.0265** |
+| Pure pursuit | `kp=0.08` | 55.10 | 0.0278 |
+| Pure pursuit | `kp=0.06` | 55.30 | 0.1754 |
+| Stanley | `kp=5.0` | 56.00 | 0.2815 |
+| Stanley | `kp=1.0` | 55.10 | 0.2739 |
+| Stanley | `kp=0.1` | 55.20 | 0.8002 |
+| LQR | default | 55.50 | 0.2064 |
 
 ## Monza
 
-### stanley
-kp=2.0
-========================================
---- Simulation Finished ---
-Total Elapsed Time: 47.65 seconds
-Average Cross-Track Error: 0.2647 meters
-========================================
-
-### lqr
-========================================
---- Simulation Finished ---
-Total Elapsed Time: 47.50 seconds
-Average Cross-Track Error: 0.1316 meters
-========================================
-
-### pure pursuit
-========================================
---- Simulation Finished ---
-Total Elapsed Time: 47.45 seconds
-Average Cross-Track Error: 0.0250 meters
-========================================
-
+| Controller | Gain | Lap time (s) | Avg cross-track error (m) |
+|---|---|---:|---:|
+| Pure pursuit | `kp=0.1` | 47.45 | 0.0250 |
+| Stanley | `kp=2.0` | 47.65 | 0.2647 |
+| LQR | default | 47.50 | 0.1316 |
 
 ## Suzuka
 
-### pure pursuit
-kp=0.1, Lfc=5.0
-========================================
---- Simulation Finished ---
-Total Elapsed Time: 53.20 seconds
-Average Cross-Track Error: 0.0315 meters
-========================================
-
-### lqr
-========================================
---- Simulation Finished ---
-Total Elapsed Time: 53.75 seconds
-Average Cross-Track Error: 0.2072 meters
-========================================
-
-### stanley
-kp=2.0
-
-========================================
---- Simulation Finished ---
-Total Elapsed Time: 53.35 seconds
-Average Cross-Track Error: 0.2218 meters
-========================================
+| Controller | Gain | Lap time (s) | Avg cross-track error (m) |
+|---|---|---:|---:|
+| Pure pursuit | `kp=0.1` | 53.20 | 0.0315 |
+| Stanley | `kp=2.0` | 53.35 | 0.2218 |
+| LQR | default | 53.75 | 0.2072 |
