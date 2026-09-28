@@ -3,11 +3,12 @@
 #
 # Usage: tools/record_screen.sh <out.mp4> <duration_s> [window_name_regex]
 #   window_name_regex  matched against top-level window names (default: Unity build names)
-# DISPLAY defaults to :20 (Chrome Remote Desktop). Stop early with Ctrl-C; the file stays valid.
+# DISPLAY defaults to :20 (Chrome Remote Desktop). Stop early with one Ctrl-C / SIGINT; the
+# fragmented mp4 stays playable even if ffmpeg is killed outright.
 set -euo pipefail
 
 if [ $# -lt 2 ]; then
-  sed -n '4,6p' "$0"
+  sed -n '4,7p' "$0"
   exit 1
 fi
 
@@ -47,4 +48,5 @@ height=$(( height / 2 * 2 ))
 echo "Recording window ${window_id} (${width}x${height}+${left}+${top}) on ${DISPLAY} for ${duration}s -> ${output}"
 ffmpeg -hide_banner -loglevel error -y -f x11grab -framerate 30 \
   -video_size "${width}x${height}" -i "${DISPLAY}+${left},${top}" -t "$duration" \
-  -c:v libx264 -crf 23 -preset veryfast -pix_fmt yuv420p "$output"
+  -c:v libx264 -crf 23 -preset veryfast -pix_fmt yuv420p \
+  -movflags +frag_keyframe+empty_moov "$output"
