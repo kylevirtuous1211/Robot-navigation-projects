@@ -1,11 +1,11 @@
 # HW3 - Deep Reinforcement Learning
 
-The showcase is **HW3-2**: a PPO agent that plays *Proly*, a Unity flag-capture game, and collects all 10 flags on each of the five maps.
+The showcase is **HW3-2**: a PPO agent that plays *Proly*, a Unity flag-capture game, and collected all 10 flags on each of the five maps in the recorded runs below.
 HW3-1 (PPO path tracking on a kinematic car) lives in [`HW3-1/`](HW3-1/) with its [report](HW3-1/report.md).
 
-![PPO agent on map 4 (Pothole Island)](assets/proly_map4.gif)
+[![PPO agent on map 4 (Pothole Island)](assets/proly_map4_hero.gif)](assets/proly_map4.mp4)
 
-*Map 4, "Pothole Island", 4x speed. The agent is the blue player (P1). [Full-speed mp4](assets/proly_map4.mp4)*
+*Map 4 ("Pothole Island") at 4x speed, with the agent as the blue player P1; click the clip for the full-speed mp4.*
 
 ## Method
 
@@ -25,32 +25,31 @@ Recorded runs of the final `model.zip` (one episode per map, deterministic polic
 | 3 | Two holes | 10/10 | 26.3 s |
 | 4 | Pothole Island | 10/10 | 33.0 s |
 
-Every map finishes well inside the 120 s limit.
+Each recorded run finishes in under 34 s of the 120 s limit.
+Across the 3-episode evaluation in the [HW3-2 report](HW3-2/report.md), map 4 is the least consistent, ranging from about 28 s to 115 s.
 
 ### Map 4: why a stronger water penalty failed
 
-Map 4 has water potholes in the middle of the island, and the only routes between flags are one-cell corridors between potholes and the shore.
+Map 4 has water potholes in the middle of the island, and some flags can only be reached through one-cell corridors between a pothole and the shore.
 The agent first scored 0/10 there.
-Raising the water penalty made it worse: the agent learned that circling in open ground was cheaper than entering a corridor.
-The fix was to make circling expensive instead (-1 to a tiered -3/-8) and strengthen the pull toward the flag (distance weight 10 to 15).
+Raising the water penalty did not help: the agent learned that circling in open ground was cheaper than entering a corridor.
+Three changes fixed it: a tiered circling penalty (-1 to -3/-8), a stronger pull toward the flag (distance weight 10 to 15), and a one-time death penalty instead of one that scaled with the remaining time.
 Pushing through a corridor then clearly beat circling, and map 4 went to 10/10.
 The full derivation is in the [HW3-2 report](HW3-2/report.md) ([PDF](HW3-2/report.pdf)).
 
 ## All maps
 
-4x speed; each clip links to the full-speed mp4.
+4x speed; click a clip for the full-speed mp4.
 
 | Map 0 - Island | Map 1 - S-shaped | Map 2 - V-shaped |
 |---|---|---|
-| ![Map 0](assets/proly_map0.gif) | ![Map 1](assets/proly_map1.gif) | ![Map 2](assets/proly_map2.gif) |
-| [mp4](assets/proly_map0.mp4) | [mp4](assets/proly_map1.mp4) | [mp4](assets/proly_map2.mp4) |
+| [![Map 0](assets/proly_map0.gif)](assets/proly_map0.mp4) | [![Map 1](assets/proly_map1.gif)](assets/proly_map1.mp4) | [![Map 2](assets/proly_map2.gif)](assets/proly_map2.mp4) |
 | **Map 3 - Two holes** | **Map 4 - Pothole Island** | |
-| ![Map 3](assets/proly_map3.gif) | ![Map 4](assets/proly_map4.gif) | |
-| [mp4](assets/proly_map3.mp4) | [mp4](assets/proly_map4.mp4) | |
+| [![Map 3](assets/proly_map3.gif)](assets/proly_map3.mp4) | [![Map 4](assets/proly_map4.gif)](assets/proly_map4.mp4) | |
 
 ## Reproduce
 
-The Proly build (`Proly.x86_64`, `Proly_Data/`, `UnityPlayer.so`) and the trained `model.zip` are git-ignored; place them in `HW3-2/` first.
+The Proly build (`Proly.x86_64`, `Proly_Data/`, `UnityPlayer.so`) comes from the course materials, and the trained `model.zip` is not distributed; both are git-ignored and belong in `HW3-2/`.
 
 ```bash
 cd HW3/HW3-2
@@ -62,9 +61,12 @@ CUDA_VISIBLE_DEVICES="" uv run --project .. python -m mlgame3d -w 1 \
 
 # Evaluate every map, 3 episodes each (the grading format).
 ./eval_all_maps.sh
+```
 
-# Record the game window while an episode runs (display :20 by default).
-../../tools/record_screen.sh map4.mp4 60 Proly
+To record a run, start this in a second terminal while an episode is playing (display `:20` by default):
+
+```bash
+tools/record_screen.sh map4.mp4 60 Proly    # from the repo root
 ```
 
 Submitted reports: [HW3-1](HW3_111030034/HW3-1/report_111030034.pdf), [HW3-2](HW3_111030034/HW3-2/report_111030034.pdf).
