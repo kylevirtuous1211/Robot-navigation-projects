@@ -9,7 +9,7 @@ The same detector weights drive the Final Project's bear search.
 
 Validation split (16 images), evaluated with the `best.pt` weights:
 
-| Model | Class | Precision | Recall | mAP@0.5 | mAP@0.5:0.95 |
+| Model | Class | Precision | Recall | mAP50 | mAP50-95 |
 |---|---|---:|---:|---:|---:|
 | Detection | bear | 0.996 | 1.000 | 0.995 | 0.747 |
 | Detection | knob | 0.849 | 0.857 | 0.944 | 0.599 |
@@ -18,7 +18,7 @@ Validation split (16 images), evaluated with the `best.pt` weights:
 | Segmentation (mask) | road | 0.956 | 0.706 | 0.850 | 0.563 |
 | Segmentation (mask) | **all** | 0.945 | 0.853 | **0.923** | 0.702 |
 
-The `knob` is small in most frames, which shows up as the lowest box mAP@0.5:0.95.
+The `knob` is small in most frames, which shows up as the lowest box mAP50-95.
 `road` recall (0.71) is the weakest segmentation number: the model misses some road instances entirely.
 
 ### Validation predictions

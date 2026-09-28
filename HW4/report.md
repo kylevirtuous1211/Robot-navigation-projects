@@ -49,13 +49,13 @@ Both models share the same hyperparameters; only the backbone weights differ.
 
 **Detection**
 
-| Precision | Recall | mAP@0.5 | mAP@0.5:0.95 |
+| Precision | Recall | mAP50 | mAP50-95 |
 |---|---|---|---|
 | 0.906 | 0.850 | 0.918 | 0.660 |
 
 **Segmentation**
 
-| Output | Precision | Recall | mAP@0.5 | mAP@0.5:0.95 |
+| Output | Precision | Recall | mAP50 | mAP50-95 |
 |---|---|---|---|---|
 | Box (B) | 1.000 | 0.797 | 0.904 | 0.751 |
 | Mask (M) | 1.000 | 0.797 | 0.910 | 0.704 |
