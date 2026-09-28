@@ -80,13 +80,13 @@ A small dataset (n = 106) is at high risk of **overfitting**: the model can memo
 
 | Far view | Close / oblique view |
 |:---:|:---:|
-| ![bear / knob — far view](assets/far_bear.png) | ![bear / knob — close / oblique view](assets/close_bear.png) |
+| ![bear / knob — far view](assets/far_bear.jpg) | ![bear / knob — close / oblique view](assets/close_bear.jpg) |
 
 **Segmentation — `road` and `bridge` from varied positions**
 
 | Near / on-road perspective | Far / approach view |
 |:---:|:---:|
-| ![road / bridge — near](assets/bridge_near.png) | ![road / bridge — far](assets/bridge_far.png) |
+| ![road / bridge — near](assets/bridge_near.jpg) | ![road / bridge — far](assets/bridge_far.jpg) |
 
 ## 5. Navigation Strategy for the Final Project
 

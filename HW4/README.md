@@ -1,9 +1,11 @@
 # HW4 - Object Detection and Instance Segmentation
 
-Two YOLO26s models trained on 106 hand-labeled frames from the PROS Twin Unity simulator: a detector for `bear` and `knob`, and an instance segmenter for `road` and `bridge`.
-The same detector weights drive the Final Project's bear search.
+Two YOLO26s models trained on hand-labeled frames from the PROS Twin Unity simulator (106 frames: 90 train, 16 validation): a detector for `bear` and `knob`, and an instance segmenter for `road` and `bridge`.
+The same weights drive the Final Project's perception.
 
-![Detection predictions on the validation set](assets/det_val_pred.jpg)
+![Detection (top) and segmentation (bottom) on validation frames](assets/val_examples.jpg)
+
+*Validation frames the models never trained on: bear and door-knob detection (top), bridge and road segmentation (bottom).*
 
 ## Results
 
@@ -18,10 +20,13 @@ Validation split (16 images), evaluated with the `best.pt` weights:
 | Segmentation (mask) | road | 0.956 | 0.706 | 0.850 | 0.563 |
 | Segmentation (mask) | **all** | 0.945 | 0.853 | **0.923** | 0.702 |
 
-The `knob` is small in most frames, which shows up as the lowest box mAP50-95.
-`road` recall (0.71) is the weakest segmentation number: the model misses some road instances entirely.
+The `knob` is small in most frames, which shows up as the lowest detection mAP50-95.
+`road` is the weakest class (recall 0.71, mask mAP50-95 0.56): the confusion matrix below shows about a fifth of true road instances missed, and most false positives are also road.
+With no separate test split, these numbers come from the same 16 frames that picked `best.pt`, so treat them as optimistic.
 
 ### Validation predictions
+
+All 16 validation frames, ground truth next to prediction.
 
 | Ground truth | Prediction |
 |---|---|
@@ -44,19 +49,24 @@ The `knob` is small in most frames, which shows up as the lowest box mAP50-95.
 | **Segmentation mask PR curve** | **Segmentation confusion matrix** |
 | ![Segmentation mask PR curve](assets/seg_mask_pr_curve.png) | ![Segmentation confusion matrix](assets/seg_confusion_matrix.png) |
 
+The PR curves and confusion matrices come from the same validation run as the table; the training curves come from training.
+
 Dataset, training configuration and the Final Project navigation plan are in [`report.md`](report.md) ([PDF](report.pdf)).
 
 ## Reproduce the metrics
 
+The datasets and weights are not committed.
+Download both Roboflow projects linked in the [report](report.md) in YOLO26 format, and save them as `HW4/data/det_yolo26.zip` and `HW4/data/seg_yolo26.zip`.
+
 ```bash
 cd HW4
 uv venv && uv pip install ultralytics
-python3 scripts/prepare_data.py                     # build train/valid splits from the Roboflow zips
-.venv/bin/yolo val model=detection/runs/detect/train/weights/best.pt data=detection/data/data.yaml
-.venv/bin/yolo val model=segmentation/runs/segment/train/weights/best.pt data=segmentation/data/data.yaml
+.venv/bin/python scripts/prepare_data.py            # extract the zips, carve a 15% validation split (seed 42)
+(cd detection && ../.venv/bin/python train.py)      # yolo26s, 100 epochs, batch 16, GPU 0
+(cd segmentation && ../.venv/bin/python train.py)   # yolo26s-seg, same settings
+.venv/bin/yolo val model=detection/runs/detect/train/weights/best.pt data=detection/data/data.yaml device=cpu
+.venv/bin/yolo val model=segmentation/runs/segment/train/weights/best.pt data=segmentation/data/data.yaml device=cpu
 ```
-
-The datasets and weights are not committed; the Roboflow projects are linked in the report.
 
 ---
 
@@ -66,7 +76,8 @@ The rest of this README is the working guide for the simulator, data collection 
 
 ### 1. Launch PROS Twin Simulator
 
-Force NVIDIA GPU rendering (required — Chrome Remote Desktop defaults to software rendering):
+The PROS Twin build (`pros_twin_unity_linux_V3.zip`) comes from the course and is git-ignored; unzip it to `HW4/pros_twin_linux/`.
+Force NVIDIA GPU rendering, which is required because Chrome Remote Desktop defaults to software rendering:
 
 ```bash
 cd ~/Desktop/Robot-navigation-projects/HW4/pros_twin_linux/pros_twin_unity_linux/
@@ -124,7 +135,7 @@ r
 ros2 run pros_car_py robot_control
 # Select "Manual Arm Control"
 # Select "[0]"
-# Press b to reset the car position
+# Press b to reset the arm to its initial pose
 # Press q to quit arm control
 # Select "Control Vehicle"
 ```
@@ -134,8 +145,10 @@ Vehicle controls:
 |-----|--------|
 | w | Forward |
 | s | Backward |
-| e | Turn left |
-| r | Turn right |
+| a | Forward-left arc |
+| d | Forward-right arc |
+| e | Rotate left in place |
+| r | Rotate right in place |
 | z | Stop |
 | c | **Save current image** |
 | q | Quit |
@@ -169,46 +182,29 @@ Steps per project:
 
 ### Directory Structure
 
+`scripts/prepare_data.py` builds this layout from the two Roboflow zips and writes `data.yaml` with absolute paths (the Roboflow exports contain only `train/`, so it carves `valid/` out of it):
+
 ```
 HW4/
+  data/det_yolo26.zip, data/seg_yolo26.zip   # Roboflow exports (git-ignored)
   detection/
     data/
       train/images/  train/labels/
       valid/images/  valid/labels/
-      test/images/   test/labels/
-      data.yaml      # change paths to ABSOLUTE paths
+      data.yaml
     train.py
   segmentation/
     data/
       ...same structure...
-      data.yaml
     train.py
-```
-
-### data.yaml - Fix Paths
-
-Change relative paths to absolute:
-```yaml
-train: /home/kyle/Desktop/Robot-navigation-projects/HW4/detection/data/train/images
-val: /home/kyle/Desktop/Robot-navigation-projects/HW4/detection/data/valid/images
-test: /home/kyle/Desktop/Robot-navigation-projects/HW4/detection/data/test/images
 ```
 
 ### train.py
 
-```python
-from ultralytics import YOLO
+Both `train.py` scripts take `--model`, `--epochs`, `--batch`, `--imgsz`, `--device` and `--name`; the defaults are the settings used for the results above.
 
-if __name__ == "__main__":
-    # Detection: yolo26n.pt, yolo26s.pt, ...
-    # Segmentation: yolo26n-seg.pt, yolo26s-seg.pt, ...
-    model = YOLO("yolo26n.pt")
-    model.train(data="data/data.yaml", epochs=100, batch=8)
-```
-
-Run:
 ```bash
-cd detection && python train.py
+cd detection && ../.venv/bin/python train.py        # yolo26s.pt, 100 epochs, batch 16, device 0
 # Best weights saved to: detection/runs/detect/train/weights/best.pt
 ```
 

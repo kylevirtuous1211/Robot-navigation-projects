@@ -11,7 +11,7 @@ Each task is a hands-free state machine, and all three run against one shared li
 
 All perception (bear, knob, bridge/road segmentation) runs at once, so any task can run in any order without restarting containers.
 
-![Rover camera view of the Task 2 bridge with a bear on top](../HW4/assets/bridge_far.png)
+![Rover camera view of the Task 2 bridge with a bear on top](../HW4/assets/bridge_far.jpg)
 
 *The rover's camera view of the Final Project map: the Task 2 bridge, with the target bear at the top.*
 
