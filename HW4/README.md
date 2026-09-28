@@ -51,7 +51,8 @@ All 16 validation frames, ground truth next to prediction.
 
 The PR curves and confusion matrices come from the same validation run as the table; the training curves come from training.
 
-Dataset, training configuration and the Final Project navigation plan are in [`report.md`](report.md) ([PDF](report.pdf)).
+Dataset, training configuration and the Final Project navigation plan are in [`report.md`](report.md).
+The [PDF](report.pdf) is the submitted version and predates the corrections to the test-split and optimizer rows.
 
 ## Reproduce the metrics
 
