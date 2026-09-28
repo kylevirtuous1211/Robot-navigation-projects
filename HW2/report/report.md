@@ -2,7 +2,10 @@
 
 Raw tuning results behind [`report_hw2.tex`](report_hw2.tex).
 All runs use the bicycle kinematic model with the PID longitudinal controller.
-Pure pursuit always runs with `Lfc=1.0`, which `navigation.py` passes to the controller (overriding the constructor default of 5.0).
+The values are the original console output from tuning.
+A rerun of the current code matches most rows closely; Monza Stanley differs the most (0.2773 m now vs 0.2647 m here).
+`navigation.py` passes `Lfc=1.0` to pure pursuit, overriding the constructor default of 5.0.
+The report labels these runs `Lfc=5.0`, but rerunning `kp=0.08` with `Lfc=1.0` reproduces 0.0278 exactly, so the sweep most likely ran with the override.
 
 ## Code changes
 

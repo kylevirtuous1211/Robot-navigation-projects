@@ -2,9 +2,9 @@
 
 A bicycle-model car laps three F1 circuits (Silverstone, Monza, Suzuka), comparing three lateral controllers on the same speed profile.
 
-![Pure Pursuit vs Stanley vs LQR on Suzuka](assets/compare_Suzuka.gif)
+[![Pure Pursuit vs Stanley vs LQR on Suzuka](assets/compare_Suzuka.gif)](assets/compare_Suzuka.mp4)
 
-*Suzuka, 3x speed. Each panel shows the chase camera, a minimap of lap progress, and target vs actual speed. [Full-length mp4](assets/compare_Suzuka.mp4)*
+*Suzuka, sped up 3x from the full-length mp4 (click the clip); each panel shows the chase camera, a minimap of lap progress, and target vs actual speed.*
 
 ## Method
 
@@ -13,12 +13,12 @@ A bicycle-model car laps three F1 circuits (Silverstone, Monza, Suzuka), compari
 - **Longitudinal control:** PID on speed error.
 - **Lateral control** (`code/PathTracking/`):
   - **Pure pursuit:** steer toward a look-ahead point at distance `Ld = kp·v + Lfc`, with `kp=0.1`, `Lfc=1`.
-  - **Stanley:** heading error plus `atan(kp·e / v)` on the front-axle cross-track error, `kp=2.0`.
-  - **LQR:** iterative discrete-time Riccati solution on the linearized 2-state error model (cross-track error, heading error), `Q = I`, `R = I`.
+  - **Stanley:** heading error plus `atan(kp·e / (v_f + 0.1))`, where `e` is the front-axle cross-track error and `v_f` the front-wheel speed, `kp=2.0`.
+  - **LQR:** iterative discrete-time Riccati solution on the linearized 2-state error model (cross-track error, heading error), with `Q = diag(1, 10)` and `R = 100`.
 
 ## Results
 
-| Track | Pure pursuit CTE (m) | Stanley CTE (m) | LQR CTE (m) | Lap time (s) |
+| Track | Pure pursuit CTE (m) | Stanley CTE (m) | LQR CTE (m) | Elapsed (s) |
 |---|---:|---:|---:|---:|
 | Silverstone | **0.026** | 0.205 | 0.206 | 55.0 - 55.5 |
 | Monza | **0.025** | 0.277 | 0.132 | 47.4 - 47.6 |
@@ -26,19 +26,22 @@ A bicycle-model car laps three F1 circuits (Silverstone, Monza, Suzuka), compari
 | **Mean** | **0.028** | 0.235 | 0.182 | |
 
 CTE is the average cross-track error over the lap.
-All three controllers finish within about half a second of each other, because the shared speed profile sets the lap time; pure pursuit tracks the line 6-8x more tightly than LQR and Stanley.
-The tuning sweeps behind these gains are in [`report/report.md`](report/report.md).
+Elapsed is the course harness's lap metric (loop ticks x `dt`), printed at the finish line; the loop steps the simulator twice per tick, so read it as a relative measure between controllers.
+All three controllers finish within about half a second of each other, because the shared speed profile sets the pace.
+On average pure pursuit tracks the line about 6.5x more tightly than LQR and 8.5x more tightly than Stanley.
+These numbers are a fresh run of the current code; the original tuning sweeps are in [`report/report.md`](report/report.md), and some of their values differ slightly.
 
 ## Controller comparison
 
-Each video runs the three controllers side by side, time-synced on the same track.
+Each video runs the three controllers side by side, time-synced on the same track; click a clip for the full-length mp4.
 
 | Silverstone | Monza |
 |---|---|
-| ![Silverstone comparison](assets/compare_Silverstone.gif) | ![Monza comparison](assets/compare_Monza.gif) |
-| [mp4](assets/compare_Silverstone.mp4) | [mp4](assets/compare_Monza.mp4) |
+| [![Silverstone comparison](assets/compare_Silverstone.gif)](assets/compare_Silverstone.mp4) | [![Monza comparison](assets/compare_Monza.gif)](assets/compare_Monza.mp4) |
 
 ## Reproduce
+
+The comparison step needs `ffmpeg` and fontconfig (`fc-match`) on the `PATH`.
 
 ```bash
 cd HW2/code
