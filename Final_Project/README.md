@@ -59,7 +59,7 @@ stateDiagram-v2
   SEARCH --> APPROACH: bear seen
   APPROACH --> SEARCH: lost while far
   APPROACH --> OBSERVE: centred within 0.5 m
-  OBSERVE --> CREEP: still for 4.5 s
+  OBSERVE --> CREEP: still for 5.5 s
   CREEP --> GRIP: arm down, 1 s push
   GRIP --> RETURN: claw closed
   RETURN --> DONE: at start, release

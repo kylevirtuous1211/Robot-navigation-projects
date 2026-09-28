@@ -62,7 +62,7 @@ class Task1Mission:
                                          # 推土機夾取較寬容，CREEP 前推時仍會再依 dx 修正置中
         self.LOST_CONFIRM = 5            # APPROACH 連續遺失 N 幀才判定 (容忍 YOLO 短暫掉幀)
         self.COMMIT_DOCK_DIST = 0.7      # 先前已靠近到此距離才遺失 → 視為被遮擋(到位)，直接夾取而非回 SEARCH
-        self.OBSERVE_SECONDS = 4.5       # 靜止觀察時間 (>5s 才拿分)
+        self.OBSERVE_SECONDS = 5.5       # 靜止觀察時間 (>5s 才拿分，留 0.5s 餘裕，與 Task 3 相同)
         # CREEP = 推土機式夾取：手臂先降到貼地「鏟取」姿勢(開爪)，再用車身固定前推，
         # 把 bear 推進開著的低位爪中 → 不靠手臂去構到超出 0.19m 可達範圍的點。
         self.BULLDOZER_PUSH_SEC = 1.0    # 鏟取姿勢就緒後直線前推時間 (s) — 主要微調旋鈕
