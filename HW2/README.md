@@ -26,7 +26,7 @@ A bicycle-model car laps three F1 circuits (Silverstone, Monza, Suzuka), compari
 | **Mean** | **0.028** | 0.235 | 0.182 | |
 
 CTE is the average cross-track error over the lap.
-All three controllers finish within about half a second of each other, because the shared speed profile sets the lap time; pure pursuit tracks the line almost 10x more tightly.
+All three controllers finish within about half a second of each other, because the shared speed profile sets the lap time; pure pursuit tracks the line 6-8x more tightly than LQR and Stanley.
 The tuning sweeps behind these gains are in [`report/report.md`](report/report.md).
 
 ## Controller comparison
