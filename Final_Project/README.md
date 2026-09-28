@@ -14,24 +14,24 @@ All perception (bear, knob, bridge/road segmentation) runs at once, so any task 
 ## How it works
 
 ```mermaid
-flowchart LR
-  unity["Unity PROS Twin sim<br/>RGB-D camera, LiDAR,<br/>4-wheel rover + arm with gripper"]
+flowchart TB
+  unity["Unity PROS Twin sim<br/>RGB-D camera, LiDAR, rover + arm"]
   bridge["rosbridge :9091"]
-  subgraph ros["ROS 2 in Docker (compose project kylefp)"]
-    slam["LiDAR SLAM"]
-    shim["tf to /amcl_pose shim"]
+  unity <--> bridge
+  subgraph ros["ROS 2 in Docker"]
+    direction TB
+    slam["LiDAR SLAM"] --> shim["tf to /amcl_pose shim"]
     bear["YOLO detect: bear"]
     knob["YOLO detect: knob"]
     seg["YOLO segment: bridge, road"]
     mission["Mission state machine<br/>task1 / task2 / task3 / task23"]
+    bear -- "/yolo/target_info" --> mission
+    knob -- "/yolo/target_info_knob" --> mission
+    seg -- "/yolo/bridge_info<br/>/yolo/road_info" --> mission
+    shim -- "/amcl_pose" --> mission
   end
-  unity <--> bridge
-  bridge -- "LiDAR" --> slam --> shim
+  bridge -- "LiDAR" --> slam
   bridge -- "camera + depth" --> bear & knob & seg
-  bear -- "/yolo/target_info" --> mission
-  knob -- "/yolo/target_info_knob" --> mission
-  seg -- "/yolo/bridge_info, /yolo/road_info" --> mission
-  shim -- "/amcl_pose" --> mission
   mission -- "wheel + arm commands" --> bridge
 ```
 
@@ -43,49 +43,55 @@ Each mission ticks at 10 Hz and publishes raw wheel speeds (`car_C_rear_wheel`, 
 These follow the code in `workspace/pros/pros_car/src/pros_car_py/pros_car_py/taskN_mission.py`.
 Every task also ends in `DONE` on its safety timeout.
 
-**Task 1 - bear** (`task1_mission.py`)
+<table>
+<tr><th>Task 1 - bear</th><th>Task 2 - bridge and bear</th><th>Task 3 - door knob</th></tr>
+<tr><td valign="top">
 
 ```mermaid
 stateDiagram-v2
-  direction LR
   [*] --> SEARCH
-  SEARCH --> APPROACH: bear seen 3 frames
-  APPROACH --> SEARCH: bear lost while far
-  APPROACH --> OBSERVE: centred within 0.5 m, or lost under 0.7 m (gripper occludes it)
-  OBSERVE --> CREEP: held still 4.5 s
-  CREEP --> GRIP: arm down, claw open, 1 s push
-  GRIP --> RETURN: close claw, lift
-  RETURN --> DONE: within 0.6 m of start, release
+  SEARCH --> APPROACH: bear seen
+  APPROACH --> SEARCH: lost while far
+  APPROACH --> OBSERVE: centred within 0.5 m
+  OBSERVE --> CREEP: still for 4.5 s
+  CREEP --> GRIP: arm down, 1 s push
+  GRIP --> RETURN: claw closed
+  RETURN --> DONE: at start, release
   DONE --> [*]
 ```
 
-**Task 2 - bridge and bear** (`task2_mission.py`)
+</td><td valign="top">
 
 ```mermaid
 stateDiagram-v2
-  direction LR
   [*] --> BRIDGE_APPROACH
-  BRIDGE_APPROACH --> VISUAL_CLIMB: last of 10 waypoints
-  VISUAL_CLIMB --> OBSERVE: 3 s climb, steering on bear or bridge mask
-  OBSERVE --> GRIP: facing the bear, held 2 s
-  GRIP --> SNAP_DESCEND: push forward, close claw
-  SNAP_DESCEND --> DESCEND: centred on bridge or road mask
-  DESCEND --> RETURN: off the bridge (masks gone or road fills view)
-  RETURN --> DONE: detour around bridge, within 0.4 m of start, release
+  BRIDGE_APPROACH --> VISUAL_CLIMB: 10 waypoints
+  VISUAL_CLIMB --> OBSERVE: 3 s climb
+  OBSERVE --> GRIP: facing bear 2 s
+  GRIP --> SNAP_DESCEND: claw closed
+  SNAP_DESCEND --> DESCEND: centred on mask
+  DESCEND --> RETURN: off the bridge
+  RETURN --> DONE: at start, release
   DONE --> [*]
 ```
 
-**Task 3 - door knob** (`task3_mission.py`)
+</td><td valign="top">
 
 ```mermaid
 stateDiagram-v2
-  direction LR
   [*] --> DRIVE_WP
-  DRIVE_WP --> UNLOCK: last of 13 waypoints, at the door
-  UNLOCK --> CLEAR: square up, pursue knob, raise arm, press lever
-  CLEAR --> DONE: drive through the doorway for 15 s
+  DRIVE_WP --> UNLOCK: 13 waypoints
+  UNLOCK --> CLEAR: lever pressed
+  CLEAR --> DONE: 15 s through door
   DONE --> [*]
 ```
+
+</td></tr>
+</table>
+
+- **Task 1** (`task1_mission.py`): SEARCH rotates in place; APPROACH servos on the bear's pixel offset and depth, and also commits to OBSERVE if the bear vanishes under 0.7 m (the gripper hides it); RETURN is go-to-point on `/amcl_pose`.
+- **Task 2** (`task2_mission.py`): VISUAL_CLIMB steers on the bear if it is within 4 m, else on the bridge mask; DESCEND steers on the bridge, then road mask, until both masks disappear or the road fills the view; RETURN detours around the bridge through 12 waypoints.
+- **Task 3** (`task3_mission.py`): UNLOCK squares up to the door, pursues the knob with the camera, raises the arm and presses the lever; CLEAR holds heading and drives through the doorway.
 
 The combined demo (`task23_auto`, `combined_mission.py`) runs Task 2 to completion, waits 2 s, then runs Task 3.
 
@@ -124,7 +130,7 @@ mission; to retry, re-run `reset_map.sh --pin` (fresh scene, car back at spawn) 
 |---|---|---|
 | 1 | `start_stack.sh` | One-shot detached bring-up: the Docker Compose stack (robot + online SLAM + Nav2 + rosbridge on **9091**), all three YOLO containers (bear → `/yolo/target_info`, knob → `/yolo/target_info_knob`, bridge → `/yolo/bridge_info`), the `tf → /amcl_pose` shim, Foxglove (`ws://localhost:8766`), and the Unity sim binary. |
 | 2 | `tools/reset_map.sh --pin` | Re-origins odometry and re-anchors SLAM so the spawn point reads `/amcl_pose ≈ (0,0,0)`. Both tasks' absolute waypoints are measured in this pinned frame, so this **must** run (car at spawn) before the mission. Auto-verifies by echoing the spawn pose. |
-| 3 | `run_task23.sh` | Builds (incremental) and runs `task23_auto` headless: full Task 2 (mount → climb → grip → descend → return + release) then full Task 3 (drive to door → dock → observe → lever press → drive through). |
+| 3 | `run_task23.sh` | Builds (incremental) and runs `task23_auto` headless: full Task 2 (mount → climb → grip → descend → return + release) then full Task 3 (drive to door → knob → lever press → drive through). |
 
 ---
 
