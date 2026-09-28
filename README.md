@@ -9,7 +9,7 @@ Each folder has its own README with results and exact commands to reproduce them
 | <img src="HW2/assets/compare_Suzuka.gif" width="320" alt="Pure pursuit, Stanley and LQR on Suzuka"> | **[HW2 - Path tracking control](HW2/README.md)**<br>Pure pursuit, Stanley and LQR on a bicycle model around three F1 circuits | Tuned pure pursuit holds 0.03 m average cross-track error, 6-8x tighter than LQR and Stanley |
 | <img src="HW3/assets/proly_map4.gif" width="320" alt="PPO agent on Proly map 4"> | **[HW3 - Deep RL](HW3/README.md)**<br>PPO agent for the Unity game *Proly* | 10/10 flags on all five maps; reward rebalancing fixed the map that started at 0/10 |
 | <img src="HW4/assets/det_val_pred.jpg" width="320" alt="YOLO detections of bears and a door knob"> | **[HW4 - Detection and segmentation](HW4/README.md)**<br>YOLO26s trained on 106 hand-labeled sim frames | 0.97 detection mAP50 (bear, knob), 0.92 mask mAP50 (bridge, road) |
-| | **[Final Project - Autonomous rover](Final_Project/README.md)**<br>ROS 2 + SLAM + YOLO state machines for three Unity missions | Grab a bear, cross a bridge to fetch another, and open a door, all hands-free |
+| <img src="HW4/assets/bridge_far.png" width="320" alt="Rover camera view of the Task 2 bridge with a bear on top"> | **[Final Project - Autonomous rover](Final_Project/README.md)**<br>ROS 2 + SLAM + YOLO state machines for three Unity missions | Grab a bear, cross a bridge to fetch another, and open a door, all hands-free |
 
 ## Layout
 
