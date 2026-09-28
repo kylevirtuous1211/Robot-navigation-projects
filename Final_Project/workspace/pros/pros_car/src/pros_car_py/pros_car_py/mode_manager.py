@@ -127,14 +127,14 @@ class AutoArmMode(BaseMode):
 
 
 class Task1Mode(BaseMode):
-    """Final Project Task 1 全自動任務：搜尋→靠近→觀察→夾取→Nav2 返航。"""
+    """Final Project Task 1 全自動任務：搜尋→靠近→觀察→夾取→位姿式返航 (/amcl_pose)。"""
 
     def enter(self):
         self.app.task1_mission.start()
         self.show_submode_screen(
             message=(
                 "Task 1 Mission running...\n"
-                "(SEARCH -> APPROACH -> OBSERVE -> GRIP -> RETURN)\n"
+                "(SEARCH -> APPROACH -> OBSERVE -> CREEP -> GRIP -> RETURN)\n"
                 "See the terminal log for live state.\n\n"
                 "Press 'q' to stop the mission and return to the main menu."
             ),
@@ -158,8 +158,8 @@ class Task2Mode(BaseMode):
         self.show_submode_screen(
             message=(
                 "Task 2 Mission running...\n"
-                "(BRIDGE_APPROACH -> SNAP_90 -> VISUAL_CLIMB (climb on the\n"
-                " bridge mask) -> GRIP -> DESCEND (down the far side) -> RETURN)\n"
+                "(BRIDGE_APPROACH -> VISUAL_CLIMB -> OBSERVE -> GRIP ->\n"
+                " SNAP_DESCEND -> DESCEND -> RETURN)\n"
                 "See the terminal log for live state.\n\n"
                 "Press 'q' to stop the mission and return to the main menu."
             ),
@@ -175,14 +175,14 @@ class Task2Mode(BaseMode):
 
 
 class Task3Mode(BaseMode):
-    """Final Project Task 3 全自動任務：門把定位觀察 → 解鎖 → 推開門。"""
+    """Final Project Task 3 全自動任務：waypoint 開到門前 → 解鎖 (追 knob、壓桿) → 推開門。"""
 
     def enter(self):
         self.app.task3_mission.start()
         self.show_submode_screen(
             message=(
                 "Task 3 Mission running...\n"
-                "(SEARCH -> APPROACH -> OBSERVE -> UNLOCK -> CLEAR)\n"
+                "(DRIVE_WP -> UNLOCK -> CLEAR)\n"
                 "See the terminal log for live state.\n\n"
                 "Press 'q' to stop the mission and return to the main menu."
             ),
