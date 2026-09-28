@@ -3,7 +3,9 @@
 Raw tuning results behind [`report_hw2.tex`](report_hw2.tex).
 All runs use the bicycle kinematic model with the PID longitudinal controller.
 The values are the original console output from tuning.
-A rerun of the current code matches most rows closely; Monza Stanley differs the most (0.2773 m now vs 0.2647 m here).
+A rerun of the current code reproduces most rows exactly.
+Two Silverstone rows do not: Stanley `kp=5.0` now gives 66.70 s / 1.4762 m, and pure pursuit `kp=0.06` gives 0.2070 m.
+Among the rows at the final gains, Monza Stanley differs the most (0.2773 m now vs 0.2647 m here).
 `navigation.py` passes `Lfc=1.0` to pure pursuit, overriding the constructor default of 5.0.
 The report labels these runs `Lfc=5.0`, but rerunning `kp=0.08` with `Lfc=1.0` reproduces 0.0278 exactly, so the sweep most likely ran with the override.
 
@@ -14,7 +16,7 @@ The report labels these runs `Lfc=5.0`, but rerunning `kp=0.08` with `Lfc=1.0` r
 
 ## Silverstone
 
-| Controller | Gain | Lap time (s) | Avg cross-track error (m) |
+| Controller | Gain | Elapsed (s) | Avg cross-track error (m) |
 |---|---|---:|---:|
 | Pure pursuit | `kp=1.0` | 53.40 | 2.3545 |
 | Pure pursuit | `kp=0.3` | 55.25 | 0.0836 |
@@ -28,7 +30,7 @@ The report labels these runs `Lfc=5.0`, but rerunning `kp=0.08` with `Lfc=1.0` r
 
 ## Monza
 
-| Controller | Gain | Lap time (s) | Avg cross-track error (m) |
+| Controller | Gain | Elapsed (s) | Avg cross-track error (m) |
 |---|---|---:|---:|
 | Pure pursuit | `kp=0.1` | 47.45 | 0.0250 |
 | Stanley | `kp=2.0` | 47.65 | 0.2647 |
@@ -36,7 +38,7 @@ The report labels these runs `Lfc=5.0`, but rerunning `kp=0.08` with `Lfc=1.0` r
 
 ## Suzuka
 
-| Controller | Gain | Lap time (s) | Avg cross-track error (m) |
+| Controller | Gain | Elapsed (s) | Avg cross-track error (m) |
 |---|---|---:|---:|
 | Pure pursuit | `kp=0.1` | 53.20 | 0.0315 |
 | Stanley | `kp=2.0` | 53.35 | 0.2218 |
