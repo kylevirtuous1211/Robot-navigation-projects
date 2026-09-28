@@ -5,7 +5,7 @@ The same weights drive the Final Project's perception.
 
 ![Detection (top) and segmentation (bottom) on validation frames](assets/val_examples.jpg)
 
-*Validation frames the models never trained on: bear and door-knob detection (top), bridge and road segmentation (bottom).*
+*Held-out validation frames: bear and door-knob detection (top), bridge and road segmentation (bottom).*
 
 ## Results
 
@@ -21,8 +21,8 @@ Validation split (16 images), evaluated with the `best.pt` weights:
 | Segmentation (mask) | **all** | 0.945 | 0.853 | **0.923** | 0.702 |
 
 The `knob` is small in most frames, which shows up as the lowest detection mAP50-95.
-`road` is the weakest class (recall 0.71, mask mAP50-95 0.56): the confusion matrix below shows about a fifth of true road instances missed, and most false positives are also road.
-With no separate test split, these numbers come from the same 16 frames that picked `best.pt`, so treat them as optimistic.
+`road` is the weakest class: recall is 0.71 and mask mAP50-95 0.56, and the confusion matrix below (at confidence 0.25) shows that most false positives are also road.
+Treat these numbers as optimistic: there is no separate test split, the same 16 frames picked `best.pt`, and because the split is random over one continuous capture, a validation frame can have a neighbor taken a second earlier or later in the training set.
 
 ### Validation predictions
 
@@ -60,13 +60,15 @@ Download both Roboflow projects linked in the [report](report.md) in YOLO26 form
 
 ```bash
 cd HW4
-uv venv && uv pip install ultralytics
+uv venv && uv pip install ultralytics==8.4.164       # the version that produced the table
 .venv/bin/python scripts/prepare_data.py            # extract the zips, carve a 15% validation split (seed 42)
 (cd detection && ../.venv/bin/python train.py)      # yolo26s, 100 epochs, batch 16, GPU 0
 (cd segmentation && ../.venv/bin/python train.py)   # yolo26s-seg, same settings
 .venv/bin/yolo val model=detection/runs/detect/train/weights/best.pt data=detection/data/data.yaml device=cpu
 .venv/bin/yolo val model=segmentation/runs/segment/train/weights/best.pt data=segmentation/data/data.yaml device=cpu
 ```
+
+Retraining gives close but not identical weights, so only the original `best.pt` files reproduce the table exactly.
 
 ---
 
