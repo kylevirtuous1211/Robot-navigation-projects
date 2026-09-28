@@ -4,67 +4,33 @@ Operating spec for working on and running this project. Read this before touchin
 
 ## Goal
 
-Autonomous **Task 1** of the Unity rover challenge, fully hands-free (no Foxglove clicking, no
-keyboard driving):
+Hands-free autonomous missions for the Unity rover challenge: no Foxglove clicking, no keyboard driving.
+Each task is its own state machine in `workspace/pros/pros_car/src/pros_car_py/pros_car_py/taskN_mission.py`, and all three run against one shared stack.
+The descriptions below follow the code (the README has a diagram per task).
+All missions drive with `publish_raw_car_control` / named actions on `/amcl_pose` + vision; none uses Nav2.
 
-1. **SEARCH** — find a bear with YOLO.
-2. **APPROACH / OBSERVE** — drive up and hold still ≥5 s in front of it → **Locate & Observe (10 pts)**.
-3. **GRIP** — auto-grip with the arm.
-4. **RETURN** — Nav2 back to the recorded start pose → **Recovery (20 pts)**.
-
-Strategy: **reactive visual servoing** (YOLO `/yolo/target_info` + depth) for search→approach→grip,
-then **online SLAM + Nav2** to return. The map is **randomized each run**, so the costmap is built
-live — there is no map pre-pass.
-
-**Tasks 2 (bridge) and 3 (door) are implemented and verified working end-to-end** as their own
-state machines, same hands-free pattern as Task 1. **Task 2 scores full points** (Ascent +
-Descent + Recovery: mount → climb → grip → descend the far stairs → detour return around the bridge).
-**Task 3 is verified working end-to-end** (waypoint drive to the door → visual dock on the knob →
-Locate & Observe ≥5 s → lever press-down, held → drive through the doorway).
-**Task 1 is expected to finish too** (same hands-free pattern). Task 2's scoring has **no Locate &
-Observe** (only Ascent/Descent/Recovery), but it still runs an **OBSERVE phase** before gripping — not
-for points, but to **rotate and face/center the bear** so the grip and the descent line up straight
-(skipping it lets the car grab at a bad angle and wedge on the bridge crest):
-- **Task 2** — bridge (no IMU — Unity has none; deterministic scene + spawn). **One bear on the
-  bridge.** A measured waypoint path mounts the bridge centred, then it climbs on the **bridge
-  segmentation mask** (stable up the incline) and grips the bear at the top. Flow: **BRIDGE_APPROACH** — pose-based
-  `DRIVE_WP` through the measured `WAYPOINTS` ascent path (lined up with the bridge mouth → straight up
-  the bridge axis `+y` a little onto the bridge, so the car mounts **centred** and doesn't catch the
-  side), in the **pinned `/amcl_pose` (0,0,0)-spawn frame** (only valid after `reset_map.sh --pin`);
-  last waypoint reached (or pose freezes on the bridge — a stuck-guard handles it) → **VISUAL_CLIMB**.
-  (Empty `WAYPOINTS` falls back to the old path: pose dock to `DOCK_POSE = (0.90, 0.38) yaw≈90.7°` →
-  **SNAP_90** — rotate to the bridge axis so the bridge centers and the decoy rotates out of frame,
-  creep forward `SNAP_FWD_SEC` → VISUAL_CLIMB.) → **VISUAL_CLIMB** — lower the open bulldozer
-  claw, then drive full-thrust up the bridge centred on the **bridge-mask centroid** via
-  `_bridge_center_steer` (a `BRIDGE_DX_DEADBAND` absorbs the ~+90 px steady-state incline bias so a
-  fixed offset doesn't curve the car into the side rail). Two defenses keep it on the bridge bear, not
-  the decoy: (1) `YOLO_TARGET_PICK=onbridge` — the detection node subscribes to `/yolo/bridge_info` and
-  reports only the bear horizontally aligned with the bridge (latched through segmentation dropouts;
-  falls back to nearest when no bridge in view); (2) SNAP_90 having rotated the decoy out of frame.
-  Hand off to **OBSERVE** when the bear is within `VCLIMB_OBSERVE_DIST` (≈0.65 m), seen-then-lost-at-close
-  (scooped), or on `VCLIMB_TIMEOUT` → **OBSERVE** — rotate in place to face/center the bear
-  (`OBSERVE_ALIGN_PX`, `OBSERVE_FACE_TIMEOUT`), hold `OBSERVE_SECONDS` so the car is squared up to the
-  bear (alignment, not scoring) → **GRIP** — press forward + `scoop_grab`
-  (close + lift) → **SNAP_DESCEND** — rotate to center the **bridge mask** (`b_dx`, same as the climb;
-  falls back to the road mask `/yolo/road_info` `delta_x` when the bridge isn't detected — `/amcl_pose`
-  freezes on the bridge so no yaw up there) so the car points straight down the stairs → **DESCEND** —
-  full-thrust down, steering on the **bridge mask centre-line** (road mask only as fallback when the
-  bridge isn't detected looking down the stairs), over the wide flat "fat" top and down the stairs;
-  stop only when the **road fills the frame** (`road area_frac ≥ DESCEND_ROAD_AREA`,
-  set high ~0.55 because the far road is already visible ~0.33 from the top) held `DESCEND_DONE_CONFIRM`
-  frames, `DESCEND_MAX_SEC` fallback → pose-**RETURN** — drive the `RETURN_WAYPOINTS` detour **around**
-  the bridge (never straight back *over* it carrying the bear), then go-to-point to the start pose and
-  release (empty `RETURN_WAYPOINTS` = straight back, the old behavior). Return runs at full
-  `RETURN_DRIVE_SPEED` through the detour (no near-waypoint slowdown), and when it stalls on the
-  road↔ground lip it fires a **straight full-thrust burst** (`RETURN_BURST_SPEED`, both wheels equal)
-  to clear the step before falling back to skipping the waypoint.
-  On-bridge `/amcl_pose` freezes, so VISUAL_CLIMB/SNAP_DESCEND/DESCEND use vision only, no pose.
-- **Task 3** — door knob (lever handle): pose-based **DRIVE_WP** through measured `WAYPOINTS`
-  (pinned `(0,0,0)` spawn frame, same machinery as Task 2's BRIDGE_APPROACH) to the door, then
-  **SEARCH→APPROACH** visual dock on the knob (`detection.pt` `knob` class via `YOLO_TARGET=knob`
-  → `/yolo/target_info_knob`), **OBSERVE** ≥5 s (Locate & Observe), **UNLOCK** by lever press
-  (`knob_raise` → forward nudge → `knob_press_down` → `knob_retract`), then **CLEAR** by driving
-  straight through the now-open door. Empty `WAYPOINTS` falls back to the old rotate-in-place SEARCH.
+- **Task 1 (bear):** SEARCH → APPROACH → OBSERVE → CREEP → GRIP → RETURN → DONE.
+  SEARCH rotates in place (nudging forward for ~0.8 s every 12 s) until YOLO confirms a bear for 3 frames.
+  APPROACH servos on `/yolo/target_info` `delta_x` and depth, and enters OBSERVE when centred (`ALIGN_PX` 70) within `APPROACH_STOP_DIST` (0.5 m), or when the bear is lost after the car got within `COMMIT_DOCK_DIST` (0.7 m), since the gripper then occludes it.
+  OBSERVE holds still for `OBSERVE_SECONDS` = 5.5 s → **Locate & Observe** (needs ≥5 s).
+  CREEP runs a blocking `scoop_pose()` (arm down, claw open), then pushes forward for `BULLDOZER_PUSH_SEC`; GRIP runs `scoop_grab()` (close + lift).
+  RETURN is a go-to-point on `/amcl_pose` back to the start pose recorded at launch, then `scoop_release()` → **Recovery**.
+- **Task 2 (bridge + bear):** BRIDGE_APPROACH → VISUAL_CLIMB → OBSERVE → GRIP → SNAP_DESCEND → DESCEND → RETURN → DONE.
+  Scoring is Ascent + Descent + Recovery (no Locate & Observe); there is one bear on the bridge and an off-bridge decoy.
+  BRIDGE_APPROACH drives the 10 measured `WAYPOINTS` in the pinned `(0,0,0)` spawn frame (needs `reset_map.sh --pin`); a stuck guard on the last waypoint also hands over, because `/amcl_pose` freezes on the bridge.
+  VISUAL_CLIMB runs `scoop_pose()` and climbs at `VCLIMB_SPEED` for `VCLIMB_CLIMB_SEC` (3 s; the timer is the only exit), steering on the bear when it is within `VCLIMB_MAX_TRACK_DIST` (4 m), else on the bridge mask `delta_x`, else straight.
+  OBSERVE rotates to face a near bear (≤ `OBSERVE_NEAR_DIST`, `OBSERVE_ALIGN_PX`, `OBSERVE_FACE_TIMEOUT`) and holds `OBSERVE_SECONDS` (2 s), for grip alignment only.
+  GRIP presses forward for `GRIP_PRESS_SEC`, then `scoop_grab()`.
+  SNAP_DESCEND rotates until the bridge mask (road mask if no bridge) is centred within `SNAP_ROAD_PX`; DESCEND drives down steering on the bridge mask (road fallback) until both masks are gone, the road fills the view (`DESCEND_ROAD_AREA`), or `DESCEND_MAX_SEC` (5 s).
+  RETURN drives the 12 `RETURN_WAYPOINTS` around the bridge (skipping one it is stuck on), then go-to-point to the start and `scoop_release()`.
+  The bear picker lives in the YOLO node: `YOLO_TARGET_PICK=onbridge` makes it subscribe to `/yolo/bridge_info` and report only the bear aligned with the bridge.
+- **Task 3 (door knob):** DRIVE_WP → UNLOCK → CLEAR → DONE.
+  A blocking `knob_stow()` runs first.
+  DRIVE_WP drives the 13 measured `WAYPOINTS` to the door in the pinned frame (needs `--pin`), skipping stuck intermediate waypoints; being stuck at the last one also hands over.
+  UNLOCK is one blocking macro: rotate until the heading is within `UNLOCK_ALIGN_DEG` of +x, pursue the knob on `/yolo/target_info_knob` for up to `UNLOCK_NUDGE_SEC` (3 s), `knob_raise()`, then start `knob_press_down()` in a background thread.
+  CLEAR drives at `CLEAR_SPEED` holding yaw 0 for `CLEAR_PUSH_SEC` (15 s) while the lever stays pressed, pushing through the door.
+  **This path has no ≥5 s hold in front of the door**, so it does not do Locate & Observe; the SEARCH → APPROACH → OBSERVE (5.5 s) → UNLOCK branch only runs when `WAYPOINTS` is empty.
+  `knob_poke()` and `knob_retract()` exist in the arm controller but are not called.
 
 `detection.pt` has `bear`/`knob` classes; each detection node tracks one target (`YOLO_TARGET` env,
 default `bear`). The consolidated `start_stack.sh` runs two detection nodes — bear on
@@ -118,20 +84,15 @@ Then **in Unity** (Chrome Remote Desktop): log in → **FINAL PROJECT** → **CA
 ~/Desktop/Robot-navigation-projects/Final_Project/workspace/pros/pros_car/run_task23.sh  # task23_auto (Task 2 → Task 3 combined)
 ```
 
-**Combined Task 2 + Task 3 in one run (`task23_auto` / `combined_mission.py`):** `run_task23.sh`
-runs the **full Task 2** (mount → climb → grip → descend → return + release) then the **full Task 3**
-(drive to the door → dock on the knob → Locate & Observe ≥5 s → lever press → drive through) back-to-back
-in a single session, scoring all points from both. It reuses the `Task2Mission`/`Task3Mission` classes
-unchanged via a thin orchestrator (one shared `RosCommunicator` + spin thread, run sequentially).
-Run **`reset_map.sh --pin` once first** — both tasks' absolute waypoints live in that pinned spawn frame.
-After Task 2 returns to spawn (facing ~−180°), Task 3's `DRIVE_WP` spins to turn around and drives to the
-door; the knob visual-dock + OBSERVE correct for any pinned-frame drift accumulated over the Task 2 run.
-Runs `taskN_auto` headless in your terminal — watch the live `[TaskN]` state log (every state
-transition + a throttled per-tick sensor readout, tuned for fast knob calibration). **Ctrl-C** stops;
-re-run to retry (new random map each time). Because all perception runs at once, you can run Task 1 →
-Task 2 → Task 3 back-to-back in one session without touching containers.
+**Combined Task 2 + Task 3 in one run (`task23_auto` / `combined_mission.py`):** `run_task23.sh` runs the full Task 2, waits 2 s, then runs the full Task 3, reusing the `Task2Mission`/`Task3Mission` classes unchanged (one shared `RosCommunicator` + spin thread).
+Task 3 runs however Task 2 ended (success, timeout or the 360 s watchdog).
+Run **`reset_map.sh --pin` once first**, because both tasks' absolute waypoints live in that pinned spawn frame.
+After Task 2 returns to spawn (facing ~−180°), Task 3's `DRIVE_WP` spins to turn around and drives to the door; nothing on that path corrects pinned-frame drift accumulated over the Task 2 run.
+Missions run headless in your terminal: watch the live `[TaskN]` state log (every transition, plus a throttled per-tick sensor readout in Tasks 2 and 3).
+**Ctrl-C** stops; re-run to retry.
+Because all perception runs at once, Task 1 → Task 2 → Task 3 can run back-to-back in one session; `reset_map.sh --pin` restarts only odometry and SLAM, never the perception containers.
 
-Manual per-piece `docker run` commands (for debugging individual containers) are in the README.
+Each `run_taskN.sh` is the `docker run` command for its mission, with its prerequisites in the header comment.
 
 ## Build / edit / test loop
 
@@ -182,13 +143,13 @@ a demo** so the slow first build isn't on the clock.
 
 | Path | Role |
 |---|---|
-| `workspace/pros/pros_car/src/pros_car_py/pros_car_py/task1_mission.py` | **`Task1Mission`** state machine (SEARCH→APPROACH→OBSERVE→CREEP→GRIP→RETURN→DONE). Tunables at top of `__init__`. |
-| `.../pros_car_py/task2_mission.py` | **`Task2Mission`** (no IMU; bridge bear + off-bridge decoy): BRIDGE_APPROACH (pose `DRIVE_WP` through the `WAYPOINTS` ascent path — up the bridge axis a little onto the bridge so it mounts centred; last WP / pose-freeze stuck-guard → VISUAL_CLIMB. Empty `WAYPOINTS` = old fallback: DRIVE_DOCK to `DOCK_X/Y` → SNAP_90 rotate-to-axis + creep) → VISUAL_CLIMB (lower open claw, full-thrust up the bridge centred on the bridge-mask centroid via `_bridge_center_steer`+`BRIDGE_DX_DEADBAND`; hand off to OBSERVE on near-bear `VCLIMB_OBSERVE_DIST` / seen-then-lost-at-close / timeout) → OBSERVE (rotate to face/center the bear + hold `OBSERVE_SECONDS` — alignment so the grip/descent line up straight, not Locate & Observe scoring) → GRIP (press + `scoop_grab`) → SNAP_DESCEND (rotate to center the bridge mask, road-mask fallback — no yaw on the bridge) → DESCEND (full-thrust down, bridge-mask-centred with road-mask fallback, stop when road fills the frame `road area_frac ≥ DESCEND_ROAD_AREA`, `DESCEND_MAX_SEC` fallback) → RETURN (drive the `RETURN_WAYPOINTS` detour around the bridge, then go-to-point to the start pose + release; empty list = straight back). Bridge-bear selection is in the YOLO node (`YOLO_TARGET_PICK=onbridge`). On-bridge `/amcl_pose` freezes so VISUAL_CLIMB/OBSERVE/SNAP_DESCEND/DESCEND are vision-only. Tunables (`SNAP_FWD_SEC`, `VCLIMB_SPEED`, `BRIDGE_DX_DEADBAND`, `VCLIMB_OBSERVE_DIST`, `OBSERVE_SECONDS`, `SNAP_ROAD_PX`, `DESCEND_ROAD_AREA`, `RETURN_WAYPOINTS`) at top of `__init__`. |
-| `.../pros_car_py/task3_mission.py` | **`Task3Mission`**: door knob (SEARCH→APPROACH→OBSERVE→UNLOCK→CLEAR). Knob via `YOLO_TARGET=knob`. Tunables at top of `__init__`. |
-| `.../pros_car_py/tf_to_amcl_pose.py` | republishes `map→base_footprint` TF as `/amcl_pose` so Nav2 follower works without AMCL. |
+| `workspace/pros/pros_car/src/pros_car_py/pros_car_py/task1_mission.py` | **`Task1Mission`** state machine (SEARCH→APPROACH→OBSERVE→CREEP→GRIP→RETURN→DONE); RETURN is a go-to-point on `/amcl_pose`. Tunables at top of `__init__`. |
+| `.../pros_car_py/task2_mission.py` | **`Task2Mission`** (no IMU; bridge bear + off-bridge decoy): BRIDGE_APPROACH (pose `DRIVE_WP` through `WAYPOINTS`) → VISUAL_CLIMB (timed `VCLIMB_CLIMB_SEC` climb, steer on bear, else bridge mask) → OBSERVE (face the bear, `OBSERVE_SECONDS`) → GRIP (press + `scoop_grab`) → SNAP_DESCEND / DESCEND (bridge mask, road fallback) → RETURN (`RETURN_WAYPOINTS` detour, then go-to-point + release). On-bridge `/amcl_pose` freezes, so the bridge states are vision-only. Tunables at top of `__init__`. |
+| `.../pros_car_py/task3_mission.py` | **`Task3Mission`**: door knob (DRIVE_WP→UNLOCK→CLEAR; SEARCH→APPROACH→OBSERVE only when `WAYPOINTS` is empty). Knob via `YOLO_TARGET=knob`. Tunables at top of `__init__`. |
+| `.../pros_car_py/tf_to_amcl_pose.py` | republishes `map→base_footprint` TF as `/amcl_pose` (no AMCL runs); every mission navigates on it. |
 | `.../pros_car_py/ros_communicator.py` | pub/sub hub: `publish_car_control`, `publish_raw_car_control`, `get_latest_amcl_pose`, `get_latest_bridge_info`, `get_latest_road_info`, `get_latest_knob_target_info`, etc. |
-| `.../pros_car_py/nav_processing.py`, `nav2_utils.py` | Nav2 plan-following + geometry helpers. |
-| `.../pros_car_py/arm_controller_2D.py` | scoop grab (`scoop_pose/grab/release`), auto-grip (`auto_control(key='g')`), door-knob poke (`knob_poke()`). |
+| `.../pros_car_py/nav_processing.py`, `nav2_utils.py` | Nav2 plan-following + geometry helpers (the missions only use the geometry helpers, e.g. `calculate_angle_point`). |
+| `.../pros_car_py/arm_controller_2D.py` | scoop grab (`scoop_pose/grab/release`), auto-grip (`auto_control(key='g')`), door-knob moves (`knob_stow/raise/press_down`; `knob_poke`/`knob_retract` are unused). |
 | `workspace/pros/ros2_yolo_integration/.../object_detect.py` | YOLO **detection** node: single target by `YOLO_TARGET` env (`bear` default / `knob`); back-projects bbox-center + depth → `/yolo/target_marker`; publishes `/yolo/target_info`. |
 | `workspace/pros/ros2_yolo_integration/.../segment_detect.py` | YOLO **segmentation** node (`yolo_seg_node`): `bridge`/`road` masks → `/yolo/segmentation/compressed`; publishes `/yolo/bridge_info` (bridge geometry: delta_x, area, bottom-edge dx, symmetry) + `/yolo/road_info` (road centroid) for Task 2. |
 | `start_stack.sh` | **single consolidated launcher**: one-shot detached bring-up of the entire stack + all three YOLO containers (bear / knob-remapped / bridge-seg) + Unity. Run any task against it, no restarts. |
@@ -209,24 +170,25 @@ a demo** so the slow first build isn't on the clock.
   `/yolo/detection_knob/compressed`.
 - `/yolo/segmentation/compressed` — bridge/road mask overlay (Task 2). `/yolo/bridge_info`
   (`Float32MultiArray`: found, delta_x, area_frac, centroid_y_frac, bottom_edge_dx, symmetry,
-  aspect_ratio — every frame) is published; Task 2 currently uses only `found` and `sign(delta_x)`
-  for a coarse "bridge-is-on-the-left/right" intersection-turn hint (the other fields proved too
-  noisy when close to the bridge and are not consulted by the mission). `/yolo/road_info` (found, delta_x, area_frac)
-  is the road-follow centroid. Read via `data_processor.get_bridge_info()` / `get_road_info()`.
+  aspect_ratio — every frame) is published.
+  Task 2 steers VISUAL_CLIMB, SNAP_DESCEND and DESCEND on its `found` and `delta_x`; the other fields are not consulted.
+  `/yolo/road_info` (found, delta_x, area_frac) is the road-mask fallback for SNAP_DESCEND/DESCEND, and `area_frac` ends DESCEND.
+  Read via `data_processor.get_bridge_info()` / `get_road_info()`.
 - **No IMU in the Unity sim.** `/imu/data` is a *hardware-only* topic (`docker-compose_imu.yml` →
-  `pros_imu` reading `/dev/imu_usb`), not launched and not simulated — so Task 2 is **road-led**, not
-  pitch-based, and judges "crossed" by `/amcl_pose` distance (`CLIMB_DISTANCE`).
+  `pros_imu` reading `/dev/imu_usb`), not launched and not simulated.
+  Task 2 is therefore vision-led on the bridge (timed climb, mask-steered descent), not pitch-based.
 - `/map` (SLAM), `/amcl_pose` (from the shim), `/tf` (~48 Hz), `/car_C_front_wheel`,
   `/car_C_rear_wheel` (wheel speed commands).
 
 ## Mission tuning (top of `Task1Mission.__init__`)
 
 Sensor/geometry reality drives these: depth saturates below ~0.45 m, arm reach ≈0.19 m.
-- `APPROACH_STOP_DIST = 0.50` — stop at nearest reliable depth to do Locate & Observe.
-- `ALIGN_PX = 35.0` — center tolerance so the bear sits on the gripper's center axis.
-- `OBSERVE_SECONDS = 5.5` — hold time (>5 s scores, with margin).
-- `CREEP_DRIVE_SECONDS = 1.3` — blind forward push to get the bear into arm reach after observing.
-- `GRIP_WAIT = 15.0`, `MAX_GRIP_ATTEMPTS = 3`.
+- `APPROACH_STOP_DIST = 0.50`: stop at the nearest reliable depth to do Locate & Observe.
+- `ALIGN_PX = 70.0`: center tolerance, loose enough that rotate-in-place does not overshoot and hunt.
+- `COMMIT_DOCK_DIST = 0.7`: losing the bear after getting this close counts as docked (the gripper hides it).
+- `OBSERVE_SECONDS = 5.5`: hold time (>5 s scores, with margin).
+- `BULLDOZER_PUSH_SEC = 1.0` at `CREEP_SPEED = 90`: blind forward push after `scoop_pose()` to get the bear into the open claw.
+- `RETURN_ARRIVE_DIST = 0.60`, `RETURN_TIMEOUT = 120`: go-to-point arrival radius and safety timeout.
 Tune these against the in-sim "N units" and the gripper geometry.
 
 ## Operational gotchas (learned the hard way)
@@ -239,14 +201,14 @@ Tune these against the in-sim "N units" and the gripper geometry.
   `/camera/image/compressed`; if Unity isn't connected in AI mode on 9091, no `/yolo/*` publishes.
   Canary topics: `/yolo/detection/compressed` and `/yolo/target_info` (publish every frame).
 - **Map reset for retries:** `tools/reset_map.sh` switches RACING2026↔FINAL PROJECT to force a fresh
-  scene (clicking FINAL PROJECT while already in it does NOT reload). For RETURN/Nav2 tests use
-  `reset_map.sh --slam` to also restart SLAM + navigation (SLAM restart de-syncs Nav2 costmaps).
-- **`/amcl_pose` map frame floats every session → pin it for pose-based nav (Task 2).** Odometry
+  scene (clicking FINAL PROJECT while already in it does NOT reload).
+  `reset_map.sh --slam` (restart SLAM + Nav2) is a legacy flag from the old Nav2 return; no mission needs it now.
+- **`/amcl_pose` map frame floats every session → pin it for pose-based nav (Tasks 2 and 3).** Odometry
   comes from a laser scan-matcher (`scan_matcher`, `ros2_laser_scan_matcher`, in `robot_bringup`)
   that integrates forever and never resets; `slam_toolbox` (`mode: mapping`, no loaded map) anchors
   `map` to that odom on its first scan. So the *same physical spawn* reads wildly different
   coordinates each session (observed: `(2.87,-3.46)`, `(-3.1,-4.3)`, `(-4.21,-4.24)`), and any
-  hard-coded absolute pose (e.g. Task 2's `DOCK_X/Y/YAW`) silently goes stale. **Fix / ritual:** with
+  hard-coded absolute pose (e.g. the Task 2/3 `WAYPOINTS`) silently goes stale. **Fix / ritual:** with
   the car at spawn, run **`reset_map.sh --pin`** — it re-origins the scan_matcher odom (restart
   `robot_bringup`) → re-anchors SLAM (restart `slam`), *in that order*, so spawn ≡ `map (0,0,0)` and the
   whole deterministic scene gets reproducible coordinates. It **auto-verifies**: after the slam
@@ -259,12 +221,10 @@ Tune these against the in-sim "N units" and the gripper geometry.
   — `xmlrpc !rclpy.ok()` — that makes daemon-routed `topic echo`/`list` fail instantly), and the
   readiness signal is `/amcl_pose` (continuously published by tfshim), **not** `/odom` (scan_matcher
   only publishes it on movement, so `echo` can't even determine its type when the car is idle).
-  `--pin` no longer restarts Nav2 (`navigation`): Task 2/3 + combined `task23` drive purely on
-  `/amcl_pose` + vision (`publish_raw_car_control`), never the Nav2 stack, so the costmap resync was
-  dead weight. **Task 1's return *does* use Nav2** — after `--pin`, run **`reset_map.sh --slam`** for it
-  (the SLAM restart de-syncs the Nav2 costmap).
+  `--pin` does not restart Nav2 (`navigation`): every mission drives purely on `/amcl_pose` + vision (`publish_raw_car_control`), never the Nav2 stack.
+  Task 1 returns to the pose it records at launch, so it works with or without `--pin`.
   Note `slam_toolbox`'s `map_start_pose` does **not** pin a fresh map (verified) — the odom reset is
-  the actual lever. Task 2's dock constants were measured in this pinned frame. Full rationale:
+  the actual lever. The Task 2/3 `WAYPOINTS` were measured in this pinned frame. Full rationale:
   `docs/superpowers/specs/2026-06-11-task2-localization-pin-spawn-design.md`.
 - **Nav2 `map` arg:** if `navigation_launch.py` rejects the `map` arg, remove the `<arg name="map">`
   line in `pros_app/docker/compose/demo/navigation_unity.xml` — Nav2 only needs the `/map` topic.
