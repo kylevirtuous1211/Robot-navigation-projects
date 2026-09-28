@@ -106,12 +106,14 @@ The combined demo (`task23_auto`, `combined_mission.py`) runs Task 2 to completi
 ## Prerequisites
 
 None of these are in the repo; they are git-ignored or built locally.
+Paths below are relative to `Final_Project/`.
 
-- **Unity build:** the course's PROS Twin V5.4 build (`pros_twin_unity_linux_V5.4.zip`), unzipped so that `Final_Project/pros_twin_linux/pros_twin_unity_linux/pros_twin_unity_tsai_run_linux.x86_64` exists.
+- **Host:** an NVIDIA GPU with the NVIDIA container runtime for Docker, and `python-xlib` for `tools/click20.py`, which `reset_map.sh` uses to click the Unity map buttons on display `:20` (the button pixel coordinates in its header are measured for one screen layout; re-measure them for yours).
+- **Unity build:** the course's PROS Twin V5.4 build (`pros_twin_unity_linux_V5.4.zip`), unzipped so that `pros_twin_linux/pros_twin_unity_linux/pros_twin_unity_tsai_run_linux.x86_64` exists.
 - **YOLO image:** build `pros_cameraapi:cu128` (the course's camera image plus a CUDA 12.8 PyTorch and a current Ultralytics):
   `cd workspace/pros/ros2_yolo_integration && docker build -t pros_cameraapi:cu128 -f Dockerfile.cu128 .`
-- **YOLO weights:** copy the HW4 models to `workspace/pros/ros2_yolo_integration/src/yolo_example_pkg/models/detection.pt` and `segmentation.pt`.
-- **Location:** the scripts assume the repo is cloned at `~/Desktop/Robot-navigation-projects`.
+- **YOLO weights:** train them per [HW4](../HW4/README.md), then copy `../HW4/detection/runs/detect/train/weights/best.pt` to `workspace/pros/ros2_yolo_integration/src/yolo_example_pkg/models/detection.pt` and `../HW4/segmentation/runs/segment/train/weights/best.pt` to `.../models/segmentation.pt`.
+- **Location:** `start_stack.sh` and `tools/reset_map.sh` hardcode `/home/kyle/Desktop/Robot-navigation-projects` and `/home/kyle/.Xauthority`; edit `ROOT` and `XAUTHORITY` there for another user or path.
 
 ## Quick start - recommended demo (Task 2 + Task 3 in one run)
 
@@ -161,7 +163,9 @@ cd ~/Desktop/Robot-navigation-projects/Final_Project/workspace/pros/pros_car
 ./run_task3.sh   # door knob   (task3_auto)
 ```
 
-All three tasks drive on `/amcl_pose` + vision (Task 1's return is a go-to-point on `/amcl_pose`, not Nav2), so `reset_map.sh --pin` with the car at spawn is the only prerequisite.
+All three tasks drive on `/amcl_pose` + vision; none uses Nav2.
+Tasks 2 and 3 need `reset_map.sh --pin` with the car at spawn, because their waypoints are absolute.
+Task 1 returns to the pose it records at start, so a fresh scene (plain `reset_map.sh`) is enough.
 
 ---
 
