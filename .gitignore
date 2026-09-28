@@ -37,6 +37,16 @@ pros_twin_unity_linux/
 *.log
 runs/
 
-# Oversized docs (exceed GitHub 100MB limit) — keep on disk, never commit
+# Oversized docs (exceed GitHub 100MB limit) - keep on disk, never commit
 Final_Project/Unity_final_project_spec.pdf
 Final_Project/docs/Unity_final_project_spec.pdf
+
+# Source files caught by the blanket *.txt rule above
+!CMakeLists.txt
+!requirements.txt
+
+# Curated results shown in the READMEs (everything else stays ignored)
+!**/assets/*.png
+!**/assets/*.jpg
+!**/assets/*.gif
+!**/assets/*.mp4
