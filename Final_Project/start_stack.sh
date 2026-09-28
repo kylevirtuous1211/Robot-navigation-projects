@@ -5,7 +5,7 @@
 # Now a single `docker compose up -d` (four overlays under project `kylefp`) brings up
 # every container; Unity is the one host-side step (it's a GUI binary, not a container).
 # Every perception node runs at once, so you can run Task 1, Task 2 and Task 3 back-to-back
-# in one Unity session without restarting the perception containers — just run reset_map.sh --pin
+# in one Unity session without restarting the perception containers: just run reset_map.sh --pin
 # (restarts only odometry + SLAM) and the matching run_taskN.sh.
 #
 # Perception topics (all live simultaneously, no interference):
@@ -23,7 +23,8 @@
 # After this, you only:
 #   1) In Unity: log in -> FINAL PROJECT -> CAR+ARM Mode = AI ->
 #      RosBridge PORT = 9091 -> press Reload (must show "Connected")
-#   2) Run any mission (stack stays up between them):
+#   2) With the car at spawn: ./tools/reset_map.sh --pin  (Task 2/3 waypoints are absolute)
+#   3) Run any mission (stack stays up between them):
 #        ./workspace/pros/pros_car/run_task1.sh
 #        ./workspace/pros/pros_car/run_task2.sh
 #        ./workspace/pros/pros_car/run_task3.sh
@@ -62,6 +63,9 @@ echo ""
 echo "Verify perception in Foxglove (ws://localhost:8766) / ros2 topic hz:"
 echo "  /yolo/target_info        (bear)   | /yolo/target_info_knob   (knob)"
 echo "  /yolo/bridge_info        (bridge) | /yolo/road_info           (road-follow)"
+echo ""
+echo "With the car at spawn, pin the map frame (Task 2/3 waypoints are absolute):"
+echo "  $ROOT/Final_Project/tools/reset_map.sh --pin"
 echo ""
 echo "Then run any mission (stack stays up between tasks):"
 echo "  $PROS/pros_car/run_task1.sh   # bear: search -> grab -> return"

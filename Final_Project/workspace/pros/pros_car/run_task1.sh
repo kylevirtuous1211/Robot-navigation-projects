@@ -4,6 +4,8 @@
 #
 # Prereqs (already running):
 #   - The full stack is up -> ../../../start_stack.sh  (one launcher for all 3 tasks)
+#   - A fresh scene with the car at spawn (../../../tools/reset_map.sh). Task 1 returns to the
+#     /amcl_pose it records at start, so --pin is optional here.
 #   - Unity in FINAL PROJECT scene, CAR + ARM Mode = AI, RosBridge port 9091 (Connected)
 #
 # Ctrl-C stops the mission. Re-run this script to attempt again.

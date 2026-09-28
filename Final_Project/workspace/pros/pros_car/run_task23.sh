@@ -3,9 +3,9 @@
 # isolated kylefp stack (ROS_DOMAIN_ID=7, network kylefp_my_bridge_network).
 #
 # Runs the full Task 2 (bridge: mount -> climb -> grip bear -> descend -> return
-# + release) then the full Task 3 (door knob: drive to door -> dock -> observe
-# >=5s -> lever press-down -> drive through) back-to-back in one session, scoring
-# all points from both tasks (entry point: task23_auto / combined_mission.py).
+# + release) then the full Task 3 (door knob: waypoints to the door -> knob pursuit
+# -> lever press while driving through) back-to-back in one session
+# (entry point: task23_auto / combined_mission.py).
 #
 # Prereqs:
 #   - The full stack is up -> ../../../start_stack.sh  (one launcher for all 3 tasks;

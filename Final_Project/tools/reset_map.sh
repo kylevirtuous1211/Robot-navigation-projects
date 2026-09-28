@@ -28,7 +28,8 @@ sleep 5
 echo "[reset] done — car should be at spawn on a fresh FINAL PROJECT map."
 
 # Post-scene-reset container restarts. Two modes:
-#   --pin  : reproducible-localization ritual (Task 2/3, combined task23). Re-origin the
+#   --pin  : reproducible-localization ritual (needed by Task 2/3 and combined task23, whose
+#            waypoints are absolute; harmless for Task 1). Re-origin the
 #            laser scan_matcher odom to the spawn, THEN re-anchor SLAM — in that order.
 #            Needed because slam_toolbox anchors `map` to odom, and scan_matcher odom
 #            accumulates forever (never resets on its own), so the map frame floats every
@@ -69,6 +70,6 @@ case "${1:-}" in
     ;;
   *)
     echo "[reset] (grab-only) SLAM left as-is."
-    echo "[reset]   RETURN/Nav2 tests: reset_map.sh --slam | pinned localization: reset_map.sh --pin"
+    echo "[reset]   pinned localization (Task 2/3): reset_map.sh --pin"
     ;;
 esac

@@ -1,5 +1,5 @@
 """
-Task1Mission — Final Project Task 1 自動任務 (反應式視覺伺服 + Nav2 返航)
+Task1Mission — Final Project Task 1 自動任務 (反應式視覺伺服 + 位姿式返航)
 =======================================================================
 
 完整流程 (對應計分項目)：
@@ -16,7 +16,6 @@ Task1Mission — Final Project Task 1 自動任務 (反應式視覺伺服 + Nav2
 設計上盡量「重用既有元件」：
   - 前進/旋轉指令     : ros_communicator.publish_car_control + ACTION_MAPPINGS
   - 鏟取/夾取         : arm_controller.scoop_pose() + scoop_grab()
-  - Nav2 返航跟隨      : nav_processing.get_action_from_nav2_plan_no_dynamic_p_2_p
   - 起點/車身定位      : ros_communicator.get_latest_amcl_pose (由 tf_to_amcl_pose 提供)
 
 執行緒模型與 car_controller.auto_control 相同：背景 daemon thread + stop_event。
@@ -96,7 +95,7 @@ class Task1Mission:
         self._running = False
 
         self.state = self.SEARCH
-        self.start_pose = None  # [x, y]，任務起點 (Nav2 返航目標)
+        self.start_pose = None  # [x, y]，任務起點 (RETURN 返航目標)
         self.start_yaw = 0.0    # 起始朝向 (rad)，返航目標朝向設為其相反 (yaw+pi)
 
     # ==========================================================
@@ -128,7 +127,7 @@ class Task1Mission:
         # 記錄任務起點 (供 RETURN 使用)
         self.start_pose = self._capture_start_pose()
         if self.start_pose is None:
-            print("[Task1] ⚠️ 取不到 /amcl_pose，RETURN 將無法使用 Nav2 返航。")
+            print("[Task1] ⚠️ 取不到 /amcl_pose，RETURN 將無法返航。")
         else:
             print(f"[Task1] 起點記錄為 {self.start_pose}")
 

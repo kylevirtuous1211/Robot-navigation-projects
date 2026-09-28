@@ -5,7 +5,8 @@
 # Task 2 = BRIDGE_APPROACH (measured waypoints onto the bridge, needs reset_map.sh --pin) ->
 # VISUAL_CLIMB (lower the open claw, climb 3 s steering on the bear, else the bridge mask) ->
 # OBSERVE (face the bear) -> GRIP (press + scoop_grab) -> SNAP_DESCEND / DESCEND (steer on the
-# bridge mask, road mask as fallback) -> RETURN (detour waypoints around the bridge, release). Bear picker is YOLO_TARGET_PICK=onbridge: the detection node subscribes to
+# bridge mask, road mask as fallback) -> RETURN (detour waypoints around the bridge, release).
+# Bear picker is YOLO_TARGET_PICK=onbridge: the detection node subscribes to
 # /yolo/bridge_info and only reports the bear horizontally aligned with the bridge (ignores off-bridge
 # decoys). NOTE: changing that env requires recreating the kylefp-yolo container (see below), not just
 # re-running this script.

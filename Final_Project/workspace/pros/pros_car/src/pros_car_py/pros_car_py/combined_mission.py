@@ -1,7 +1,7 @@
 """Combined Task 2 (bridge) → Task 3 (door knob) end-to-end mission.
 =================================================================
 
-一次跑完 Task 2 + Task 3，拿兩個任務的全部分數。
+一次跑完 Task 2 + Task 3。
 
 用法 (容器內)：
     ros2 run pros_car_py task23_auto
@@ -19,8 +19,9 @@
                     Task2 RETURN 是位姿式回到 spawn，結束時 /amcl_pose 已解凍且有效。
   (settle 2s)
   ▶ TASK3 (door)    完整跑 Task3Mission：knob_stow 收手臂 → DRIVE_WP 開到門把 (絕對 waypoint,
-                    會先原地轉掉頭，因為 Task2 結束時車頭朝後) → 視覺對準 → 觀察 ≥5s (Locate & Observe)
-                    → 壓桿開門 → 直行穿門。
+                    會先原地轉掉頭，因為 Task2 結束時車頭朝後) → UNLOCK (對正門、追 knob、舉臂、
+                    背景開始壓桿) → CLEAR (邊壓桿邊直行穿門)。WAYPOINTS 非空時不會進
+                    SEARCH/APPROACH/OBSERVE。
 
 設計：直接「重用」兩個已測過的 state machine class，不重寫。只共用一份 ROS 元件 (RosCommunicator +
 spin thread + data_processor/nav_processing/car_controller/arm_controller)，依序跑 Task2 → Task3。
