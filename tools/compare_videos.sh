@@ -15,6 +15,8 @@ fi
 output="${!#}"
 specs=("${@:1:$#-1}")
 panel_height="${PANEL_HEIGHT:-480}"
+header_height=$(( panel_height / 12 / 2 * 2 ))
+separator=4
 font="$(fc-match -f '%{file}' 'sans:bold')"
 
 inputs=()
@@ -27,12 +29,15 @@ for index in "${!specs[@]}"; do
   duration="$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$path")"
   longest="$(python3 -c "print(max($longest, $duration))")"
   inputs+=(-i "$path")
+  # Label goes in a header bar above the panel so it never covers the video's own overlays;
+  # a gray right border separates neighboring panels.
   filters+="[${index}:v]scale=-2:${panel_height},setsar=1,tpad=stop_mode=clone:stop_duration=3600,"
-  filters+="drawtext=fontfile=${font}:text='${label}':fontsize=h/16:fontcolor=white:"
-  filters+="box=1:boxcolor=black@0.6:boxborderw=8:x=12:y=12[panel${index}];"
+  filters+="pad=iw+${separator}:ih+${header_height}:0:${header_height}:color=0x2b2b2b,"
+  filters+="drawtext=fontfile=${font}:text='${label}':fontsize=${header_height}*0.6:fontcolor=white:"
+  filters+="x=(w-${separator}-text_w)/2:y=(${header_height}-text_h)/2[panel${index}];"
   stack_inputs+="[panel${index}]"
 done
-filters+="${stack_inputs}hstack=inputs=${#specs[@]}[stacked]"
+filters+="${stack_inputs}hstack=inputs=${#specs[@]},crop=iw-${separator}:ih:0:0[stacked]"
 
 ffmpeg -hide_banner -loglevel error -y "${inputs[@]}" \
   -filter_complex "$filters" -map "[stacked]" -t "$longest" \
